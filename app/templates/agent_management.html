@@ -1,0 +1,1909 @@
+{% extends 'base.html' %}
+{% block title %}AI Agents Dashboard - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    scrollbar-width: thin;
+    scrollbar-color: #8b5cf6 transparent;
+  }
+  #loader {
+    z-index: 80 !important;
+  }
+  .glass-card::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .glass-card::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+  }
+
+  .glass-card::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #8b5cf6, #3b82f6);
+    border-radius: 10px;
+  }
+
+  .glass-card::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7c3aed, #2563eb);
+  }
+
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .agent-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+  }
+  
+  .temperature-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, #3b82f6, #8b5cf6, #ef4444);
+    outline: none;
+  }
+  
+  .temperature-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid #667eea;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  }
+  input[name="source_type"]:checked + label {
+    border-color: #8b5cf6;
+    background-color: #f5f3ff;
+  }
+  .action-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(229, 231, 235, 0.8);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-weight: 500;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-btn:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+    color: #667eea;
+  }
+
+  .action-btn.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: transparent;
+  }
+
+  .action-btn.primary:hover {
+    background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    transform: translateY(-1px);
+  }
+
+  .action-btn.danger {
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .action-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: #dc2626;
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">AI Agents Dashboard</h1>
+          <p class="text-gray-600 mt-1">Create and manage your intelligent agents</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+          <i class="fas fa-user-circle text-purple-600"></i>
+          <span class="font-medium">{{ session.username }}</span>
+          <span class="text-gray-400">•</span>
+          <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">{{ session.role }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Stats -->
+  <div class="mx-6 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="glass-card rounded-2xl p-6 slide-in">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Active Agents</p>
+            <p id="statAgents" class="text-2xl font-bold text-green-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-robot text-green-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.1s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Tables</p>
+            <p id="statTables" class="text-2xl font-bold text-blue-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-comments text-blue-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.2s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Data Sources</p>
+            <p id="statDatasources" class="text-2xl font-bold text-purple-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-database text-purple-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.3s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Glossary</p>
+            <p id="statGlossary" class="text-2xl font-bold text-orange-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-yellow-100 rounded-xl flex items-center justify-center">
+            <i class="fa-solid fa-book-atlas text-yellow-600"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Agents Section -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-robot text-purple-600"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-gray-800">Your AI Agents</h3>
+            <p class="text-sm text-gray-600">Manage and configure your intelligent agents</p>
+          </div>
+        </div>
+        <div class="flex space-x-3">
+          <button onclick="openModal()" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition shadow-lg">
+            <i class="fas fa-plus"></i>
+            <span>Create Agent</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-hidden rounded-xl border border-gray-200">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Agent Details</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Data Source</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Model</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Created</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ai-agents-body" class="bg-white divide-y divide-gray-200">
+            <tr>
+              <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                <div class="flex flex-col items-center">
+                  <i class="fas fa-robot text-4xl text-gray-300 mb-3"></i>
+                  <p class="font-medium">Loading agents...</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="p-6 border-t border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+              <span id="agents-pageInfo">Showing 1-10 of 0 agents</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button id="agents-prevPage" class="action-btn"><i class="fas fa-chevron-left"></i></button>
+              <div class="flex items-center space-x-1" id="agents-pageNumbers">
+                <button class="action-btn primary">1</button>
+              </div>
+              <button id="agents-nextPage" class="action-btn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Business Glossary Section -->
+  <div class="mx-6 mt-6 pb-8">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-book text-blue-600"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-gray-800">Business Glossary</h3>
+            <p class="text-sm text-gray-600">Define business terms and concepts for your agents</p>
+          </div>
+        </div>
+        <div class="flex space-x-3">
+          <button onclick="openAddGlossaryModal()" class="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 smooth-transition shadow-lg">
+            <i class="fas fa-plus"></i>
+            <span>Add Term</span>
+          </button>
+          <button onclick="openUploadGlossaryModal()" 
+            class="flex items-center space-x-2 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white px-6 py-3 rounded-xl hover:bg-green-700 smooth-transition shadow-lg">
+            <i class="fas fa-upload"></i>
+            <span>Upload Glossary</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-hidden rounded-xl border border-gray-200">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Term</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Definition</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Category</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Agent</th>
+              <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="glossary-body" class="bg-white divide-y divide-gray-200">
+            <tr>
+              <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                <div class="flex flex-col items-center">
+                  <i class="fas fa-book text-4xl text-gray-300 mb-3"></i>
+                  <p class="font-medium">Loading glossary...</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="p-6 border-t border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+              <span id="glossary-pageInfo">Showing 1-10 of 0 terms</span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button id="glossary-prevPage" class="action-btn"><i class="fas fa-chevron-left"></i></button>
+              <div class="flex items-center space-x-1" id="glossary-pageNumbers">
+                <button class="action-btn primary">1</button>
+              </div>
+              <button id="glossary-nextPage" class="action-btn"><i class="fas fa-chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions FAB -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <div class="relative">
+      <button id="fab-main" onclick="toggleFAB()" class="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+      </button>
+      
+      <div id="fab-menu" class="absolute bottom-20 right-0 space-y-3 transform scale-0 origin-bottom-right smooth-transition">
+        <button onclick="openModal(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-robot text-purple-600"></i>
+          <span class="font-medium">Create Agent</span>
+        </button>
+        <button onclick="openAddGlossaryModal(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-book text-blue-600"></i>
+          <span class="font-medium">Add Term</span>
+        </button>
+        <button onclick="testAllAgents(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-vial text-green-600"></i>
+          <span class="font-medium">Test All</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create Agent Modal -->
+<div id="connModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+  <div class="glass-card w-full max-w-4xl rounded-2xl p-8 relative shadow-2xl overflow-y-auto max-h-[90vh] mx-4" style='max-height:90vh;'>
+    <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 text-2xl smooth-transition">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <!-- Modal Header -->
+    <div class="mb-8">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Create AI Agent</h2>
+      <p class="text-gray-600">Configure your intelligent agent with custom prompts and data sources</p>
+    </div>
+
+    <!-- Step Indicator -->
+    <div class="flex items-center justify-center mb-8">
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
+          <div id="step-indicator-1" class="w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+          <span id="stepIndicator1" class="text-purple-600 font-medium">Agent Info</span>
+        </div>
+        <div class="w-16 h-1 bg-gray-200 rounded">
+          <div id="progress-connector" class="h-1 bg-purple-600 rounded transition-all duration-500" style="width: 0%"></div>
+        </div>
+        <div class="flex items-center space-x-2">
+          <div id="step-indicator-2" class="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold">2</div>
+          <span id="stepIndicator2" class="text-gray-400 font-medium">Prompt Settings</span>
+        </div>
+      </div>
+    </div>
+
+    <form id="connForm" class="space-y-6">
+      <!-- STEP 1: Agent Configuration -->
+      <div id="step-1" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Agent Name</label>
+            <input type="text" name="name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" placeholder="Enter a descriptive agent name" required>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Agent Description</label>
+            <textarea name="description" rows="2" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" placeholder="Brief description of the agent's purpose..."></textarea>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">LLM Provider</label>
+            <select name="llm_provider" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+              <option value="OpenAI">OpenAI</option>
+              <option disabled>Llama (Coming Soon)</option>
+              <option disabled>Claude (Coming Soon)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">LLM Model</label>
+            <select name="llm_model" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+              <option value="gpt-4">GPT-4</option>
+              <option value="gpt-4o">GPT-4o</option>
+              <option disabled>Llama 2 (Coming Soon)</option>
+              <option disabled>Claude 3.5 (Coming Soon)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Temperature (Creativity Level)</label>
+          <div class="relative">
+            <input type="range" min="0" max="1" step="0.1" value="0.4" name="temperature" id="temperatureRange" class="w-full temperature-slider" oninput="updateTooltip(this)">
+            <div class="flex justify-between text-xs text-gray-500 mt-1">
+              <span>Conservative (0.0)</span>
+              <span>Balanced (0.5)</span>
+              <span>Creative (1.0)</span>
+            </div>
+            <div id="temperatureTooltip" class="absolute -top-10 left-0 transform -translate-x-1/2 px-3 py-1 text-sm bg-purple-600 text-white rounded-lg hidden">
+              <span>0.4</span>
+              <div class="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-purple-600"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gray-50 rounded-xl p-6">
+          <label class="block text-sm font-semibold text-gray-700 mb-4">Data Source Configuration</label>
+          <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+            <!-- Tables option -->
+            <div class="relative">
+              <input type="radio" id="tables" name="source_type" value="tables" checked class="peer sr-only">
+              <label for="tables" onclick="showTables()" class="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+                <i class="fas fa-table text-purple-600"></i>
+                <div>
+                  <div class="font-medium text-gray-800">Specific Tables</div>
+                  <div class="text-sm text-gray-600">Select individual tables</div>
+                </div>
+              </label>
+            </div>
+
+            <!-- Data Source option -->
+            <div class="relative">
+              <input type="radio" id="datasource" name="source_type" value="datasource" class="peer sr-only">
+              <label for="datasource" onclick="showDatasource()" class="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-blue-500 peer-checked:bg-blue-50 smooth-transition">
+                <i class="fas fa-database text-blue-600"></i>
+                <div>
+                  <div class="font-medium text-gray-800">Data Source</div>
+                  <div class="text-sm text-gray-600">Entire data source</div>
+                </div>
+              </label>
+            </div>
+
+            <!-- RAG option -->
+            <div class="relative">
+              <input type="radio" id="rag" name="source_type" value="rag" class="peer sr-only">
+              <label for="rag" onclick="showRag()" class="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-pink-300 peer-checked:border-pink-500 peer-checked:bg-pink-50 smooth-transition">
+                <i class="fas fa-file-alt text-pink-600"></i>
+                <div>
+                  <div class="font-medium text-gray-800">Unstructured Files (RAG)</div>
+                  <div class="text-sm text-gray-600">Use uploaded documents</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <div id="table-select-section">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Select Tables</label>
+            <select id="tableSelect" name="tables" multiple class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition"></select>
+          </div>
+
+          <div id="datasource-select-section" class="hidden">
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Select Data Source</label>
+            <select id="sourceSelect" name="data_source" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition">
+              <option value="">-- Choose a data source --</option>
+            </select>
+          </div>
+
+          <!-- RAG Section -->
+          <div id="rag-section" class="hidden">
+            <p class="text-sm text-gray-600 italic mb-3">
+              This agent will use your previously uploaded unstructured documents as its knowledge base. 
+              You can manage uploads in the 
+              <a href="/data-management" class="text-pink-600 hover:underline">Data Management</a> page.
+            </p>
+
+            <label class="block text-sm font-medium text-gray-700 mb-2">Select Files</label>
+            <select id="ragFileSelect" name="rag_files" multiple
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 text-sm 
+                    focus:outline-none focus:border-pink-500">
+            </select>
+          </div>
+        </div>
+
+        <div class="flex justify-end">
+          <button type="button" onclick="goToStep2()" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition font-medium">
+            <span>Next: Prompt Settings</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- STEP 2: Prompt Configuration -->
+      <div id="step-2" class="space-y-6 hidden">
+        <div class="bg-blue-50 rounded-xl p-6 border-l-4 border-blue-500">
+          <div class="flex items-start space-x-3">
+            <i class="fas fa-lightbulb text-blue-600 mt-1"></i>
+            <div>
+              <h4 class="font-semibold text-blue-800 mb-2">AI-Powered Prompt Generation</h4>
+              <p class="text-blue-700 text-sm mb-4">Describe your business context below, and our AI will automatically generate optimized prompts for both SQL and synthesizer agents.</p>
+              
+              <textarea name="business_context" rows="3" id="businessContext" class="w-full px-4 py-3 border-2 border-blue-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition resize-none" placeholder="Example: I need an agent to analyze sales performance across different regions and product categories, providing insights on revenue trends, top-performing products, and regional comparisons..."></textarea>
+              
+              <button type="button" onclick="generatePromptsFromContext()" class="mt-3 flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 smooth-transition">
+                <i class="fas fa-magic"></i>
+                <span>Generate Prompts</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-xl p-6 border border-gray-200">
+          <h4 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+            <i class="fas fa-cogs text-purple-600 mr-3"></i>
+            Advanced Prompt Configuration
+          </h4>
+
+          <!-- RAG Agent Prompts -->
+          <div class="mt-8 hidden" id='ragPrompt'>
+            <h5 class="text-md font-semibold text-gray-700 mb-4 flex items-center">
+              <i class="fas fa-file-alt text-pink-600 mr-2"></i>
+              RAG Synthesizer Agent Configuration
+            </h5>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-sm font-medium text-gray-700">System Prompt</label>
+                  <button type="button" onclick="openPromptModal('rag_system')" class="text-xs text-pink-600 hover:underline smooth-transition">
+                    See Examples
+                  </button>
+                </div>
+                <textarea name="rag_system_prompt" rows="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 smooth-transition resize-none" placeholder="System prompt for document-based reasoning..."></textarea>
+              </div>
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-sm font-medium text-gray-700">Task Definition</label>
+                  <button type="button" onclick="openPromptModal('rag_task')" class="text-xs text-pink-600 hover:underline smooth-transition">
+                    See Examples
+                  </button>
+                </div>
+                <textarea name="rag_task" rows="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 smooth-transition resize-none" placeholder="Define the task for RAG agent..."></textarea>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-gray-700">Detailed Instructions</label>
+                <button type="button" onclick="openPromptModal('rag_instruction')" class="text-xs text-pink-600 hover:underline smooth-transition">
+                  See Examples
+                </button>
+              </div>
+              <textarea name="rag_instruction" rows="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-pink-500 smooth-transition resize-none" placeholder="Detailed guidance for RAG document-based responses..."></textarea>
+            </div>
+          </div>
+
+          <div id="structuredPrompts">
+            <!-- SQL Agent Prompts -->
+            <div class="mb-8">
+              <h5 class="text-md font-semibold text-gray-700 mb-4 flex items-center">
+                <i class="fas fa-database text-blue-600 mr-2"></i>
+                SQL Agent Configuration
+              </h5>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">System Prompt</label>
+                    <button type="button" onclick="openPromptModal('sql_system')" 
+                            class="text-xs text-purple-600 hover:underline smooth-transition">
+                      See Examples
+                    </button>
+                  </div>
+                  <textarea name="sql_system_prompt" rows="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition resize-none" placeholder="System-level guidance for SQL generation..."></textarea>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">Task Definition</label>
+                    <button type="button" onclick="openPromptModal('sql_task')" 
+                            class="text-xs text-purple-600 hover:underline smooth-transition">
+                      See Examples
+                    </button>
+                  </div>
+                  <textarea name="sql_task" rows="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition resize-none" placeholder="Define the primary task for SQL agent..."></textarea>
+                </div>
+              </div>
+              
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <label class="block text-sm font-medium text-gray-700">Detailed Instructions</label>
+                  <button type="button" onclick="openPromptModal('sql_instruction')" 
+                            class="text-xs text-purple-600 hover:underline smooth-transition">
+                    See Examples
+                  </button>
+                </div>
+                <textarea name="sql_instruction" rows="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition resize-none" placeholder="Comprehensive instructions for SQL query generation..."></textarea>
+              </div>
+            </div>
+
+            <!-- Synthesizer Agent Prompts -->
+            <div class="mb-8">
+              <h5 class="text-md font-semibold text-gray-700 mb-4 flex items-center">
+                <i class="fas fa-brain text-purple-600 mr-2"></i>
+                Synthesizer Agent Configuration
+              </h5>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">System Prompt</label>
+                    <button type="button" onclick="openPromptModal('synth_system')" 
+                            class="text-xs text-purple-600 hover:underline smooth-transition">
+                      See Examples
+                    </button>
+                  </div>
+                  <textarea name="synthesizer_system_prompt" rows="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition resize-none" placeholder="System prompt for response synthesis..."></textarea>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">Task Definition</label>
+                    <button type="button" onclick="openPromptModal('synth_task')" 
+                            class="text-xs text-purple-600 hover:underline smooth-transition">
+                      See Examples
+                    </button>
+                  </div>
+                  <textarea name="synthesizer_task" rows="3" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition resize-none" placeholder="Primary task for synthesizer agent..."></textarea>
+                </div>
+              </div>
+              
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                    <label class="block text-sm font-medium text-gray-700">Detailed Instructions</label>
+                    <button type="button" onclick="openPromptModal('synth_instruction')" 
+                            class="text-xs text-purple-600 hover:underline smooth-transition">
+                      See Examples
+                    </button>
+                  </div>
+                <textarea name="synthesizer_instruction" rows="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition resize-none" placeholder="Comprehensive instructions for response synthesis..."></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-between pt-6 border-t border-gray-200">
+          <button type="button" onclick="goToStep1()" class="flex items-center space-x-2 text-purple-600 hover:text-purple-800 font-medium smooth-transition">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back to Agent Info</span>
+          </button>
+          <button type="submit" class="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-blue-600 text-white px-8 py-3 rounded-xl hover:from-green-700 hover:to-blue-700 smooth-transition font-medium">
+            <i class="fas fa-check"></i>
+            <span>Create Agent</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Glossary Modal -->
+<div id="glossaryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
+    <div class="flex items-center justify-between mb-6">
+      <h2 id="glossaryModalTitle" class="text-xl font-bold text-gray-800">Add Glossary Term</h2>
+      <button onclick="closeGlossaryModal()" class="text-gray-400 hover:text-red-500 smooth-transition">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Agent</label>
+        <select id="addGlossaryAgentSelect" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white"></select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Term</label>
+        <input id="glossaryTerm" type="text" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" placeholder="Enter business term">
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Definition</label>
+        <textarea id="glossaryDefinition" rows="4" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition resize-none" placeholder="Define the term clearly and comprehensively"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+        <input id="glossaryCategory" type="text" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" placeholder="e.g., Finance, Sales, Operations">
+      </div>
+    </div>
+
+    <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+      <button onclick="closeGlossaryModal()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+        Cancel
+      </button>
+      <button onclick="saveGlossaryTerm()" class="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition font-medium">
+        Save Term
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Glossary Modal -->
+<div id="uploadGlossaryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card rounded-2xl shadow-2xl p-8 w-full max-w-lg mx-4">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-bold text-gray-800">Upload Business Glossary</h2>
+      <button onclick="closeUploadGlossaryModal()" class="text-gray-400 hover:text-red-500 smooth-transition">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+
+    <form id="uploadGlossaryForm" class="space-y-4">
+      <div>
+        <label for="uploadGlossaryAgentSelect" class="block text-sm font-semibold text-gray-700 mb-2">Agent</label>
+        <select id="uploadGlossaryAgentSelect" name="agentId"
+          class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white" required>
+          <option value="">-- Select an Agent --</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Business Glossary file</label>
+        <div class="flex space-x-2">
+          <input type="file" id="glossaryFile" accept=".csv,.xlsx"
+            class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+          <a href="/download-template"
+            class="flex items-center space-x-2 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-400 smooth-transition whitespace-nowrap">
+            <i class="fas fa-download"></i>
+            <span>Template</span>
+          </a>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">
+          Upload a business glossary file containing key terms, their definitions, and categories to help standardize language across your organization.
+        </p>
+      </div>
+    </form>
+
+    <div class="flex justify-end space-x-3 mt-6 pt-6 border-t border-gray-200">
+      <button onclick="closeUploadGlossaryModal()" 
+        class="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+        Cancel
+      </button>
+      <button type="submit" form="uploadGlossaryForm"
+        class="px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 smooth-transition font-medium">
+        Upload & Import
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="promptModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
+    <div class="flex items-center justify-between mb-6">
+      <h2 id="promptModalTitle" class="text-xl font-bold text-gray-800">Prompt Examples</h2>
+      <button onclick="closePromptModal()" class="text-gray-400 hover:text-red-500 smooth-transition">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+    <div id="promptExamples" class="space-y-6"></div>
+    <div class="flex justify-end mt-6 pt-6 border-t border-gray-200">
+      <button onclick="closePromptModal()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+        Close
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Loader Modal -->
+<div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-9999 hidden">
+  <div class="glass-card rounded-2xl p-8 text-center shadow-2xl">
+    <div class="relative">
+      <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+    </div>
+    <p id="loader-text" class="mt-4 text-gray-600 font-medium">Processing...</p>
+  </div>
+</div>
+
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+<script>
+  const promptExamplesData = {
+    sql_system: [
+      "You are an expert SQL agent for pharmaceutical sales data. You generate syntactically correct and optimized SQL queries for a PostgreSQL database. Always prioritize safety, avoid SQL injection, and only query from existing schema fields. Use WHERE clauses precisely and prefer using aggregate functions like SUM, AVG, and COUNT for business insights.",
+      "You are an expert SQL agent for a lab informatics system. You write precise, optimized SQL queries for a PostgreSQL database. The schema includes tables such as samples, inventory_items, stock_thresholds, instrument_schedule, and expiry_alerts. You must generate queries that help lab managers monitor samples, inventory levels, instrument usage, and expiry-related events. Ensure all queries are safe, accurate, and follow best SQL practices."
+    ],
+    sql_task: [
+      "Translate the user’s business-related question about pharmaceutical sales into an accurate SQL query. The database includes tables such as sales, products, regions, sales_reps, and targets. Use joins, grouping, and filtering appropriately to extract the required data.",
+      `Convert the user’s natural language lab operations query into a valid and efficient SQL query. Use appropriate joins, conditions, grouping, and aggregations`
+    ],
+    sql_instruction: [
+      `Based on the user’s input, write a SQL query that:
+        - Identifies performance metrics (e.g., sales volume, growth rate)
+        - Filters by region, time period, product, or sales rep
+        - Summarizes data using GROUP BY and ORDER BY when needed
+        - Limits the results for clarity (e.g., LIMIT 10)
+        Return only the SQL query, nothing else.`,
+      `Based on the user’s request, write a SQL query that:
+      - Pulls relevant data from the correct tables
+      - Applies filtering based on time, thresholds, or item type
+      - Uses JOINs to merge contextual information (e.g., item names with stock levels)
+      - Handles date ranges and alerts properly using WHERE and INTERVAL
+      - Returns only the most useful fields (limit excessive rows with LIMIT if needed)
+      Return only the SQL query, and nothing else.`
+    ],
+    synth_system: [
+      `You are a business-savvy AI assistant helping pharma sales teams interpret SQL query results in natural language. Explain results clearly, highlight key trends or insights, and use domain-specific terminology (e.g., "target achievement", "sales rep performance", "top-performing regions").`,
+      `You are a domain-aware assistant that interprets SQL query results related to laboratory informatics. You convert data into business-friendly summaries, helping lab managers take informed actions. Focus on clarity, trends, and alerts (e.g., low stock, expired items, upcoming maintenance). Use domain-specific language appropriate for laboratory inventory and operations.`
+    ],
+    synth_task: [
+      "Convert structured SQL query results into a human-readable summary suitable for pharma sales managers. Focus on making the data actionable and insightful.",
+      `Given the output of a SQL query and the original user question, summarize the results in clear, insightful language. Emphasize key alerts or decisions (e.g., “Restock required for solvents”, “5 instruments due for calibration”).`
+    ],
+    synth_instruction: [
+      `Given the SQL output table and the original user query, write a concise business summary:
+      - Explain what the numbers mean in context (e.g., “Sales in West region exceeded targets by 12%”)
+      - Highlight any performance gaps, achievements, or trends
+      - Use bullet points or short paragraphs to improve readability
+      Avoid technical jargon unless needed for clarity.`,
+      `Generate a short business report based on the SQL result:
+      - Highlight urgent matters (e.g., items near expiry, maintenance due)
+      - Use bullet points for clear readability
+      - Avoid restating raw data—interpret what it means
+      - Suggest actions if applicable (e.g., “Consider placing a purchase order”)`
+    ],
+
+    rag_system: [
+      "You are a legal insights assistant that interprets retrieved contract text into plain, business-readable summaries. Avoid legal advice but provide clear explanations.",
+      "You are a biomedical summarizer that converts retrieved trial and research content into clear insights for healthcare professionals and researchers."
+    ],
+
+    rag_task: [
+      "Summarize retrieved legal passages into actionable insights (e.g., obligations, deadlines, risks).",
+      "Summarize retrieved passages into structured research insights."
+    ],
+
+    rag_instruction: [
+      `Given retrieved contract snippets and the user’s question:
+        - Rephrase legal clauses in plain terms
+        - Highlight obligations, risks, and deadlines
+        - Use bullet points for readability
+        - Avoid speculation or legal advice`,
+      `Given retrieved biomedical content and the query:
+        - Highlight key findings and outcomes
+        - Mention limitations if stated
+        - Avoid unsupported medical claims
+        - Keep language clear and actionable`
+    ],
+  };
+
+  function openPromptModal(section) {
+    const modal = document.getElementById("promptModal");
+    const examplesContainer = document.getElementById("promptExamples");
+    examplesContainer.innerHTML = "";
+
+    document.getElementById("promptModalTitle").innerText = "Examples for " + section.replace("_", " ");
+
+    promptExamplesData[section].forEach(example => {
+      const block = document.createElement("div");
+      block.className = "relative p-4 border-2 border-gray-200 rounded-xl bg-gray-50 group";
+
+      block.innerHTML = `
+        <code class="block pr-8 text-sm text-gray-800">${example}</code>
+        <button onclick="copyPrompt('${example.replace(/'/g, "\\'")}')" 
+          class="absolute top-2 right-2 text-gray-400 hover:text-purple-600 smooth-transition"
+          title="Copy to clipboard">
+          <i class="fas fa-copy"></i>
+        </button>
+
+      `;
+      examplesContainer.appendChild(block);
+    });
+
+    modal.classList.remove("hidden");
+  }
+
+  function closePromptModal() {
+    document.getElementById("promptModal").classList.add("hidden");
+  }
+
+  function copyPrompt(text) {
+    navigator.clipboard.writeText(text);
+    alert("Copied: " + text);
+  }
+
+  function openUploadGlossaryModal() {
+    document.getElementById("uploadGlossaryModal").classList.remove("hidden");
+  }
+  
+  function closeUploadGlossaryModal() {
+    document.getElementById("uploadGlossaryModal").classList.add("hidden");
+  }
+
+  document.getElementById("uploadGlossaryForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const agentId = document.getElementById("uploadGlossaryAgentSelect").value;
+    const fileInput = document.getElementById("glossaryFile");
+    if (!fileInput.files.length) {
+      alert("Please select a file before uploading.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("agentId", agentId);
+    formData.append("file", fileInput.files[0]);
+
+    try {
+      const res = await fetch("/api/agent/glossary/bulk-upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert("Glossary uploaded successfully!");
+        closeUploadGlossaryModal();
+        loadGlossary();
+      } else {
+        alert(data.message || "Upload failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Upload error:", err);
+      alert("Something went wrong while uploading.");
+    }
+  });
+
+
+  class AgentsManager {
+    constructor() {
+      this.tableChoices = null;
+      this.editingGlossaryId = null;
+      this.fabOpen = false;
+      this.editingAgentId = null;
+      this.initializeEventListeners();
+      this.loadInitialData();
+      this.fabOpen = false;
+      
+      this.tables = {
+        agents: { data: [], currentPage: 1, perPage: 5, render: this.renderAgentsPage },
+        glossary: { data: [], currentPage: 1, perPage: 5, render: this.renderGlossaryPage }
+      };
+    }
+
+    showLoader(message = "Processing...") {
+      document.getElementById("loader-text").innerText = message;
+      document.getElementById("loader").classList.remove("hidden");
+    }
+
+    hideLoader() {
+      document.getElementById("loader").classList.add("hidden");
+    }
+
+
+    initializeEventListeners() {
+      document.getElementById('connForm').addEventListener('submit', (e) => this.submitAgentForm(e));
+      const range = document.getElementById('temperatureRange');
+      const tooltip = document.getElementById('temperatureTooltip');
+      
+      range.addEventListener('input', () => this.updateTooltip(range));
+      range.addEventListener('mouseenter', () => tooltip.classList.remove('hidden'));
+      range.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+    }
+
+    async loadInitialData() {
+      this.updateProgress(20);
+      this.tableChoices = new Choices('#tableSelect', {
+        removeItemButton: true,
+        placeholderValue: 'Select tables...',
+        searchEnabled: true,
+        shouldSort: false
+      });
+      this.ragFileChoices = new Choices('#ragFileSelect', {
+        removeItemButton: true,
+        placeholderValue: 'Search and select files...',
+        searchEnabled: true,
+        shouldSort: false
+      });
+
+      await Promise.all([
+        this.loadAgents(),
+        this.loadGlossary(),
+        this.loadTableOptions(),
+        this.loadDataSourceOptions(),
+        this.loadRagFiles(),
+        this.loadStats()
+      ]);
+
+      this.updateProgress(100);
+      setTimeout(() => this.updateProgress(0), 1000);
+    }
+
+    updateProgress(percentage) {
+      document.getElementById('progress-bar').style.width = `${percentage}%`;
+    }
+
+    showToast(message, type = 'success', duration = 5000) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        info: 'fas fa-info-circle',
+        warning: 'fas fa-exclamation-triangle'
+      };
+      
+      const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500',
+        warning: 'bg-yellow-500'
+      };
+      
+      toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+      toast.innerHTML = `
+        <i class="${icons[type]}"></i>
+        <span class="font-medium">${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-auto">
+          <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+        </button>
+      `;
+      
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    updateTooltip(input) {
+      const tooltip = document.getElementById('temperatureTooltip');
+      const value = parseFloat(input.value);
+      tooltip.querySelector('span').textContent = value.toFixed(1);
+      
+      const percent = (value - parseFloat(input.min)) / (parseFloat(input.max) - parseFloat(input.min));
+      const inputRect = input.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      const offset = percent * inputRect.width;
+      
+      tooltip.style.left = `${offset}px`;
+      tooltip.classList.remove('hidden');
+    }
+
+    async loadAgents() {
+      const tbody = document.getElementById('ai-agents-body');
+      const addGlossaryAgentSelect = document.getElementById('addGlossaryAgentSelect');
+      const uploadGlossaryAgentSelect = document.getElementById('uploadGlossaryAgentSelect');
+
+      try {
+        const response = await fetch('/api/agent/get-agents', {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        });
+
+        const res = await response.json();
+        
+        if (addGlossaryAgentSelect) {
+          addGlossaryAgentSelect.innerHTML = '<option value="">-- Select an Agent --</option>';
+        }
+        if (uploadGlossaryAgentSelect) {
+          uploadGlossaryAgentSelect.innerHTML = '<option value="">-- Select an Agent --</option>';
+        }
+
+        this.tables.agents.data = res.agents || [];
+        
+        if (this.tables.agents.data.length === 0) {
+          tbody.innerHTML = this.getEmptyState('robot', 'No agents found', 'Create your first AI agent to get started');
+          this.updatePagination('agents');
+          return;
+        }
+
+        // Populate dropdowns
+        this.tables.agents.data.forEach(agent => {
+          const option = document.createElement('option');
+          option.value = agent.id;
+          option.textContent = agent.name;
+          if (addGlossaryAgentSelect) addGlossaryAgentSelect.appendChild(option.cloneNode(true));
+          if (uploadGlossaryAgentSelect) uploadGlossaryAgentSelect.appendChild(option.cloneNode(true));
+        });
+
+        this.tables.agents.currentPage = 1;
+        this.renderAgentsPage(); // Now paginated
+
+      } catch (error) {
+        console.error('Error loading agents:', error);
+        tbody.innerHTML = this.getEmptyState('exclamation-triangle', 'Error loading agents', 'Please refresh the page to try again');
+        this.updatePagination('agents');
+      }
+    }
+
+    renderAgentsPage() {
+      const tbody = document.getElementById('ai-agents-body');
+      tbody.innerHTML = '';
+
+      const table = this.tables.agents;
+      const start = (table.currentPage - 1) * table.perPage;
+      const end = start + table.perPage;
+      const pageData = table.data.slice(start, end);
+
+      pageData.forEach(agent => {
+        // YOUR EXISTING ROW CODE - UNCHANGED
+        const row = document.createElement('tr');
+        row.className = 'hover:bg-gray-50 smooth-transition';
+
+        const date = new Date(agent.created_at);
+        let tableDisplay = "";
+        if (agent.tables && agent.tables.length > 0) {
+          tableDisplay = agent.tables.map(t => t.table_name).join(', ');
+        } else if (agent.agent_type === 'unstructured') {
+          tableDisplay = (agent.files && agent.files.length > 0)
+            ? agent.files.map(f => f.file_name).join(', ')
+            : "No files linked";
+        } else {
+          tableDisplay = agent.data_connection_name || "N/A";
+        }
+
+        const statusColor = agent.status === 'ACTIVE' ? 'bg-green-500' : 'bg-yellow-500';
+
+        row.innerHTML = `
+                <td class="px-6 py-4">
+                  <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <i class="fas fa-robot text-purple-600"></i>
+                    </div>
+                    <div>
+                      <div class="font-medium text-gray-800">${agent.name}</div>
+                      <div class="text-sm text-gray-500">${agent.description || 'No description'}</div>
+                    </div>
+                  </div>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    ${tableDisplay}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="text-sm">
+                    <div class="font-medium text-gray-800">${(agent.llm_provider || '').toUpperCase()}</div>
+                    <div class="text-gray-500">${(agent.llm_model || '').toUpperCase()}</div>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-600">
+                  ${date.toLocaleDateString()}
+                </td>
+                <td class="px-6 py-4">
+                  <div class="flex items-center space-x-2">
+                    <span class="agent-status-dot ${statusColor}"></span>
+                    <span class="text-sm font-medium text-green-600">${agent.status || 'ACTIVE'}</span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center justify-end space-x-2">
+                    <button onclick="agentsManager.editAgent('${agent.id}')" class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 smooth-transition" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="agentsManager.deleteAgent('${agent.id}')" class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 smooth-transition" title="Delete">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              `;
+        tbody.appendChild(row);
+      });
+
+      this.updatePagination('agents');
+    }
+
+    async loadGlossary() {
+      const tbody = document.getElementById("glossary-body");
+      
+      try {
+        const res = await fetch("/api/agent/glossary/list", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        
+        const data = await res.json();
+        this.tables.glossary.data = data.items || [];
+        
+        if (this.tables.glossary.data.length === 0) {
+          tbody.innerHTML = this.getEmptyState('book', 'No glossary terms found', 'Add business terms to help your agents understand context');
+          this.updatePagination('glossary');
+          return;
+        }
+
+        this.tables.glossary.currentPage = 1;
+        this.renderGlossaryPage();
+
+      } catch (error) {
+        console.error(error);
+        tbody.innerHTML = this.getEmptyState('exclamation-triangle', 'Error loading glossary', 'Please refresh the page to try again');
+        this.updatePagination('glossary');
+      }
+    }
+
+    renderGlossaryPage() {
+      const tbody = document.getElementById("glossary-body");
+      tbody.innerHTML = '';
+
+      const table = this.tables.glossary;
+      const start = (table.currentPage - 1) * table.perPage;
+      const end = start + table.perPage;
+      const pageData = table.data.slice(start, end);
+
+      pageData.forEach(term => {
+        const row = document.createElement("tr");
+              row.className = 'hover:bg-gray-50 smooth-transition';
+              
+              row.innerHTML = `
+                <td class="px-6 py-4">
+                  <div class="font-medium text-gray-800">${this.escapeHtml(term.term)}</div>
+                </td>
+                <td class="px-6 py-4">
+                  <div class="text-sm text-gray-600 max-w-xs truncate">${this.escapeHtml(term.definition)}</div>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    ${this.escapeHtml(term.category)}
+                  </span>
+                </td>
+                <td class="px-6 py-4">
+                  <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                    ${this.escapeHtml(term.agent.name)}
+                  </span>
+                </td>
+                <td class="px-6 py-4 text-right">
+                  <div class="flex items-center justify-end space-x-2">
+                    <button onclick="agentsManager.editGlossary(${term.id})" class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 smooth-transition" title="Edit">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="agentsManager.deleteGlossary(${term.id})" class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 smooth-transition" title="Delete">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </td>
+              `;
+        tbody.appendChild(row);
+      });
+
+      this.updatePagination('glossary');
+    }
+
+    async loadTableOptions() {
+      try {
+        const res = await fetch('/api/data/get-existing-tables', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        const tables = await res.json();
+        
+        this.tableChoices.clearChoices();
+        this.tableChoices.setChoices(
+          (tables.tables || []).map(t => ({ value: t.id, label: t.table_name })),
+          'value', 'label', true
+        );
+      } catch (error) {
+        console.error("Error loading tables:", error);
+      }
+    }
+
+    async loadDataSourceOptions() {
+      const select = document.getElementById('sourceSelect');
+      try {
+        const res = await fetch('/api/data/get-data-sources', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        const data = await res.json();
+        
+        select.innerHTML = '<option value="">-- Choose a data source --</option>';
+        (data.data_sources || []).forEach(source => {
+          const opt = document.createElement('option');
+          opt.value = source.id;
+          opt.textContent = source.source_name;
+          select.appendChild(opt);
+        });
+      } catch (error) {
+        console.error("Error loading data sources:", error);
+      }
+    }
+
+    async loadRagFiles() {
+      try {
+        const res = await fetch('/api/agent/files?type=unstructured', {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        const files = await res.json();
+
+        this.ragFileChoices.clearStore();
+        files.forEach(file => {
+          this.ragFileChoices.setChoices([{
+            value: file.id,
+            label: file.original_filename,
+            selected: false
+          }], 'value', 'label', false);
+        });
+      } catch (err) {
+        console.error("Error loading RAG files:", err);
+      }
+    }
+
+    async loadStats() {
+      try {
+        const response = await fetch("/api/agent/stats", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+          document.getElementById("statAgents").innerText = result.stats.agents || 0;
+          document.getElementById("statGlossary").innerText = result.stats.glossary || 0;
+          document.getElementById("statDatasources").innerText = result.stats.datasources || 0;
+          document.getElementById("statTables").innerText = result.stats.tables || 0;
+        } else {
+          console.error("Failed to load stats:", result.message);
+        }
+      } catch (error) {
+        console.error("Error loading stats:", error);
+      }
+    }
+
+
+    getEmptyState(icon, title, description) {
+      return `
+        <tr>
+          <td colspan="6" class="px-6 py-12 text-center">
+            <div class="flex flex-col items-center">
+              <i class="fas fa-${icon} text-4xl text-gray-300 mb-4"></i>
+              <h3 class="text-lg font-medium text-gray-800 mb-2">${title}</h3>
+              <p class="text-gray-500">${description}</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    escapeHtml(unsafe) {
+      if (!unsafe && unsafe !== 0) return '';
+      return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    toggleFAB() {
+      this.fabOpen = !this.fabOpen;
+      const menu = document.getElementById('fab-menu');
+      const icon = document.querySelector('#fab-main i');
+      
+      if (this.fabOpen) {
+        menu.style.transform = 'scale(1)';
+        icon.style.transform = 'rotate(45deg)';
+      } else {
+        menu.style.transform = 'scale(0)';
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    openModal() {
+      document.getElementById('connModal').classList.remove('hidden');
+    }
+
+    closeModal() {
+      document.getElementById('connModal').classList.add('hidden');
+      this.goToStep1();
+
+      this.editingAgentId = null;
+
+      document.querySelector("#connModal h2").innerText = "Create AI Agent";
+      document.querySelector("#connForm button[type='submit'] span").innerText = "Create Agent";
+
+      const form = document.getElementById("connForm");
+      form.data_source.value = "";
+      if (this.tableChoices) {
+        this.tableChoices.removeActiveItems();
+      }
+      if (this.ragFileChoices) {
+        this.ragFileChoices.removeActiveItems();
+      }
+    }
+
+    showTables() {
+      document.getElementById("table-select-section").classList.remove("hidden");
+      document.getElementById("datasource-select-section").classList.add("hidden");
+      document.getElementById("rag-section").classList.add("hidden");
+      document.getElementById("structuredPrompts").classList.remove("hidden");
+      document.getElementById("structuredPrompts").classList.remove("hidden");
+      document.getElementById("ragPrompt").classList.add("hidden");
+    }
+
+    showDatasource() {
+      document.getElementById("datasource-select-section").classList.remove("hidden");
+      document.getElementById("table-select-section").classList.add("hidden");
+      document.getElementById("rag-section").classList.add("hidden");
+      document.getElementById("structuredPrompts").classList.remove("hidden");
+      document.getElementById("ragPrompt").classList.add("hidden");
+    }
+
+    showRag() {
+      document.getElementById("table-select-section").classList.add("hidden");
+      document.getElementById("datasource-select-section").classList.add("hidden");
+      document.getElementById("rag-section").classList.remove("hidden");
+      document.getElementById("ragPrompt").classList.remove("hidden");
+      document.getElementById("structuredPrompts").classList.add("hidden");
+      document.getElementById("ragPrompt").classList.remove("hidden");
+    }
+
+    goToStep2() {
+      document.getElementById('step-1').classList.add('hidden');
+      document.getElementById('step-2').classList.remove('hidden');
+      
+      // Update step indicators
+      document.getElementById('step-indicator-1').className = 'w-8 h-8 bg-green-600 text-white rounded-full flex items-center justify-center text-sm font-bold';
+      document.getElementById('step-indicator-1').innerHTML = '<i class="fas fa-check"></i>';
+      document.getElementById('stepIndicator1').className = 'text-green-600 font-medium';
+      
+      document.getElementById('step-indicator-2').className = 'w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold';
+      document.getElementById('stepIndicator2').className = 'text-purple-600 font-medium';
+      
+      document.getElementById('progress-connector').style.width = '100%';
+    }
+
+    goToStep1() {
+      document.getElementById('step-2').classList.add('hidden');
+      document.getElementById('step-1').classList.remove('hidden');
+      
+      // Reset step indicators
+      document.getElementById('step-indicator-1').className = 'w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-bold';
+      document.getElementById('step-indicator-1').textContent = '1';
+      document.getElementById('stepIndicator1').className = 'text-purple-600 font-medium';
+      
+      document.getElementById('step-indicator-2').className = 'w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-bold';
+      document.getElementById('stepIndicator2').className = 'text-gray-400 font-medium';
+      
+      document.getElementById('progress-connector').style.width = '0%';
+    }
+
+    async submitAgentForm(event) {
+      this.showLoader(this.editingAgentId ? "Updating agent..." : "Creating agent...");
+      const form = document.getElementById('connForm');
+      const formData = new FormData(form);
+      const selectedType = document.querySelector('input[name="source_type"]:checked').value;
+
+      const data = {
+        name: formData.get('name'),
+        model: formData.get('llm_model'),
+        provider: formData.get('llm_provider'),
+        temperature: formData.get('temperature'),
+        description: formData.get('description'),
+        source_type: selectedType,
+        sql_system_prompt: formData.get('sql_system_prompt'),
+        sql_task: formData.get('sql_task'),
+        sql_instruction: formData.get('sql_instruction'),
+        synthesizer_system_prompt: formData.get('synthesizer_system_prompt'),
+        synthesizer_task: formData.get('synthesizer_task'),
+        synthesizer_instruction: formData.get('synthesizer_instruction'),
+        rag_system_prompt: formData.get('rag_system_prompt'),
+        rag_task: formData.get('rag_task'),
+        rag_instruction: formData.get('rag_instruction'),
+      };
+
+      if (selectedType === 'tables') {
+        data.tables = this.tableChoices.getValue(true);
+      } else if (selectedType === 'rag') {
+        data.files = this.ragFileChoices.getValue(true);
+      } else {
+        data.data_source = formData.get('data_source');
+      }
+
+      try {
+        const url = this.editingAgentId 
+          ? `/api/agent/update/${this.editingAgentId}` 
+          : '/api/agent/create';
+        const method = this.editingAgentId ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+          method,
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          this.showToast(this.editingAgentId ? 'Agent updated successfully!' : 'Agent created successfully!', 'success');
+          form.reset();
+          this.editingAgentId = null;
+          this.closeModal();
+          this.loadAgents();
+          this.loadStats();
+        } else {
+          this.showToast(result.message || "Failed to save agent", 'error');
+        }
+      } catch (error) {
+        console.error('Error saving agent:', error);
+        this.showToast("Network error. Please try again.", 'error');
+      } finally {
+        this.hideLoader();
+      }
+    }
+
+    async generatePromptsFromContext() {
+      this.showLoader("Generating Prompts...");
+      const context = document.getElementById("businessContext").value.trim();
+      if (!context) {
+        this.showToast("Please enter business context first.", 'warning');
+        return;
+      }
+
+      const selectedType = document.querySelector('input[name="source_type"]:checked').value;
+      try {
+        const response = await fetch("/api/agent/generate-prompts", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({ business_context: context, agent_type: selectedType })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          if (selectedType === "rag") {
+            document.querySelector("[name='rag_system_prompt']").value = data.rag_synthesizer_system_prompt || '';
+            document.querySelector("[name='rag_task']").value = data.rag_synthesizer_task || '';
+            document.querySelector("[name='rag_instruction']").value = data.rag_synthesizer_instruction || '';
+          } else {
+            document.querySelector("[name='sql_system_prompt']").value = data.sql_system_prompt || '';
+            document.querySelector("[name='sql_task']").value = data.sql_task || '';
+            document.querySelector("[name='sql_instruction']").value = data.sql_instruction || '';
+            document.querySelector("[name='synthesizer_system_prompt']").value = data.synthesizer_system_prompt || '';
+            document.querySelector("[name='synthesizer_task']").value = data.synthesizer_task || '';
+            document.querySelector("[name='synthesizer_instruction']").value = data.synthesizer_instruction || '';
+          }
+
+          this.showToast("Prompts generated successfully!", 'success');
+        } else {
+          this.showToast("Prompt generation failed: " + (data.error || "Unknown error."), 'error');
+        }
+      } catch (error) {
+        console.error(error);
+        this.showToast("Something went wrong while generating prompts.", 'error');
+      } finally {
+        this.hideLoader();
+      }
+    }
+
+    // Glossary methods
+    openAddGlossaryModal() {
+      this.editingGlossaryId = null;
+      document.getElementById("glossaryModalTitle").innerText = "Add Glossary Term";
+      document.getElementById("glossaryTerm").value = "";
+      document.getElementById("glossaryDefinition").value = "";
+      document.getElementById("glossaryCategory").value = "";
+      document.getElementById("glossaryModal").classList.remove("hidden");
+    }
+
+    closeGlossaryModal() {
+      document.getElementById("glossaryModal").classList.add("hidden");
+    }
+
+    async editGlossary(id) {
+      try {
+        const response = await fetch(`/api/agent/glossary/${id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        
+        const json = await response.json();
+
+        const term = json.item;
+        
+        this.editingGlossaryId = id;
+        document.getElementById("addGlossaryAgentSelect").value = term.agent_id;
+        document.getElementById("glossaryModalTitle").innerText = "Edit Glossary Term";
+        document.getElementById("glossaryTerm").value = term.term || '';
+        document.getElementById("glossaryDefinition").value = term.definition || '';
+        document.getElementById("glossaryCategory").value = term.category || '';
+        document.getElementById("glossaryModal").classList.remove("hidden");
+      } catch (error) {
+        console.error("Failed to load term:", error);
+        this.showToast("Failed to load term for edit.", 'error');
+      }
+    }
+
+    async saveGlossaryTerm() {
+      const payload = {
+        term: document.getElementById("glossaryTerm").value.trim(),
+        definition: document.getElementById("glossaryDefinition").value.trim(),
+        category: document.getElementById("glossaryCategory").value.trim(),
+        agent_id: document.getElementById("addGlossaryAgentSelect").value
+      };
+      
+      if (!payload.term) {
+        this.showToast("Term cannot be empty.", 'warning');
+        return;
+      }
+
+      if (!payload.agent_id) {
+        this.showToast("Please select an agent.", 'warning');
+        return;
+      }
+
+      const url = this.editingGlossaryId ? `/api/agent/glossary/update/${this.editingGlossaryId}` : `/api/agent/glossary/create`;
+      
+      try {
+        const response = await fetch(url, {
+          method: this.editingGlossaryId ? "PUT" : "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to save term');
+        }
+
+        this.showToast(this.editingGlossaryId ? "Term updated successfully!" : "Term added successfully!", 'success');
+        this.closeGlossaryModal();
+        this.loadGlossary();
+      } catch (error) {
+        console.error(error);
+        this.showToast("Unable to save glossary term.", 'error');
+      }
+    }
+
+    async deleteGlossary(id) {
+      if (!confirm("Are you sure you want to delete this term?")) return;
+      
+      try {
+        const response = await fetch(`/api/agent/glossary/delete/${id}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+
+        if (!response.ok) throw new Error("Failed to delete term");
+
+        this.showToast("Term deleted successfully!", 'success');
+        this.loadGlossary();
+      } catch (error) {
+        console.error(error);
+        this.showToast("Failed to delete term", 'error');
+      }
+    }
+
+    // Action methods
+    async testAgent(id) {
+      this.showToast('Testing agent...', 'info');
+    }
+
+    async editAgent(id) {
+      try {
+        const response = await fetch(`/api/agent/get/${id}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        const json = await response.json();
+
+        const agent = json.agent;
+
+        this.editingAgentId = id;
+        this.openModal();
+
+        document.querySelector("#connModal h2").innerText = "Edit AI Agent";
+        document.querySelector("#connForm button[type='submit'] span").innerText = "Update Agent";
+
+        const form = document.getElementById("connForm");
+        form.name.value = agent.name || "";
+        form.description.value = agent.description || "";
+        form.llm_provider.value = agent.llm_provider || "OpenAI";
+        form.llm_model.value = agent.llm_model || "gpt-4";
+        form.temperature.value = agent.temperature || 0.4;
+        form.sql_system_prompt.value = agent.sql_system_prompt || "";
+        form.sql_task.value = agent.sql_task || "";
+        form.sql_instruction.value = agent.sql_instruction || "";
+        form.synthesizer_system_prompt.value = agent.synthesizer_system_prompt || "";
+        form.synthesizer_task.value = agent.synthesizer_task || "";
+        form.synthesizer_instruction.value = agent.synthesizer_instruction || "";
+        form.rag_system_prompt.value = agent.rag_system_prompt || "";
+        form.rag_task.value = agent.rag_task || "";
+        form.rag_instruction.value = agent.rag_instruction || "";
+
+        if (agent.source_type === "datasource") {
+          document.getElementById("datasource").checked = true;
+          this.showDatasource();
+          form.data_source.value = agent.data_connection_id || "";
+        }
+
+        if (agent.source_type === "tables") {
+          document.getElementById("tables").checked = true;
+          this.showTables();
+          this.tableChoices.removeActiveItems();
+          if (agent.tables && agent.tables.length > 0) {
+            this.tableChoices.setChoiceByValue(agent.tables);
+          }
+        }
+
+        if (agent.source_type === "rag") {
+        document.getElementById("rag").checked = true;
+        this.showRag();
+        this.ragFileChoices.removeActiveItems();
+        if (agent.files && agent.files.length > 0) {
+          this.ragFileChoices.setChoiceByValue(agent.files)
+        }
+      }
+
+      } catch (error) {
+        console.error("Failed to load agent:", error);
+        this.showToast("Failed to load agent for edit.", "error");
+      }
+    }
+
+    async deleteAgent(id) {
+      if (!confirm('Are you sure you want to delete this agent?')) return;
+
+      this.showToast('Deleting agent...', 'info');
+      this.showLoader();
+
+      try {
+        const response = await fetch(`/api/agent/delete/${id}`, {
+          method: 'DELETE',
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        const result = await response.json();
+        this.hideLoader();
+
+        if (response.ok && result.success === true) {
+          this.loadAgents();
+          this.showToast('Agent removed successfully!', 'success');
+        } else {
+          this.showToast(
+            result.message || 'Deleting agent failed, try again later',
+            'error'
+          );
+        }
+      } catch (error) {
+        this.hideLoader();
+        console.error('Error deleting agent:', error);
+        this.showToast('Network error during agent delete', 'error');
+      }
+    }
+
+
+    async testAllAgents() {
+      this.showToast('Testing all agents...', 'info');
+    }
+
+    getPageContainerId(type) {
+      return `${type}-pageNumbers`;
+    }
+
+    clampPage(type) {
+      const table = this.tables[type];
+      const totalPages = Math.max(1, Math.ceil((table.data?.length || 0) / table.perPage));
+      table.currentPage = Math.min(Math.max(1, table.currentPage), totalPages);
+      return totalPages;
+    }
+
+    updatePagination(type) {
+      const table = this.tables[type];
+      const total = table.data?.length || 0;
+      const totalPages = this.clampPage(type);
+      const start = total === 0 ? 0 : (table.currentPage - 1) * table.perPage + 1;
+      const end = total === 0 ? 0 : Math.min(table.currentPage * table.perPage, total);
+
+      const infoEl = document.getElementById(`${type}-pageInfo`);
+      if (infoEl) infoEl.textContent = `Showing ${start}-${end} of ${total} ${type}s`;
+
+      const prevEl = document.getElementById(`${type}-prevPage`);
+      const nextEl = document.getElementById(`${type}-nextPage`);
+      if (prevEl) prevEl.disabled = table.currentPage === 1;
+      if (nextEl) nextEl.disabled = table.currentPage === totalPages;
+
+      this.renderPageNumbers(type, totalPages);
+    }
+
+    renderPageNumbers(type, totalPages) {
+      const container = document.getElementById(this.getPageContainerId(type));
+      if (!container) return;
+
+      container.innerHTML = "";
+      const current = this.tables[type].currentPage;
+      let start = Math.max(1, current - 1);
+      let end = Math.min(totalPages, start + 2);
+      start = Math.max(1, end - 2);
+
+      for (let i = start; i <= end; i++) {
+        const btn = document.createElement("button");
+        btn.className = `action-btn ${i === current ? "primary" : ""}`;
+        btn.textContent = String(i);
+        btn.onclick = () => {
+          this.tables[type].currentPage = i;
+          this.tables[type].render.call(this);
+        };
+        container.appendChild(btn);
+      }
+    }
+
+  }
+
+  // Global functions for compatibility
+  function openModal() { agentsManager.openModal(); }
+  function closeModal() { agentsManager.closeModal(); }
+  function showTables() { agentsManager.showTables(); }
+  function showRag() { agentsManager.showRag(); }
+  function showDatasource() { agentsManager.showDatasource(); }
+  function goToStep1() { agentsManager.goToStep1(); }
+  function goToStep2() { agentsManager.goToStep2(); }
+  function submitAgentForm(event) { agentsManager.submitAgentForm(event); }
+  function updateTooltip(input) { agentsManager.updateTooltip(input); }
+  function generatePromptsFromContext() { agentsManager.generatePromptsFromContext(); }
+  function openAddGlossaryModal() { agentsManager.openAddGlossaryModal(); }
+  function closeGlossaryModal() { agentsManager.closeGlossaryModal(); }
+  function editGlossary(id) { agentsManager.editGlossary(id); }
+  function saveGlossaryTerm() { agentsManager.saveGlossaryTerm(); }
+  function deleteGlossary(id) { agentsManager.deleteGlossary(id); }
+  function toggleFAB() { agentsManager.toggleFAB(); }
+  function testAllAgents() { agentsManager.testAllAgents(); }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    window.agentsManager = new AgentsManager();
+          // AI Agents pagination
+      ["agents", "glossary"].forEach(type => {
+        document.getElementById(`${type}-prevPage`).addEventListener("click", () => {
+          if (dataManager.tables[type].currentPage > 1) {
+            dataManager.tables[type].currentPage--;
+            dataManager.tables[type].render.call(dataManager);
+          }
+        });
+
+        document.getElementById(`${type}-nextPage`).addEventListener("click", () => {
+          const totalPages = Math.max(1, Math.ceil((dataManager.tables[type].data?.length || 0) / dataManager.tables[type].perPage));
+          if (dataManager.tables[type].currentPage < totalPages) {
+            dataManager.tables[type].currentPage++;
+            dataManager.tables[type].render.call(dataManager);
+          }
+        });
+      });
+  });
+</script>
+
+{% endblock %}

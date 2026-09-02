@@ -1,0 +1,1318 @@
+{% extends 'base.html' %}
+{% block title %}Home Dashboard - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  /* Base Theme Styles */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+
+  .pulse-dot {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Hero Section */
+  .hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 24px;
+    padding: 48px;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+    opacity: 0.3;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .welcome-message {
+    font-size: 3rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    background: linear-gradient(45deg, #ffffff, #e2e8f0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 24px;
+    margin-top: 32px;
+  }
+
+  .hero-stat {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .hero-stat-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .hero-stat-label {
+    font-size: 14px;
+    opacity: 0.9;
+    font-weight: 500;
+  }
+
+  /* Quick Actions Grid */
+  .quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 24px;
+    margin-bottom: 32px;
+  }
+
+  .action-card {
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 20px;
+    padding: 32px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(229, 231, 235, 0.3);
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .action-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    transition: left 0.5s;
+  }
+
+  .action-card:hover::before {
+    left: 100%;
+  }
+
+  .action-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+    border-color: rgba(102, 126, 234, 0.3);
+  }
+
+  .action-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    font-size: 36px;
+    color: white;
+    position: relative;
+    z-index: 1;
+  }
+
+  .action-card h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #1f2937;
+  }
+
+  .action-card p {
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Recent Activity */
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+    transition: all 0.2s ease;
+  }
+
+  .activity-item:hover {
+    background: rgba(102, 126, 234, 0.05);
+    margin: 0 -16px;
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .activity-item:last-child {
+    border-bottom: none;
+  }
+
+  .activity-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    flex-shrink: 0;
+  }
+
+  .activity-content {
+    flex: 1;
+  }
+
+  .activity-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+  }
+
+  .activity-description {
+    font-size: 14px;
+    color: #6b7280;
+  }
+
+  .activity-time {
+    font-size: 12px;
+    color: #9ca3af;
+    flex-shrink: 0;
+  }
+
+  /* Analytics Cards */
+  .analytics-card {
+    background: rgba(255, 255, 255, 0.98);
+    border-radius: 20px;
+    padding: 32px;
+    border: 1px solid rgba(229, 231, 235, 0.3);
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.08);
+  }
+
+  .analytics-header {
+    display: flex;
+    align-items: center;
+    justify-content: between;
+    margin-bottom: 24px;
+  }
+
+  .analytics-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1f2937;
+  }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 20px;
+  }
+
+  .metric-item {
+    text-align: center;
+    padding: 20px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 16px;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+  }
+
+  .metric-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #667eea;
+    margin-bottom: 8px;
+  }
+
+  .metric-label {
+    font-size: 12px;
+    color: #6b7280;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .metric-change {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+
+  .metric-change.positive {
+    color: #10b981;
+  }
+
+  .metric-change.negative {
+    color: #ef4444;
+  }
+
+  /* Chat Assistant */
+  .chat-assistant {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 1000;
+  }
+
+  .chat-button {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+
+  .chat-button:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.4);
+  }
+
+  .chat-panel {
+    position: absolute;
+    bottom: 80px;
+    right: 0;
+    width: 350px;
+    height: 500px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    transform: scale(0) translateY(20px);
+    transform-origin: bottom right;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+  }
+
+  .chat-panel.open {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+
+  .chat-header {
+    padding: 20px;
+    border-bottom: 1px solid rgba(229, 231, 235, 0.3);
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .chat-messages {
+    padding: 20px;
+    height: 350px;
+    overflow-y: auto;
+  }
+
+  .chat-input {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px;
+    border-top: 1px solid rgba(229, 231, 235, 0.3);
+  }
+
+  .chat-input input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid rgba(229, 231, 235, 0.3);
+    border-radius: 12px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .chat-input input:focus {
+    border-color: #667eea;
+  }
+
+  /* Status Indicators */
+  .status-online {
+    background: #10b981;
+  }
+
+  .status-warning {
+    background: #f59e0b;
+  }
+
+  .status-error {
+    background: #ef4444;
+  }
+
+  .status-info {
+    background: #3b82f6;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .welcome-message {
+      font-size: 2rem;
+    }
+    
+    .hero-section {
+      padding: 32px 24px;
+    }
+    
+    .quick-actions {
+      grid-template-columns: 1fr;
+    }
+    
+    .hero-stats {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .chat-panel {
+      width: 300px;
+      height: 400px;
+    }
+    
+    .chat-messages {
+      height: 250px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero-stats {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Loading Animation */
+  .loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading-shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+
+  @keyframes loading-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Notification Badge */
+  .notification-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: #ef4444;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid white;
+  }
+
+  /* Weather Widget */
+  .weather-widget {
+    background: linear-gradient(135deg, #3b82f6, #1e40af);
+    color: white;
+    border-radius: 16px;
+    padding: 20px;
+    text-align: center;
+  }
+
+  .weather-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+  }
+
+  .weather-temp {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+
+  .weather-location {
+    opacity: 0.9;
+    font-size: 14px;
+  }
+
+  /* Progress Bars */
+  .progress-bar {
+    width: 100%;
+    height: 8px;
+    background: rgba(229, 231, 235, 0.3);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen relative" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 100%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Demo Banner -->
+  <div class="mx-6 mt-4 p-4 bg-yellow-100 border border-yellow-300 text-yellow-800 text-sm rounded-lg flex items-center justify-between">
+    <span>⚠️ This dashboard is currently displaying sample data. Live data integration is under development.</span>
+    <button onclick="this.parentElement.style.display='none'" class="text-yellow-600 font-semibold hover:underline">Dismiss</button>
+  </div>
+
+  <!-- Main Content -->
+  <div class="p-8">
+    
+    <!-- Hero Section -->
+    <div class="hero-section slide-in">
+      <div class="hero-content">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex-1">
+            <div class="welcome-message">
+              Welcome back, <span id="userName">{{ user.username or 'User' }}</span>! 👋
+            </div>
+            <p class="text-xl opacity-90 mb-8">
+              Here's what's happening with your data and analytics today.
+            </p>
+            
+            <!-- Quick Weather -->
+            <div class="weather-widget inline-block mr-6 mb-4">
+              <div class="weather-icon">🌤️</div>
+              <div class="weather-temp" id="weatherTemp">22°C</div>
+              <div class="weather-location" id="weatherLocation">New York</div>
+            </div>
+            
+            <!-- Time & Date -->
+            <div class="inline-block bg-white bg-opacity-20 backdrop-blur-lg rounded-xl p-4 mb-4">
+              <div class="text-2xl font-bold" id="currentTime"></div>
+              <div class="text-sm opacity-80" id="currentDate"></div>
+            </div>
+          </div>
+          
+          <!-- Hero Stats -->
+          <div class="hero-stats lg:w-2/3">
+            <div class="hero-stat">
+              <div class="hero-stat-value" id="totalDashboards">{{ stats.dashboards or 0 }}</div>
+              <div class="hero-stat-label">Active Dashboards</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-value" id="totalWidgets">{{ stats.widgets or 0 }}</div>
+              <div class="hero-stat-label">Total Widgets</div>
+            </div>
+            <div class="hero-stat">
+              <div class="hero-stat-value" id="dataConnections">{{ stats.connections or 0 }}</div>
+              <div class="hero-stat-label">Data Sources</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Actions Grid -->
+    <div class="quick-actions slide-in" style="animation-delay: 0.1s">
+      
+      <div class="action-card" onclick="navigateTo('/data-management')">
+        <div class="action-icon" style="background: linear-gradient(135deg, #10b981, #047857);">
+          <i class="fas fa-database"></i>
+        </div>
+        <h3>Manage Data</h3>
+        <p>Upload, organize, and manage your data sources with advanced tools.</p>
+      </div>
+      
+      <div class="action-card" onclick="navigateTo('/agents')">
+        <div class="action-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+          <i class="fas fa-robot"></i>
+        </div>
+        <h3>AI Agents</h3>
+        <p>Configure intelligent agents to automate your data analysis workflows.</p>
+      </div>
+
+      <div class="action-card" onclick="navigateTo('/dashboard/builder')">
+        <div class="action-icon" style="background: linear-gradient(135deg, #3b82f6, #1e40af);">
+          <i class="fas fa-plus"></i>
+        </div>
+        <h3>Create Dashboard</h3>
+        <p>Build a new analytics dashboard with our intuitive drag-and-drop interface.</p>
+      </div>
+      
+      <div class="action-card" onclick="navigateTo('/analytics')">
+        <div class="action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <h3>Analytics Hub</h3>
+        <p>Explore comprehensive analytics and insights from your data.</p>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Recent Activity -->
+      <div class="lg:col-span-2">
+        <div class="analytics-card slide-in" style="animation-delay: 0.2s">
+          <div class="analytics-header">
+            <h2 class="analytics-title">
+              <i class="fas fa-clock text-blue-600 mr-3"></i>
+              Recent Activity
+            </h2>
+            <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">View All</button>
+          </div>
+          
+          <div id="recentActivity">
+            <!-- Activity items will be populated here -->
+            <div class="activity-item">
+              <div class="activity-icon status-info">
+                <i class="fas fa-chart-bar"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title">Sales Dashboard Updated</div>
+                <div class="activity-description">Added new Q3 performance metrics</div>
+              </div>
+              <div class="activity-time">2 hours ago</div>
+            </div>
+            
+            <div class="activity-item">
+              <div class="activity-icon status-online">
+                <i class="fas fa-database"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title">Data Source Connected</div>
+                <div class="activity-description">Successfully connected to PostgreSQL</div>
+              </div>
+              <div class="activity-time">5 hours ago</div>
+            </div>
+            
+            <div class="activity-item">
+              <div class="activity-icon" style="background: #8b5cf6;">
+                <i class="fas fa-robot"></i>
+              </div>
+              <div class="activity-content">
+                <div class="activity-title">AI Agent Configured</div>
+                <div class="activity-description">Marketing Analytics Agent is now active</div>
+              </div>
+              <div class="activity-time">1 day ago</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Quick Metrics -->
+      <div class="space-y-8">
+        
+        <!-- Performance Metrics -->
+        <div class="analytics-card slide-in" style="animation-delay: 0.3s">
+          <div class="analytics-header">
+            <h3 class="analytics-title">
+              <i class="fas fa-tachometer-alt text-green-600 mr-3"></i>
+              Performance
+            </h3>
+          </div>
+          
+          <div class="metric-grid">
+            <div class="metric-item">
+              <div class="metric-value">98%</div>
+              <div class="metric-label">Uptime</div>
+              <div class="metric-change positive">+2%</div>
+            </div>
+            <div class="metric-item">
+              <div class="metric-value">1.2s</div>
+              <div class="metric-label">Avg Load</div>
+              <div class="metric-change positive">-0.3s</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- System Health -->
+        <div class="analytics-card slide-in" style="animation-delay: 0.4s">
+          <div class="analytics-header">
+            <h3 class="analytics-title">
+              <i class="fas fa-heartbeat text-red-600 mr-3"></i>
+              System Health
+            </h3>
+          </div>
+          
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>CPU Usage</span>
+                <span>42%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 42%"></div>
+              </div>
+            </div>
+            
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>Memory</span>
+                <span>68%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 68%"></div>
+              </div>
+            </div>
+            
+            <div>
+              <div class="flex justify-between text-sm mb-1">
+                <span>Storage</span>
+                <span>34%</span>
+              </div>
+              <div class="progress-bar">
+                <div class="progress-fill" style="width: 34%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="analytics-card slide-in" style="animation-delay: 0.5s">
+          <div class="analytics-header">
+            <h3 class="analytics-title">
+              <i class="fas fa-chart-pie text-purple-600 mr-3"></i>
+              Quick Stats
+            </h3>
+          </div>
+          
+          <div class="space-y-4">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium text-gray-600">Active Users</span>
+              <span class="text-lg font-bold text-gray-900">1,234</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium text-gray-600">Data Processed</span>
+              <span class="text-lg font-bold text-gray-900">2.4TB</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium text-gray-600">Queries Today</span>
+              <span class="text-lg font-bold text-gray-900">8,456</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Featured Dashboards -->
+    <div class="mt-8">
+      <div class="analytics-card slide-in" style="animation-delay: 0.6s">
+        <div class="analytics-header">
+          <h2 class="analytics-title">
+            <i class="fas fa-star text-yellow-500 mr-3"></i>
+            Featured Dashboards
+          </h2>
+          <button class="text-blue-600 hover:text-blue-700 font-medium text-sm">View All</button>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="featuredDashboards">
+          <!-- Dashboard cards will be populated here -->
+          <div class="p-6 border border-gray-200 rounded-16 hover:border-purple-300 transition-colors cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="font-bold text-gray-900">Sales Analytics</h4>
+              <div class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></div>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Real-time sales performance and trends</p>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-500">12 widgets</span>
+              <span class="text-blue-600 font-medium">View →</span>
+            </div>
+          </div>
+          
+          <div class="p-6 border border-gray-200 rounded-16 hover:border-purple-300 transition-colors cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="font-bold text-gray-900">Marketing Dashboard</h4>
+              <div class="w-2 h-2 bg-yellow-500 rounded-full pulse-dot"></div>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Campaign performance and ROI analysis</p>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-500">8 widgets</span>
+              <span class="text-blue-600 font-medium">View →</span>
+            </div>
+          </div>
+          
+          <div class="p-6 border border-gray-200 rounded-16 hover:border-purple-300 transition-colors cursor-pointer">
+            <div class="flex items-center justify-between mb-4">
+              <h4 class="font-bold text-gray-900">Operations Overview</h4>
+              <div class="w-2 h-2 bg-blue-500 rounded-full pulse-dot"></div>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">Operational metrics and KPIs</p>
+            <div class="flex items-center justify-between text-sm">
+              <span class="text-gray-500">15 widgets</span>
+              <span class="text-blue-600 font-medium">View →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AI Chat Assistant -->
+  <div class="chat-assistant">
+    <button class="chat-button" id="chatToggle">
+      <i class="fas fa-comments"></i>
+      <div class="notification-badge" id="chatNotification">3</div>
+    </button>
+    
+    <div class="chat-panel" id="chatPanel">
+      <div class="chat-header">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-white bg-opacity-20 rounded-full flex items-center justify-center">
+              <i class="fas fa-robot"></i>
+            </div>
+            <div>
+              <div class="font-semibold">Thinklee Assistant</div>
+              <div class="text-xs opacity-75">Online • Ready to help</div>
+            </div>
+          </div>
+          <button id="chatClose" class="text-white opacity-75 hover:opacity-100">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+      
+      <div class="chat-messages" id="chatMessages">
+        <div class="mb-4">
+          <div class="text-sm text-gray-600 mb-2">AI Assistant</div>
+          <div class="bg-gray-100 p-3 rounded-lg text-sm">
+            👋 Hi! I'm your AI assistant. I can help you create dashboards, analyze data, or answer questions about your analytics. How can I help you today?
+          </div>
+        </div>
+      </div>
+      
+      <div class="chat-input">
+        <input type="text" placeholder="Ask me anything..." id="chatInput" />
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    class HomeDashboard {
+    constructor() {
+        this.isLoaded = false;
+        this.chatOpen = false;
+        
+        this.initializeDashboard();
+    }
+
+    async initializeDashboard() {
+        this.updateDateTime();
+        this.setupEventListeners();
+        await this.loadDashboardData();
+        await this.loadWeatherData();
+        this.startRealTimeUpdates();
+        this.animateStats();
+        
+        this.isLoaded = true;
+        this.hideProgressBar();
+    }
+
+    setupEventListeners() {
+        // Chat assistant
+        document.getElementById('chatToggle').addEventListener('click', () => this.toggleChat());
+        document.getElementById('chatClose').addEventListener('click', () => this.toggleChat());
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') this.sendChatMessage();
+        });
+
+        // Update time every second
+        setInterval(() => this.updateDateTime(), 1000);
+        
+        // Update weather every 30 minutes
+        setInterval(() => this.loadWeatherData(), 30 * 60 * 1000);
+        
+        // Update dashboard data every 5 minutes
+        setInterval(() => this.refreshDashboardData(), 5 * 60 * 1000);
+    }
+
+    updateDateTime() {
+        const now = new Date();
+        const timeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+        };
+        const dateOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+        };
+        
+        const timeElement = document.getElementById('currentTime');
+        const dateElement = document.getElementById('currentDate');
+        
+        if (timeElement) timeElement.textContent = now.toLocaleTimeString('en-US', timeOptions);
+        if (dateElement) dateElement.textContent = now.toLocaleDateString('en-US', dateOptions);
+    }
+
+    async loadDashboardData() {
+        try {
+        // Load user statistics
+        const response = await fetch('/api/user/dashboard-stats', {
+            headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (response.ok) {
+            const stats = await response.json();
+            this.updateStats(stats);
+        } else {
+            // Fallback to demo data
+            this.updateStats({
+            dashboards: 12,
+            widgets: 48,
+            connections: 5,
+            activeUsers: 1234,
+            dataProcessed: '2.4TB',
+            queriesToday: 8456
+            });
+        }
+        
+        // Load recent activity
+        await this.loadRecentActivity();
+        
+        // Load featured dashboards
+        await this.loadFeaturedDashboards();
+        
+        } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        this.showToast('Error loading dashboard data', 'error');
+        }
+    }
+
+    updateStats(stats) {
+        // Update hero stats
+        const elements = {
+        totalDashboards: stats.dashboards,
+        totalWidgets: stats.widgets,
+        dataConnections: stats.connections
+        };
+        
+        Object.entries(elements).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) {
+            this.animateNumber(element, 0, value, 1500);
+        }
+        });
+    }
+
+    animateNumber(element, start, end, duration) {
+        const startTime = performance.now();
+        const startValue = start;
+        const endValue = end;
+        
+        const animate = (currentTime) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function
+        const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+        
+        const currentValue = Math.round(startValue + (endValue - startValue) * easeOutQuart);
+        element.textContent = currentValue.toLocaleString();
+        
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        }
+        };
+        
+        requestAnimationFrame(animate);
+    }
+
+    async loadWeatherData() {
+        try {
+        // Try to get user's location
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(async (position) => {
+            const { latitude, longitude } = position.coords;
+            
+            // For demo purposes, we'll show static weather data
+            // In production, you'd call a weather API
+            this.updateWeather({
+                temperature: Math.round(15 + Math.random() * 20),
+                location: 'Current Location',
+                condition: 'partly-cloudy'
+            });
+            }, () => {
+            // Fallback location
+            this.updateWeather({
+                temperature: 22,
+                location: 'New York',
+                condition: 'sunny'
+            });
+            });
+        } else {
+            this.updateWeather({
+            temperature: 22,
+            location: 'New York',
+            condition: 'sunny'
+            });
+        }
+        } catch (error) {
+        console.error('Error loading weather:', error);
+        }
+    }
+
+    updateWeather(weather) {
+        const tempElement = document.getElementById('weatherTemp');
+        const locationElement = document.getElementById('weatherLocation');
+        
+        if (tempElement) tempElement.textContent = `${weather.temperature}°C`;
+        if (locationElement) locationElement.textContent = weather.location;
+    }
+
+    async loadRecentActivity() {
+        try {
+        const response = await fetch('/api/user/recent-activity', {
+            headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (response.ok) {
+            const activities = await response.json();
+            this.renderRecentActivity(activities.data || []);
+        }
+        } catch (error) {
+        console.error('Error loading recent activity:', error);
+        }
+    }
+
+    renderRecentActivity(activities) {
+        const container = document.getElementById('recentActivity');
+        if (!container || activities.length === 0) return;
+        
+        container.innerHTML = activities.map(activity => `
+        <div class="activity-item">
+            <div class="activity-icon ${this.getActivityIconClass(activity.type)}">
+            <i class="${this.getActivityIcon(activity.type)}"></i>
+            </div>
+            <div class="activity-content">
+            <div class="activity-title">${activity.title}</div>
+            <div class="activity-description">${activity.description}</div>
+            </div>
+            <div class="activity-time">${this.formatTimeAgo(activity.timestamp)}</div>
+        </div>
+        `).join('');
+    }
+
+    getActivityIconClass(type) {
+        const classes = {
+        dashboard: 'status-info',
+        data: 'status-online',
+        agent: 'status-warning',
+        system: 'status-error'
+        };
+        return classes[type] || 'status-info';
+    }
+
+    getActivityIcon(type) {
+        const icons = {
+        dashboard: 'fas fa-chart-bar',
+        data: 'fas fa-database',
+        agent: 'fas fa-robot',
+        system: 'fas fa-cog'
+        };
+        return icons[type] || 'fas fa-info-circle';
+    }
+
+    formatTimeAgo(timestamp) {
+        const now = new Date();
+        const time = new Date(timestamp);
+        const diff = now - time;
+        
+        const minutes = Math.floor(diff / 60000);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        
+        if (days > 0) return `${days} day${days > 1 ? 's' : ''} ago`;
+        if (hours > 0) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+        if (minutes > 0) return `${minutes} minute${minutes > 1 ? 's' : ''} ago`;
+        return 'Just now';
+    }
+
+    async loadFeaturedDashboards() {
+        try {
+        const response = await fetch('/api/dashboards/featured', {
+            headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        
+        if (response.ok) {
+            const dashboards = await response.json();
+            this.renderFeaturedDashboards(dashboards.data || []);
+        }
+        } catch (error) {
+        console.error('Error loading featured dashboards:', error);
+        }
+    }
+
+    renderFeaturedDashboards(dashboards) {
+        const container = document.getElementById('featuredDashboards');
+        if (!container || dashboards.length === 0) return;
+        
+        container.innerHTML = dashboards.map(dashboard => `
+        <div class="p-6 border border-gray-200 rounded-16 hover:border-purple-300 transition-colors cursor-pointer" onclick="navigateTo('/dashboard/view/${dashboard.id}')">
+            <div class="flex items-center justify-between mb-4">
+            <h4 class="font-bold text-gray-900">${dashboard.title}</h4>
+            <div class="w-2 h-2 ${this.getStatusColor(dashboard.status)} rounded-full pulse-dot"></div>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">${dashboard.description || 'No description available'}</p>
+            <div class="flex items-center justify-between text-sm">
+            <span class="text-gray-500">${dashboard.widget_count || 0} widgets</span>
+            <span class="text-blue-600 font-medium">View →</span>
+            </div>
+        </div>
+        `).join('');
+    }
+
+    getStatusColor(status) {
+        const colors = {
+        active: 'bg-green-500',
+        inactive: 'bg-gray-400',
+        warning: 'bg-yellow-500',
+        error: 'bg-red-500'
+        };
+        return colors[status] || 'bg-blue-500';
+    }
+
+    toggleChat() {
+        this.chatOpen = !this.chatOpen;
+        const panel = document.getElementById('chatPanel');
+        const notification = document.getElementById('chatNotification');
+        
+        if (this.chatOpen) {
+        panel.classList.add('open');
+        if (notification) notification.style.display = 'none';
+        } else {
+        panel.classList.remove('open');
+        }
+    }
+
+    sendChatMessage() {
+        const input = document.getElementById('chatInput');
+        const message = input.value.trim();
+        
+        if (!message) return;
+        
+        const messagesContainer = document.getElementById('chatMessages');
+        
+        // Add user message
+        const userMessage = document.createElement('div');
+        userMessage.className = 'mb-4';
+        userMessage.innerHTML = `
+        <div class="text-sm text-gray-600 mb-2 text-right">You</div>
+        <div class="bg-blue-600 text-white p-3 rounded-lg text-sm ml-12">${message}</div>
+        `;
+        messagesContainer.appendChild(userMessage);
+        
+        // Clear input
+        input.value = '';
+        
+        // Simulate AI response
+        setTimeout(() => {
+        const aiMessage = document.createElement('div');
+        aiMessage.className = 'mb-4';
+        aiMessage.innerHTML = `
+            <div class="text-sm text-gray-600 mb-2">AI Assistant</div>
+            <div class="bg-gray-100 p-3 rounded-lg text-sm mr-12">${this.generateAIResponse(message)}</div>
+        `;
+        messagesContainer.appendChild(aiMessage);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }, 1000);
+        
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    generateAIResponse(message) {
+        const responses = {
+        dashboard: "I can help you create a new dashboard! Would you like to start with our dashboard builder or use a pre-built template?",
+        data: "I can assist with data management. What kind of data are you looking to work with?",
+        help: "I'm here to help! You can ask me about creating dashboards, managing data, configuring AI agents, or anything else related to Thinklee.",
+        default: "That's an interesting question! Let me help you with that. Could you provide more details about what you're trying to accomplish?"
+        };
+        
+        const lowerMessage = message.toLowerCase();
+        
+        if (lowerMessage.includes('dashboard')) return responses.dashboard;
+        if (lowerMessage.includes('data')) return responses.data;
+        if (lowerMessage.includes('help')) return responses.help;
+        
+        return responses.default;
+    }
+
+    startRealTimeUpdates() {
+        // Simulate real-time updates
+        setInterval(() => {
+        this.updateSystemMetrics();
+        }, 10000); // Update every 10 seconds
+    }
+
+    updateSystemMetrics() {
+        // Simulate changing metrics
+        const cpuElement = document.querySelector('[style*="width: 42%"]');
+        const memoryElement = document.querySelector('[style*="width: 68%"]');
+        const storageElement = document.querySelector('[style*="width: 34%"]');
+        
+        if (cpuElement) {
+        const newCpu = Math.max(20, Math.min(80, 42 + (Math.random() - 0.5) * 10));
+        cpuElement.style.width = `${newCpu}%`;
+        cpuElement.parentElement.previousElementSibling.lastElementChild.textContent = `${Math.round(newCpu)}%`;
+        }
+        
+        if (memoryElement) {
+        const newMemory = Math.max(30, Math.min(90, 68 + (Math.random() - 0.5) * 8));
+        memoryElement.style.width = `${newMemory}%`;
+        memoryElement.parentElement.previousElementSibling.lastElementChild.textContent = `${Math.round(newMemory)}%`;
+        }
+    }
+
+    animateStats() {
+        // Add subtle animations to stat cards
+        const statCards = document.querySelectorAll('.hero-stat');
+        statCards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.transform = 'scale(1.05)';
+            setTimeout(() => {
+            card.style.transform = 'scale(1)';
+            }, 200);
+        }, index * 100);
+        });
+    }
+
+    async refreshDashboardData() {
+        try {
+        await this.loadDashboardData();
+        this.showToast('Dashboard data refreshed', 'success');
+        } catch (error) {
+        console.error('Error refreshing dashboard data:', error);
+        }
+    }
+
+    hideProgressBar() {
+        setTimeout(() => {
+        document.getElementById('progress-bar').style.width = '0%';
+        }, 1000);
+    }
+
+    showToast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        info: 'fas fa-info-circle',
+        warning: 'fas fa-exclamation-triangle'
+        };
+        
+        const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500',
+        warning: 'bg-yellow-500'
+        };
+        
+        toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+        toast.innerHTML = `
+        <i class="${icons[type]}"></i>
+        <span class="font-medium">${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-auto">
+            <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+        </button>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+        }, 5000);
+    }
+    }
+
+    // Global navigation function
+    function navigateTo(path) {
+    window.location.href = path;
+    }
+
+    // Initialize dashboard when DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+    window.homeDashboard = new HomeDashboard();
+    });
+</script>
+
+{% endblock %}

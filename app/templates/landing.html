@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Thinklee is your AI-powered business intelligence solution. Fast, secure, and scalable insights from structured enterprise data.">
+  <link rel="icon" type="image/x-icon" href="/static/logo.ico">
+  <title>Thinklee - AI-Powered Business Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  
+  <style>
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .smooth-transition {
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .slide-in {
+      animation: slideInUp 0.8s ease-out;
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.6s ease-out;
+    }
+    
+    .bounce-in {
+      animation: bounceIn 1s ease-out;
+    }
+    
+    @keyframes slideInUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes bounceIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      50% { transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    
+    .hover-lift {
+      transform: translateY(-8px) scale(1.02);
+      box-shadow: 0 25px 50px rgba(102, 126, 234, 0.25);
+    }
+    
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    
+    .hero-bg {
+      background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);
+    }
+    
+    .feature-icon {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    
+    .cta-button {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border: none;
+      border-radius: 50px;
+      padding: 16px 32px;
+      color: white;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+    }
+    
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 35px rgba(102, 126, 234, 0.4);
+    }
+    
+    .testimonial-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      border-left: 4px solid #667eea;
+      transition: all 0.3s ease;
+    }
+    
+    .testimonial-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    }
+    
+    .floating-elements {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    
+    .floating-shape {
+      position: absolute;
+      opacity: 0.1;
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    .floating-shape:nth-child(1) {
+      top: 10%;
+      left: 10%;
+      animation-delay: 0s;
+    }
+    
+    .floating-shape:nth-child(2) {
+      top: 20%;
+      right: 10%;
+      animation-delay: 2s;
+    }
+    
+    .floating-shape:nth-child(3) {
+      bottom: 20%;
+      left: 20%;
+      animation-delay: 4s;
+    }
+    
+    @keyframes float {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-20px) rotate(180deg); }
+    }
+    
+    .pulse-ring {
+      animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(0.33); }
+      40%, 50% { opacity: 0; }
+      100% { opacity: 0; transform: scale(1.33); }
+    }
+  </style>
+</head>
+<body class="min-h-screen hero-bg relative overflow-x-hidden">
+
+  <!-- Floating Background Elements -->
+  <div class="floating-elements">
+    <div class="floating-shape w-64 h-64 bg-purple-600 rounded-full"></div>
+    <div class="floating-shape w-48 h-48 bg-blue-500 rounded-full"></div>
+    <div class="floating-shape w-32 h-32 bg-indigo-400 rounded-full"></div>
+  </div>
+
+  <!-- Navigation -->
+  <nav class="glass-card fixed top-0 left-0 right-0 z-50 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <img src="/static/CliniOpsLOGO.png" alt="Thinklee Logo" class="h-10 w-auto">
+        <span class="text-xl font-bold text-gray-800">Thinklee</span>
+      </div>
+      <div class="hidden md:flex items-center space-x-8">
+        <a href="#features" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">Features</a>
+        <a href="#how-it-works" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">How It Works</a>
+        <a href="#testimonials" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">Testimonials</a>
+        <a href="#faq" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">FAQ</a>
+        <a href="/auth" class="cta-button flex items-center space-x-2">
+          <span>Get Started</span>
+          <i class="fas fa-arrow-right"></i>
+        </a>
+      </div>
+      <button class="md:hidden text-gray-600 hover:text-purple-600" onclick="toggleMobileMenu()">
+        <i class="fas fa-bars text-xl"></i>
+      </button>
+    </div>
+    
+    <!-- Mobile Menu -->
+    <div id="mobileMenu" class="hidden md:hidden mt-4 pt-4 border-t border-gray-200">
+      <div class="flex flex-col space-y-4">
+        <a href="#features" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">Features</a>
+        <a href="#how-it-works" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">How It Works</a>
+        <a href="#testimonials" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">Testimonials</a>
+        <a href="#faq" class="text-gray-600 hover:text-purple-600 smooth-transition font-medium">FAQ</a>
+        <a href="/auth" class="cta-button text-center">Get Started Free</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <div class="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-24">
+
+    <!-- Hero Section -->
+    <section class="text-center py-20 slide-in">
+      <div class="max-w-5xl mx-auto">
+        <div class="mb-8 bounce-in">
+          <img src="/static/CliniOpsLOGO.png" alt="Thinklee Logo" class="h-20 sm:h-24 w-auto mx-auto mb-6">
+        </div>
+        
+        <h1 class="text-4xl sm:text-5xl md:text-6xl font-extrabold mb-8 leading-tight text-gray-800">
+          Next-Generation 
+          <span class="gradient-bg bg-clip-text text-transparent">AI-Powered</span>
+          <br>Business Intelligence
+        </h1>
+        
+        <p class="text-xl sm:text-2xl mb-10 text-gray-600 max-w-3xl mx-auto leading-relaxed">
+          Think <strong>Perplexity for structured enterprise data</strong>. From insight to action, faster than ever before.
+        </p>
+        
+        <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-12">
+          <a href="/auth" class="cta-button flex items-center space-x-3 text-lg">
+            <i class="fas fa-rocket"></i>
+            <span>Try Free for 15 Days</span>
+            <i class="fas fa-arrow-right"></i>
+          </a>
+          <p class="text-sm text-gray-500 flex items-center">
+            <i class="fas fa-shield-alt text-green-500 mr-2"></i>
+            No Credit Card Required
+          </p>
+        </div>
+        
+        <!-- Key Benefits -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto fade-in">
+          <div class="flex items-center justify-center space-x-3 text-gray-600">
+            <i class="fas fa-bolt text-yellow-500 text-xl"></i>
+            <span class="font-semibold">Seconds, Not Hours</span>
+          </div>
+          <div class="flex items-center justify-center space-x-3 text-gray-600">
+            <i class="fas fa-shield-alt text-green-500 text-xl"></i>
+            <span class="font-semibold">Enterprise Secure</span>
+          </div>
+          <div class="flex items-center justify-center space-x-3 text-gray-600">
+            <i class="fas fa-expand-arrows-alt text-blue-500 text-xl"></i>
+            <span class="font-semibold">Infinitely Scalable</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Feature Highlights -->
+    <section id="features" class="py-16">
+      <div class="text-center mb-16 slide-in">
+        <h2 class="text-4xl font-bold text-gray-800 mb-6">Powerful Features Built for Enterprise</h2>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">Everything you need to transform your data into actionable insights</p>
+      </div>
+      
+      <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 slide-in" style="animation-delay: 0.2s">
+        <!-- Feature 1 -->
+        <div class="glass-card p-8 rounded-2xl smooth-transition hover:hover-lift">
+          <div class="feature-icon">
+            <i class="fas fa-plug"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-4 text-gray-800">Universal Connectivity</h3>
+          <p class="text-gray-600 mb-4">Connect to Snowflake, Azure SQL, AWS RDS, CSVs, Excel files, and more with zero setup complexity.</p>
+          <ul class="text-sm text-gray-500 space-y-1">
+            <li><i class="fas fa-check text-green-500 mr-2"></i>20+ Data Sources</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Real-time Sync</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Auto-detection</li>
+          </ul>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="glass-card p-8 rounded-2xl smooth-transition hover:hover-lift">
+          <div class="feature-icon">
+            <i class="fas fa-brain"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-4 text-gray-800">AI-Native Intelligence</h3>
+          <p class="text-gray-600 mb-4">Choose your LLM: ChatGPT, Claude, LLaMA2. Real-time answers in seconds, not hours.</p>
+          <ul class="text-sm text-gray-500 space-y-1">
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Multi-LLM Support</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Natural Language Queries</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Context-Aware Responses</li>
+          </ul>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="glass-card p-8 rounded-2xl smooth-transition hover:hover-lift">
+          <div class="feature-icon">
+            <i class="fas fa-shield-alt"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-4 text-gray-800">Enterprise Security</h3>
+          <p class="text-gray-600 mb-4">Full data privacy with user-level isolation. Zero public LLM data sharing, ever.</p>
+          <ul class="text-sm text-gray-500 space-y-1">
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Data Isolation</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Private Deployment</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>SOC2 Compliance</li>
+          </ul>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="glass-card p-8 rounded-2xl smooth-transition hover:hover-lift">
+          <div class="feature-icon">
+            <i class="fas fa-rocket"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-4 text-gray-800">Rapid Deployment</h3>
+          <p class="text-gray-600 mb-4">From POC to production in under 3 weeks. Hosted on AWS, Azure, or your own infrastructure.</p>
+          <ul class="text-sm text-gray-500 space-y-1">
+            <li><i class="fas fa-check text-green-500 mr-2"></i>3-Week Setup</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Multi-Cloud Support</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>White-Label Ready</li>
+          </ul>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="glass-card p-8 rounded-2xl smooth-transition hover:hover-lift">
+          <div class="feature-icon">
+            <i class="fas fa-chart-line"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-4 text-gray-800">Interactive Dashboards</h3>
+          <p class="text-gray-600 mb-4">Auto-generated dashboards with real-time insights and customizable visualizations.</p>
+          <ul class="text-sm text-gray-500 space-y-1">
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Auto-Generation</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Real-time Updates</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Custom Widgets</li>
+          </ul>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="glass-card p-8 rounded-2xl smooth-transition hover:hover-lift">
+          <div class="feature-icon">
+            <i class="fas fa-cogs"></i>
+          </div>
+          <h3 class="text-xl font-bold mb-4 text-gray-800">Enterprise Customization</h3>
+          <p class="text-gray-600 mb-4">Fully customizable to match your workflows, branding, and specific business requirements.</p>
+          <ul class="text-sm text-gray-500 space-y-1">
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Custom Workflows</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>Brand Integration</li>
+            <li><i class="fas fa-check text-green-500 mr-2"></i>API Access</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="py-16">
+      <div class="glass-card p-12 rounded-3xl slide-in">
+        <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">How It Works</h2>
+        <div class="max-w-4xl mx-auto">
+          <div class="space-y-8">
+            <!-- Step 1 -->
+            <div class="flex items-start space-x-6">
+              <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">1</div>
+              <div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Sign Up for Free Trial</h3>
+                <p class="text-gray-600">Get started with our 15-day free trial – no credit card required. Experience the full power of Thinklee.</p>
+              </div>
+            </div>
+
+            <!-- Step 2 -->
+            <div class="flex items-start space-x-6">
+              <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">2</div>
+              <div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Connect Your Data</h3>
+                <p class="text-gray-600">Upload CSVs, Excel files, or connect directly to your databases (Snowflake, SQL Server, PostgreSQL, etc.).</p>
+              </div>
+            </div>
+
+            <!-- Step 3 -->
+            <div class="flex items-start space-x-6">
+              <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">3</div>
+              <div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">AI Agents Auto-Configure</h3>
+                <p class="text-gray-600">Our RAG agents automatically generate vector indexes and understand your data structure and relationships.</p>
+              </div>
+            </div>
+
+            <!-- Step 4 -->
+            <div class="flex items-start space-x-6">
+              <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">4</div>
+              <div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Ask Natural Language Questions</h3>
+                <p class="text-gray-600">Query your data using plain English through our intuitive chat interface. No SQL knowledge required.</p>
+              </div>
+            </div>
+
+            <!-- Step 5 -->
+            <div class="flex items-start space-x-6">
+              <div class="flex-shrink-0 w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">5</div>
+              <div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Get Instant Insights</h3>
+                <p class="text-gray-600">Receive comprehensive answers and visualizations in seconds, displayed on your auto-generated dashboard.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Architecture Visualization -->
+    <section class="py-16 text-center slide-in">
+      <h2 class="text-4xl font-bold text-gray-800 mb-8">Enterprise-Grade Architecture</h2>
+      <p class="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">Built for scale, security, and performance from day one</p>
+      <div class="glass-card p-8 rounded-2xl">
+        <img loading="lazy" src="/static/Thinklee-architecture.jpg" alt="System architecture diagram of Thinklee platform" class="mx-auto rounded-xl shadow-xl w-full max-w-5xl h-auto">
+      </div>
+    </section>
+
+    <!-- Testimonials -->
+    <section id="testimonials" class="py-16">
+      <div class="text-center mb-16 slide-in">
+        <h2 class="text-4xl font-bold text-gray-800 mb-6">What Our Users Say</h2>
+        <p class="text-xl text-gray-600 max-w-3xl mx-auto">Join hundreds of companies already transforming their data strategy</p>
+      </div>
+      
+      <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3 slide-in" style="animation-delay: 0.2s">
+        <div class="testimonial-card">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+              <i class="fas fa-user text-purple-600"></i>
+            </div>
+            <div>
+              <div class="font-semibold text-gray-800">VP of Analytics</div>
+              <div class="text-sm text-gray-500">Fintech Startup</div>
+            </div>
+          </div>
+          <p class="text-gray-700 italic mb-4">"Thinklee helped us cut data turnaround from 4 hours to 30 seconds. A true game-changer for our decision-making process."</p>
+          <div class="flex text-yellow-400">
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+          </div>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+              <i class="fas fa-user text-blue-600"></i>
+            </div>
+            <div>
+              <div class="font-semibold text-gray-800">Data Engineer</div>
+              <div class="text-sm text-gray-500">Healthcare Enterprise</div>
+            </div>
+          </div>
+          <p class="text-gray-700 italic mb-4">"Security and speed were critical for us. Thinklee delivered both—without compromise. The user-level isolation gives us complete peace of mind."</p>
+          <div class="flex text-yellow-400">
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+          </div>
+        </div>
+
+        <div class="testimonial-card">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+              <i class="fas fa-user text-green-600"></i>
+            </div>
+            <div>
+              <div class="font-semibold text-gray-800">CTO</div>
+              <div class="text-sm text-gray-500">E-commerce Platform</div>
+            </div>
+          </div>
+          <p class="text-gray-700 italic mb-4">"The deployment was seamless. Three weeks from setup to full production. Our team was amazed by how quickly we could start getting insights."</p>
+          <div class="flex text-yellow-400">
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
+    <section id="faq" class="py-16">
+      <div class="glass-card p-12 rounded-3xl slide-in">
+        <h2 class="text-4xl font-bold text-center mb-12 text-gray-800">Frequently Asked Questions</h2>
+        <div class="space-y-6 max-w-4xl mx-auto">
+          <details class="glass-card rounded-xl p-6 smooth-transition hover:shadow-lg">
+            <summary class="font-semibold cursor-pointer text-lg text-gray-800 flex items-center justify-between">
+              <span><i class="fas fa-shield-alt text-green-500 mr-3"></i>Is my data secure?</span>
+              <i class="fas fa-chevron-down text-gray-400"></i>
+            </summary>
+            <p class="mt-4 text-gray-600 leading-relaxed">Yes, absolutely. All data is isolated per user and hosted on secure cloud infrastructure (AWS, Azure, or your own environment). We implement enterprise-grade security with SOC2 compliance and zero data sharing with public LLMs.</p>
+          </details>
+          
+          <details class="glass-card rounded-xl p-6 smooth-transition hover:shadow-lg">
+            <summary class="font-semibold cursor-pointer text-lg text-gray-800 flex items-center justify-between">
+              <span><i class="fas fa-brain text-purple-500 mr-3"></i>Can I use my preferred LLM?</span>
+              <i class="fas fa-chevron-down text-gray-400"></i>
+            </summary>
+            <p class="mt-4 text-gray-600 leading-relaxed">Absolutely. Choose from ChatGPT, Claude, LLaMA2, or other leading models to power your queries. You can even switch between models based on different use cases or team preferences.</p>
+          </details>
+          
+          <details class="glass-card rounded-xl p-6 smooth-transition hover:shadow-lg">
+            <summary class="font-semibold cursor-pointer text-lg text-gray-800 flex items-center justify-between">
+              <span><i class="fas fa-credit-card text-blue-500 mr-3"></i>What happens after the free trial?</span>
+              <i class="fas fa-chevron-down text-gray-400"></i>
+            </summary>
+            <p class="mt-4 text-gray-600 leading-relaxed">You can select a paid plan based on your usage and features. We offer transparent pricing with no surprises or hidden fees. You can also continue with our free tier for basic usage.</p>
+          </details>
+          
+          <details class="glass-card rounded-xl p-6 smooth-transition hover:shadow-lg">
+            <summary class="font-semibold cursor-pointer text-lg text-gray-800 flex items-center justify-between">
+              <span><i class="fas fa-rocket text-orange-500 mr-3"></i>How fast is the deployment process?</span>
+              <i class="fas fa-chevron-down text-gray-400"></i>
+            </summary>
+            <p class="mt-4 text-gray-600 leading-relaxed">From POC to production in under 3 weeks. Our team works with you to ensure smooth integration with your existing infrastructure and workflows. Most clients see value within the first week.</p>
+          </details>
+          
+          <details class="glass-card rounded-xl p-6 smooth-transition hover:shadow-lg">
+            <summary class="font-semibold cursor-pointer text-lg text-gray-800 flex items-center justify-between">
+              <span><i class="fas fa-plug text-green-500 mr-3"></i>What data sources can I connect?</span>
+              <i class="fas fa-chevron-down text-gray-400"></i>
+            </summary>
+            <p class="mt-4 text-gray-600 leading-relaxed">We support 20+ data sources including Snowflake, AWS RDS, Azure SQL, PostgreSQL, MySQL, MongoDB, CSVs, Excel files, and many more. If you have a custom data source, our team can help build a connector.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section class="py-20 text-center slide-in">
+      <div class="max-w-4xl mx-auto">
+        <h2 class="text-4xl sm:text-5xl font-bold text-gray-800 mb-6">Ready to Transform Your Data Strategy?</h2>
+        <p class="text-xl text-gray-600 mb-10 max-w-2xl mx-auto">Join hundreds of companies already using Thinklee to unlock instant insights from their data.</p>
+        
+        <div class="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-6 mb-8">
+          <a href="/auth" class="cta-button flex items-center space-x-3 text-xl">
+            <i class="fas fa-rocket"></i>
+            <span>Start Your Free Trial</span>
+            <i class="fas fa-arrow-right"></i>
+          </a>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row items-center justify-center space-y-2 sm:space-y-0 sm:space-x-8 text-sm text-gray-500">
+          <div class="flex items-center">
+            <i class="fas fa-check text-green-500 mr-2"></i>
+            <span>15-day free trial</span>
+          </div>
+          <div class="flex items-center">
+            <i class="fas fa-check text-green-500 mr-2"></i>
+            <span>No credit card required</span>
+          </div>
+          <div class="flex items-center">
+            <i class="fas fa-check text-green-500 mr-2"></i>
+            <span>Full feature access</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="text-center py-12 border-t border-gray-200">
+      <div class="flex items-center justify-center mb-6">
+        <img src="/static/logo.png" alt="Thinklee Logo" class="h-12 w-auto mr-3">
+        <span class="text-2xl font-bold text-gray-800">Thinklee</span>
+      </div>
+      <p class="text-gray-500 mb-4">&copy; 2025 Thinklee Platform. All rights reserved. Powered by CloudHub Bv</p>
+      <div class="flex items-center justify-center space-x-6 text-sm text-gray-400">
+        <a href="#" class="hover:text-purple-600 smooth-transition">Privacy Policy</a>
+        <a href="#" class="hover:text-purple-600 smooth-transition">Terms of Service</a>
+        <a href="#" class="hover:text-purple-600 smooth-transition">Contact</a>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Scroll to Top Button -->
+  <button id="scrollToTop" class="fixed bottom-6 right-6 w-12 h-12 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center hidden z-40">
+    <i class="fas fa-arrow-up"></i>
+  </button>
+
+  <script>
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileMenu');
+      menu.classList.toggle('hidden');
+    }
+
+    // Smooth scrolling for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    });
+
+    // Scroll to top functionality
+    const scrollToTopBtn = document.getElementById('scrollToTop');
+    
+    window.addEventListener('scroll', () => {
+      if (window.pageYOffset > 300) {
+        scrollToTopBtn.classList.remove('hidden');
+      } else {
+        scrollToTopBtn.classList.add('hidden');
+      }
+    });
+
+    scrollToTopBtn.addEventListener('click', () => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    });
+
+    // Intersection Observer for animations
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('fade-in');
+        }
+      });
+    }, observerOptions);
+
+    // Observe elements for animation
+    document.querySelectorAll('.slide-in').forEach(el => {
+      observer.observe(el);
+    });
+
+    // Add loading animation to CTA buttons
+    document.querySelectorAll('.cta-button').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        if (this.href && this.href.includes('/auth')) {
+          e.preventDefault();
+          const originalText = this.innerHTML;
+          this.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Loading...';
+          this.style.pointerEvents = 'none';
+          
+          setTimeout(() => {
+            window.location.href = this.href;
+          }, 800);
+        }
+      });
+    });
+
+    // Enhanced FAQ functionality
+    document.querySelectorAll('details').forEach(detail => {
+      detail.addEventListener('toggle', function() {
+        const icon = this.querySelector('.fa-chevron-down');
+        if (this.open) {
+          icon.style.transform = 'rotate(180deg)';
+        } else {
+          icon.style.transform = 'rotate(0deg)';
+        }
+      });
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,1200 @@
+{# ------------------------------------------------------------------
+   Thinklee / CliniOps — Application Sidebar
+   Included from base.html on every authenticated page.
+   All JS is scoped inside an IIFE so it can never collide with the
+   globals defined by individual pages (e.g. dashboard_management.html
+   also defines a global loadDashboards()).
+------------------------------------------------------------------ #}
+
+{% set p = request.path %}
+{% set on_dashboard = p.startswith('/dashboard/') %}
+
+<style>
+  /* ==============================================================
+     Design tokens
+     Palette is derived from the CliniOps mark: navy #0d2c47 + cyan
+     #29abe2, bridged to the indigo/violet used across the app pages.
+     ============================================================== */
+  :root {
+    --sb-w: 16rem;
+    --sb-w-rail: 78px;
+  }
+
+  #sidebar {
+    --bg-top: #0a1a2f;
+    --bg-mid: #0d2340;
+    --bg-bot: #081525;
+
+    --line: rgba(140, 195, 245, 0.11);
+    --line-strong: rgba(140, 195, 245, 0.2);
+
+    --txt: #c3d6ea;
+    --txt-strong: #f4f9ff;
+    --txt-dim: #7b93ae;
+
+    --accent: #29abe2;
+    --accent-2: #6366f1;
+    --accent-soft: rgba(41, 171, 226, 0.14);
+
+    --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+    --speed: 0.24s;
+  }
+
+  /* ==============================================================
+     Shell
+     Flex column: header / user / scrolling nav / footer.
+     No magic pixel heights — the nav simply takes the leftover space,
+     so it stays correct whether or not the user block renders.
+     ============================================================== */
+  #sidebar {
+    width: var(--sb-w);
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(120% 55% at 0% 0%, rgba(41, 171, 226, 0.14), transparent 60%),
+      linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 52%, var(--bg-bot) 100%);
+    border-right: 1px solid var(--line);
+    box-shadow: 1px 0 0 rgba(255, 255, 255, 0.03), 8px 0 32px rgba(2, 8, 20, 0.35);
+    color: var(--txt);
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    transition: width var(--speed) var(--ease), transform 0.3s var(--ease);
+    will-change: width, transform;
+  }
+
+  /* Page content offset.
+     Every page hardcodes Tailwind's .ml-64. Drive it from the sidebar
+     width instead, so the rail toggle and mobile drawer both work
+     without editing 15 templates. */
+  @media (min-width: 1024px) {
+    .ml-64 {
+      margin-left: var(--sb-w) !important;
+      transition: margin-left var(--speed) var(--ease);
+    }
+  }
+  @media (max-width: 1023.98px) {
+    .ml-64 { margin-left: 0 !important; }
+  }
+
+  /* ==============================================================
+     Header / logo
+     The mark is a 578x131 horizontal wordmark. The old rule sized it
+     by height (6vmax ~ 115px tall => ~507px wide) inside a 256px
+     sidebar. Constrain by width instead, and sit it on a light plate
+     so the navy half of the logo stays legible on a dark surface.
+     ============================================================== */
+  .sb-head {
+    flex: 0 0 auto;
+    height: 76px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sb-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 48px;
+    padding: 8px 14px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(226, 240, 252, 0.9));
+    box-shadow: 0 2px 10px rgba(2, 8, 20, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease);
+  }
+
+  .sb-brand:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(41, 171, 226, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  .sb-brand img {
+    width: 100%;
+    max-width: 150px;
+    height: auto;
+    max-height: 32px;
+    object-fit: contain;
+    display: block;
+  }
+
+  .sb-iconbtn {
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--txt-dim);
+    cursor: pointer;
+    transition: all var(--speed) var(--ease);
+  }
+
+  .sb-iconbtn:hover {
+    color: var(--txt-strong);
+    background: var(--accent-soft);
+    border-color: rgba(41, 171, 226, 0.35);
+  }
+
+  .sb-iconbtn svg { width: 17px; height: 17px; }
+  .sb-iconbtn .chev { transition: transform var(--speed) var(--ease); }
+
+  /* Rail toggle is desktop-only; the drawer close button is mobile-only */
+  #sbRail { display: none; }
+  #sbClose { display: grid; }
+  @media (min-width: 1024px) {
+    #sbRail { display: grid; }
+    #sbClose { display: none; }
+  }
+
+  /* ==============================================================
+     User block
+     ============================================================== */
+  .sb-user {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(135deg, rgba(41, 171, 226, 0.07), rgba(99, 102, 241, 0.07));
+  }
+
+  .sb-avatar {
+    flex: 0 0 auto;
+    width: 40px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    font-weight: 700;
+    font-size: 16px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 4px 14px rgba(41, 171, 226, 0.35);
+  }
+
+  /* min-width:0 is what actually lets the email ellipsis work */
+  .sb-user-meta { min-width: 0; flex: 1 1 auto; }
+
+  .sb-user-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--txt-strong);
+    font-size: 13.5px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  .sb-user-name > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sb-user-mail {
+    margin-top: 3px;
+    color: var(--txt-dim);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sb-chip {
+    flex: 0 0 auto;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 999px;
+    color: #7fe3ff;
+    background: rgba(41, 171, 226, 0.16);
+    border: 1px solid rgba(41, 171, 226, 0.32);
+  }
+
+  /* ==============================================================
+     Navigation
+     ============================================================== */
+  .sb-nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 12px 12px 18px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(41, 171, 226, 0.35) transparent;
+  }
+
+  .sb-nav::-webkit-scrollbar { width: 6px; }
+  .sb-nav::-webkit-scrollbar-track { background: transparent; }
+  .sb-nav::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(41, 171, 226, 0.28);
+  }
+
+  .sb-nav:hover::-webkit-scrollbar-thumb { background: rgba(41, 171, 226, 0.5); }
+
+  .sb-sec {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 16px 0 8px;
+    padding: 0 8px;
+    color: var(--txt-dim);
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .sb-sec:first-child { margin-top: 2px; }
+
+  .sb-sec::after {
+    content: "";
+    flex: 1 1 auto;
+    height: 1px;
+    background: linear-gradient(90deg, var(--line-strong), transparent);
+  }
+
+  .sb-list { list-style: none; margin: 0; padding: 0; }
+  .sb-list li { margin-bottom: 3px; }
+
+  /* Per-item accent. --ic is an "r,g,b" triplet consumed by rgba(). */
+  .nav-item,
+  .sb-acc-trigger {
+    --ic: 148, 163, 184;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 9px 12px 9px 10px;
+    border: 1px solid transparent;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--txt);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease),
+                border-color var(--speed) var(--ease), transform var(--speed) var(--ease);
+  }
+
+  .c-cyan    { --ic:  34, 211, 238; }
+  .c-sky     { --ic:  56, 189, 248; }
+  .c-indigo  { --ic: 129, 140, 248; }
+  .c-violet  { --ic: 167, 139, 250; }
+  .c-emerald { --ic:  52, 211, 153; }
+  .c-amber   { --ic: 251, 191,  36; }
+  .c-rose    { --ic: 251, 113, 133; }
+
+  .nav-item .icon,
+  .sb-acc-trigger .icon {
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: rgb(var(--ic));
+    background: rgba(var(--ic), 0.11);
+    border: 1px solid rgba(var(--ic), 0.16);
+    transition: all var(--speed) var(--ease);
+  }
+
+  /* The old markup relied on implicit SVG sizing, which rendered each
+     icon at a different size. Pin it. */
+  .nav-item .icon svg,
+  .sb-acc-trigger .icon svg { width: 17px; height: 17px; display: block; }
+
+  .nav-item .label,
+  .sb-acc-trigger .label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .nav-item:hover,
+  .sb-acc-trigger:hover {
+    color: var(--txt-strong);
+    background: rgba(var(--ic), 0.09);
+    border-color: rgba(var(--ic), 0.22);
+    transform: translateX(2px);
+  }
+
+  .nav-item:hover .icon,
+  .sb-acc-trigger:hover .icon {
+    background: rgba(var(--ic), 0.2);
+    border-color: rgba(var(--ic), 0.3);
+  }
+
+  .nav-item:active,
+  .sb-acc-trigger:active { transform: translateX(2px) scale(0.99); }
+
+  .nav-item:focus-visible,
+  .sb-acc-trigger:focus-visible,
+  .sb-iconbtn:focus-visible,
+  .sb-brand:focus-visible,
+  .dash-item:focus-visible,
+  .dash-new:focus-visible,
+  #sbToggle:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  /* Active state */
+  .nav-item.active,
+  .sb-acc.is-active > .sb-acc-trigger {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(var(--ic), 0.26), rgba(99, 102, 241, 0.18));
+    border-color: rgba(var(--ic), 0.4);
+    box-shadow: 0 4px 16px rgba(var(--ic), 0.16);
+  }
+
+  .nav-item.active .icon,
+  .sb-acc.is-active > .sb-acc-trigger .icon {
+    color: #0a1a2f;
+    background: rgb(var(--ic));
+    border-color: rgba(var(--ic), 0.65);
+    box-shadow: 0 3px 10px rgba(var(--ic), 0.4);
+  }
+
+  /* Left rail marker on the active row */
+  .nav-item.active::before,
+  .sb-acc.is-active > .sb-acc-trigger::before {
+    content: "";
+    position: absolute;
+    left: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 22px;
+    border-radius: 0 3px 3px 0;
+    background: rgb(var(--ic));
+    box-shadow: 0 0 10px rgba(var(--ic), 0.7);
+  }
+
+  /* Logout */
+  .nav-item.is-logout { color: #fda4af; }
+  .nav-item.is-logout:hover { color: #ffe4e6; }
+
+  /* ==============================================================
+     Dashboards accordion
+     Was an absolutely-positioned dropdown nested inside the scrolling
+     nav, so it got clipped and fought the scroll container. It now
+     expands inline using the 0fr -> 1fr grid technique (no max-height
+     guessing, animates to true content height).
+     ============================================================== */
+  .sb-acc { position: relative; }
+
+  .sb-acc-trigger .count {
+    flex: 0 0 auto;
+    min-width: 20px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 800;
+    text-align: center;
+    color: rgb(var(--ic));
+    background: rgba(var(--ic), 0.16);
+    border: 1px solid rgba(var(--ic), 0.28);
+  }
+
+  .sb-acc-trigger .count[hidden] { display: none; }
+
+  .sb-acc-trigger .chev {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    color: var(--txt-dim);
+    transition: transform var(--speed) var(--ease), color var(--speed) var(--ease);
+  }
+
+  .sb-acc[data-open="true"] .sb-acc-trigger .chev {
+    transform: rotate(180deg);
+    color: rgb(var(--ic));
+  }
+
+  .sb-acc-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--speed) var(--ease);
+  }
+
+  .sb-acc[data-open="true"] .sb-acc-panel { grid-template-rows: 1fr; }
+
+  .sb-acc-panel > .inner { overflow: hidden; min-height: 0; }
+
+  .sb-acc-body {
+    margin: 6px 0 8px 15px;
+    padding-left: 11px;
+    border-left: 1px solid var(--line-strong);
+  }
+
+  .dash-new {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 12px;
+    margin-bottom: 6px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    text-decoration: none;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    box-shadow: 0 4px 14px rgba(41, 171, 226, 0.3);
+    transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease), filter var(--speed) var(--ease);
+  }
+
+  .dash-new:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08);
+    box-shadow: 0 8px 20px rgba(41, 171, 226, 0.42);
+  }
+
+  .dash-new svg { width: 15px; height: 15px; }
+
+  .dash-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    color: var(--txt);
+    font-size: 12.8px;
+    text-decoration: none;
+    transition: background var(--speed) var(--ease), color var(--speed) var(--ease);
+  }
+
+  .dash-item:hover { background: rgba(255, 255, 255, 0.05); color: var(--txt-strong); }
+
+  .dash-item.active {
+    background: rgba(129, 140, 248, 0.16);
+    color: var(--txt-strong);
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  .dash-item .dot {
+    flex: 0 0 auto;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  }
+
+  .dash-item .txt { min-width: 0; flex: 1 1 auto; }
+
+  .dash-item .name {
+    display: block;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dash-item .meta {
+    display: block;
+    margin-top: 2px;
+    color: var(--txt-dim);
+    font-size: 10.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dash-state {
+    padding: 16px 10px;
+    text-align: center;
+    color: var(--txt-dim);
+    font-size: 12px;
+  }
+
+  .dash-state svg { width: 22px; height: 22px; margin: 0 auto 8px; display: block; }
+  .dash-state .sub { margin-top: 3px; font-size: 10.5px; opacity: 0.75; }
+
+  .dash-state button {
+    margin-top: 9px;
+    padding: 5px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line-strong);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--txt);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--speed) var(--ease);
+  }
+
+  .dash-state button:hover { background: var(--accent-soft); color: var(--txt-strong); }
+
+  .spin { animation: sb-spin 0.9s linear infinite; color: var(--accent); }
+  @keyframes sb-spin { to { transform: rotate(360deg); } }
+
+  /* ==============================================================
+     Footer
+     ============================================================== */
+  .sb-foot {
+    flex: 0 0 auto;
+    padding: 11px 16px;
+    border-top: 1px solid var(--line);
+    text-align: center;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--txt-dim);
+    background: rgba(4, 12, 24, 0.4);
+  }
+
+  .sb-foot b { color: #9dd6f5; font-weight: 700; }
+
+  /* ==============================================================
+     Collapsed rail (desktop)
+     ============================================================== */
+  #sidebar.rail { width: var(--sb-w-rail); }
+
+  /* 78px cannot fit the wordmark and the toggle side by side, so the
+     header stacks instead of letting the brand collapse to a sliver. */
+  #sidebar.rail .sb-head {
+    height: auto;
+    flex-direction: column;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 8px;
+  }
+  #sidebar.rail .sb-brand { flex: 0 0 auto; width: 54px; height: 34px; padding: 5px 7px; border-radius: 11px; }
+  #sidebar.rail .sb-brand img { max-width: 100%; max-height: 22px; }
+  #sidebar.rail #sbRail .chev { transform: rotate(180deg); }
+  #sidebar.rail .sb-user { justify-content: center; padding: 14px 8px; }
+  #sidebar.rail .sb-user-meta,
+  #sidebar.rail .nav-item .label,
+  #sidebar.rail .sb-acc-trigger .label,
+  #sidebar.rail .sb-acc-trigger .chev,
+  #sidebar.rail .sb-acc-trigger .count,
+  #sidebar.rail .sb-foot span { display: none; }
+  #sidebar.rail .nav-item,
+  #sidebar.rail .sb-acc-trigger { justify-content: center; padding: 9px 0; gap: 0; }
+  #sidebar.rail .nav-item.active::before,
+  #sidebar.rail .sb-acc.is-active > .sb-acc-trigger::before { left: -10px; }
+  #sidebar.rail .sb-sec { justify-content: center; font-size: 0; margin: 12px 0 8px; }
+  #sidebar.rail .sb-sec::after { background: var(--line-strong); }
+  #sidebar.rail .sb-acc-panel { grid-template-rows: 0fr; }
+  #sidebar.rail .sb-nav { padding: 12px 10px 18px; }
+  #sidebar.rail .sb-foot { padding: 11px 6px; }
+  #sidebar.rail .sb-foot::after { content: "\00b7\00b7\00b7"; letter-spacing: 2px; }
+
+  /* Rail tooltip. Rendered on <body> because the scrolling nav clips
+     anything positioned outside it. */
+  #sbTip {
+    position: fixed;
+    z-index: 120;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #0d2340;
+    border: 1px solid rgba(41, 171, 226, 0.35);
+    color: #f4f9ff;
+    font: 600 12px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(2, 8, 20, 0.5);
+    opacity: 0;
+    transform: translateX(-4px);
+    pointer-events: none;
+    transition: opacity 0.14s ease, transform 0.14s ease;
+  }
+
+  #sbTip.show { opacity: 1; transform: translateX(0); }
+
+  /* ==============================================================
+     Mobile drawer
+     ============================================================== */
+  #sbToggle {
+    position: fixed;
+    top: 14px;
+    left: 14px;
+    z-index: 60;
+    width: 42px;
+    height: 42px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    border: 1px solid var(--line-strong);
+    color: #eaf4ff;
+    background: linear-gradient(135deg, #0d2340, #0a1a2f);
+    box-shadow: 0 6px 20px rgba(2, 8, 20, 0.45);
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  #sbToggle:hover { border-color: rgba(41, 171, 226, 0.45); transform: scale(1.04); }
+  #sbToggle svg { width: 20px; height: 20px; }
+
+  /* Hide the hamburger while the drawer covers it */
+  #sbToggle.hidden-by-drawer { opacity: 0; pointer-events: none; transform: scale(0.85); }
+
+  #sbBackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: rgba(4, 10, 20, 0.6);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s var(--ease, ease), visibility 0.3s var(--ease, ease);
+  }
+
+  #sbBackdrop.show { opacity: 1; visibility: visible; }
+
+  @media (min-width: 1024px) {
+    #sbToggle, #sbBackdrop { display: none; }
+  }
+
+  @media (max-width: 1023.98px) {
+    #sidebar {
+      width: min(84vw, 300px);
+      transform: translateX(-100%);
+      box-shadow: none;
+    }
+    #sidebar.open {
+      transform: translateX(0);
+      box-shadow: 12px 0 40px rgba(2, 8, 20, 0.55);
+    }
+    body.sb-locked { overflow: hidden; }
+
+    /* The rail is a desktop affordance only — never apply it on touch */
+    #sidebar.rail { width: min(84vw, 300px); }
+    #sidebar.rail .sb-head { justify-content: flex-start; padding: 0 14px; }
+    #sidebar.rail .sb-user-meta,
+    #sidebar.rail .nav-item .label,
+    #sidebar.rail .sb-acc-trigger .label,
+    #sidebar.rail .sb-acc-trigger .chev,
+    #sidebar.rail .sb-foot span { display: revert; }
+    #sidebar.rail .nav-item,
+    #sidebar.rail .sb-acc-trigger { justify-content: flex-start; padding: 9px 12px 9px 10px; gap: 12px; }
+    #sidebar.rail .sb-user { justify-content: flex-start; padding: 14px 16px; }
+    #sidebar.rail .sb-sec { justify-content: flex-start; font-size: 10.5px; }
+    #sidebar.rail .sb-brand { padding: 8px 14px; }
+    #sidebar.rail .sb-brand img { max-width: 150px; max-height: 32px; }
+    #sidebar.rail .sb-foot::after { content: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #sidebar, #sidebar *, .ml-64, #sbBackdrop, #sbToggle {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
+</style>
+
+<!-- Mobile drawer trigger -->
+<button id="sbToggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">
+  <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+  </svg>
+</button>
+
+<aside id="sidebar" class="fixed top-0 left-0 h-full z-40" data-authed="{{ 'yes' if session.get('email') else 'no' }}">
+
+  <!-- Header -->
+  <div class="sb-head">
+    <a href="/home" class="sb-brand" aria-label="CliniOps home">
+      <img src="/static/CliniOpsLOGO.png" alt="CliniOps" />
+    </a>
+    <button id="sbRail" class="sb-iconbtn" type="button" aria-label="Collapse sidebar" title="Collapse sidebar">
+      <svg class="chev" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
+      </svg>
+    </button>
+    <button id="sbClose" class="sb-iconbtn" type="button" aria-label="Close navigation">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+
+  <!-- User -->
+  {% if session.get("email") %}
+  {# Self-registered users get username == email, so fall back to a
+     readable display name derived from the local part. #}
+  {% set uname = session.get('username') or '' %}
+  {% set display_name = uname if uname and uname != session.email
+                        else session.email.split('@')[0].replace('.', ' ').replace('_', ' ').title() %}
+  <div class="sb-user">
+    <div class="sb-avatar" aria-hidden="true">{{ session.email[0]|upper }}</div>
+    <div class="sb-user-meta">
+      <div class="sb-user-name">
+        <span title="{{ display_name }}">{{ display_name }}</span>
+        {% if 'org_admin' in session.get('roles', []) %}<span class="sb-chip">Admin</span>{% endif %}
+      </div>
+      <div class="sb-user-mail" title="{{ session.email }}">{{ session.email }}</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Navigation -->
+  <nav class="sb-nav" aria-label="Main navigation">
+
+    <p class="sb-sec">Main</p>
+    <ul class="sb-list">
+      <li>
+        <a href="/home" data-label="Home"
+           class="nav-item c-cyan {{ 'active' if p == '/home' }}"
+           {% if p == '/home' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg></span>
+          <span class="label">Home</span>
+        </a>
+      </li>
+      <li>
+        <a href="/data-management" data-label="Data Management"
+           class="nav-item c-sky {{ 'active' if p == '/data-management' or p == '/add-datasource' }}"
+           {% if p == '/data-management' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 7c0-1.66 3.58-3 8-3s8 1.34 8 3-3.58 3-8 3-8-1.34-8-3z"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 1.66 3.58 3 8 3s8-1.34 8-3V7"/><path stroke-linecap="round" stroke-linejoin="round" d="M4 12c0 1.66 3.58 3 8 3s8-1.34 8-3"/></svg></span>
+          <span class="label">Data Management</span>
+        </a>
+      </li>
+      <li>
+        <a href="/agent-management" data-label="AI Agents"
+           class="nav-item c-violet {{ 'active' if p == '/agent-management' or p == '/add-agent' }}"
+           {% if p == '/agent-management' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg></span>
+          <span class="label">AI Agents</span>
+        </a>
+      </li>
+      <li>
+        <a href="/steps" data-label="Help &amp; Setup"
+           class="nav-item c-amber {{ 'active' if p == '/steps' }}"
+           {% if p == '/steps' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path stroke-linecap="round" stroke-linejoin="round" d="M9.5 9.5a2.5 2.5 0 114 2c-.8.6-1.5 1-1.5 2M12 17h.01"/></svg></span>
+          <span class="label">Help &amp; Setup</span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="sb-sec">Dashboards</p>
+    <ul class="sb-list">
+      <li class="sb-acc {{ 'is-active' if on_dashboard }}" id="sbAcc" data-open="false">
+        <button type="button" id="sbAccBtn" class="sb-acc-trigger c-indigo"
+                data-label="My Dashboards" aria-expanded="false" aria-controls="sbAccPanel">
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5h7v6H4zM13 5h7v3h-7zM13 11h7v8h-7zM4 14h7v5H4z"/></svg></span>
+          <span class="label">My Dashboards</span>
+          <span class="count" id="sbAccCount" hidden>0</span>
+          <svg class="chev" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+
+        <div class="sb-acc-panel" id="sbAccPanel" role="region" aria-labelledby="sbAccBtn">
+          <div class="inner">
+            <div class="sb-acc-body">
+              <a href="/dashboard/builder" class="dash-new">
+                <svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+                New Dashboard
+              </a>
+              <div id="sbDashList" aria-live="polite"></div>
+            </div>
+          </div>
+        </div>
+      </li>
+      <li>
+        <a href="/dashboard-config" data-label="Manage Dashboards"
+           class="nav-item c-indigo {{ 'active' if p == '/dashboard-config' }}"
+           {% if p == '/dashboard-config' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg></span>
+          <span class="label">Manage Dashboards</span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="sb-sec">AI &amp; Analytics</p>
+    <ul class="sb-list">
+      <li>
+        <a href="/copilot-page" data-label="Co-Pilot Query"
+           class="nav-item c-emerald {{ 'active' if p == '/copilot-page' }}"
+           {% if p == '/copilot-page' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg></span>
+          <span class="label">Co-Pilot Query</span>
+        </a>
+      </li>
+      <li>
+        <a href="/graph-query" data-label="Graph Query"
+           class="nav-item c-amber {{ 'active' if p == '/graph-query' }}"
+           {% if p == '/graph-query' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
+          <span class="label">Graph Query</span>
+        </a>
+      </li>
+      <li>
+        <a href="/query-log-analyzer" data-label="Query Log"
+           class="nav-item c-sky {{ 'active' if p == '/query-log-analyzer' }}"
+           {% if p == '/query-log-analyzer' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></span>
+          <span class="label">Query Log</span>
+        </a>
+      </li>
+    </ul>
+
+    <p class="sb-sec">Account</p>
+    <ul class="sb-list">
+      <li>
+        <a href="/profile" data-label="Profile"
+           class="nav-item c-indigo {{ 'active' if p == '/profile' }}"
+           {% if p == '/profile' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14c-4 0-7 2.2-7 5v1h14v-1c0-2.8-3-5-7-5z"/></svg></span>
+          <span class="label">Profile</span>
+        </a>
+      </li>
+      {% if 'org_admin' in session.get('roles', []) %}
+      <li>
+        <a href="/org-users" data-label="Organization Users"
+           class="nav-item c-emerald {{ 'active' if p == '/org-users' }}"
+           {% if p == '/org-users' %}aria-current="page"{% endif %}>
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-1a3 3 0 00-3-3h-1m-6 4H2v-1a4.5 4.5 0 014.5-4.5h3A4.5 4.5 0 0114 19v1zm-1.5-11a3 3 0 11-6 0 3 3 0 016 0zm7 1a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"/></svg></span>
+          <span class="label">Organization Users</span>
+        </a>
+      </li>
+      {% endif %}
+      <li>
+        <button type="button" id="logoutBtn" data-label="Logout" class="nav-item is-logout c-rose">
+          <span class="icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></span>
+          <span class="label">Logout</span>
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <div class="sb-foot"><span>Powered by <b>CloudHub</b></span></div>
+</aside>
+
+<div id="sbBackdrop"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* Everything lives inside this IIFE. The previous version put
+     loadDashboards()/formatDate()/dashboards on window, which collided
+     with the identically named globals declared in
+     dashboard_management.html and left the dropdown permanently stuck
+     on "Loading dashboards..." on that page. */
+
+  var DESKTOP = "(min-width: 1024px)";
+  var RAIL_KEY = "sb:rail";
+  var ACC_KEY = "sb:dashOpen";
+  var RAIL_W = "78px";
+  var FULL_W = "16rem";
+
+  var sidebar = document.getElementById("sidebar");
+  if (!sidebar) return;
+
+  var toggle = document.getElementById("sbToggle");
+  var backdrop = document.getElementById("sbBackdrop");
+  var closeBtn = document.getElementById("sbClose");
+  var railBtn = document.getElementById("sbRail");
+  var acc = document.getElementById("sbAcc");
+  var accBtn = document.getElementById("sbAccBtn");
+  var accCount = document.getElementById("sbAccCount");
+  var dashList = document.getElementById("sbDashList");
+  var logoutBtn = document.getElementById("logoutBtn");
+
+  var onDashboardPage = sidebar.querySelector(".sb-acc.is-active") !== null;
+
+  function isDesktop() { return window.matchMedia(DESKTOP).matches; }
+
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { /* private mode */ } }
+  };
+
+  function esc(s) {
+    return String(s === null || s === undefined ? "" : s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+
+  /* ---------------- Rail (desktop collapse) ---------------- */
+
+  function applyRail(on) {
+    sidebar.classList.toggle("rail", on);
+    document.documentElement.style.setProperty("--sb-w", on ? RAIL_W : FULL_W);
+    if (railBtn) {
+      var label = on ? "Expand sidebar" : "Collapse sidebar";
+      railBtn.setAttribute("aria-label", label);
+      railBtn.setAttribute("title", label);
+    }
+    if (on) setAccOpen(false, true);
+  }
+
+  if (railBtn) {
+    railBtn.addEventListener("click", function () {
+      var next = !sidebar.classList.contains("rail");
+      applyRail(next);
+      store.set(RAIL_KEY, next ? "1" : "0");
+      hideTip();
+    });
+  }
+
+  /* ---------------- Mobile drawer ---------------- */
+
+  function setDrawer(open) {
+    sidebar.classList.toggle("open", open);
+    if (backdrop) backdrop.classList.toggle("show", open);
+    if (toggle) {
+      toggle.classList.toggle("hidden-by-drawer", open);
+      toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    }
+    document.body.classList.toggle("sb-locked", open);
+  }
+
+  if (toggle) {
+    toggle.addEventListener("click", function () {
+      setDrawer(!sidebar.classList.contains("open"));
+    });
+  }
+  if (closeBtn) closeBtn.addEventListener("click", function () { setDrawer(false); });
+  if (backdrop) backdrop.addEventListener("click", function () { setDrawer(false); });
+
+  // Following a link on a touch layout should dismiss the drawer.
+  sidebar.addEventListener("click", function (e) {
+    var link = e.target.closest ? e.target.closest("a[href]") : null;
+    if (link && !isDesktop()) setDrawer(false);
+  });
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Escape") return;
+    if (sidebar.classList.contains("open")) { setDrawer(false); return; }
+    if (acc && acc.dataset.open === "true") setAccOpen(false);
+  });
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (isDesktop()) {
+        setDrawer(false);
+        applyRail(store.get(RAIL_KEY) === "1");
+      } else {
+        document.documentElement.style.setProperty("--sb-w", FULL_W);
+      }
+    }, 120);
+  });
+
+  /* ---------------- Dashboards accordion ---------------- */
+
+  var loaded = false;
+  var loading = false;
+
+  function setAccOpen(open, silent) {
+    if (!acc || !accBtn) return;
+    acc.dataset.open = open ? "true" : "false";
+    accBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    if (!silent) store.set(ACC_KEY, open ? "1" : "0");
+    if (open && !loaded) load();
+  }
+
+  if (accBtn) {
+    accBtn.addEventListener("click", function () {
+      // There is nowhere to render the list in rail mode, so expand first.
+      if (sidebar.classList.contains("rail") && isDesktop()) {
+        applyRail(false);
+        store.set(RAIL_KEY, "0");
+        hideTip();
+        setAccOpen(true);
+        return;
+      }
+      setAccOpen(acc.dataset.open !== "true");
+    });
+  }
+
+  var ICON_SPIN = '<svg class="spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" opacity=".25"/><path fill="currentColor" d="M12 2a10 10 0 0110 10h-3a7 7 0 00-7-7V2z"/></svg>';
+  var ICON_EMPTY = '<svg fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 5h7v6H4zM13 5h7v3h-7zM13 11h7v8h-7zM4 14h7v5H4z"/></svg>';
+  var ICON_WARN = '<svg fill="none" stroke="currentColor" stroke-width="1.7" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v5m0 3h.01M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/></svg>';
+
+  function stateHTML(icon, title, sub, retry) {
+    return '<div class="dash-state">' + icon +
+      "<div>" + esc(title) + "</div>" +
+      (sub ? '<div class="sub">' + esc(sub) + "</div>" : "") +
+      (retry ? '<button type="button" data-retry="1">Try again</button>' : "") +
+      "</div>";
+  }
+
+  function ago(value) {
+    if (!value) return "";
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return "";
+    var mins = Math.round((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + "m ago";
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + "h ago";
+    var days = Math.round(hrs / 24);
+    if (days === 1) return "yesterday";
+    if (days < 7) return days + "d ago";
+    if (days < 31) return Math.round(days / 7) + "w ago";
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  function currentDashboardId() {
+    var m = window.location.pathname.match(/^\/dashboard\/(?:view|build)\/(\d+)/);
+    return m ? m[1] : null;
+  }
+
+  function render(list) {
+    if (!dashList) return;
+
+    if (accCount) {
+      accCount.textContent = String(list.length);
+      accCount.hidden = list.length === 0;
+    }
+
+    if (!list.length) {
+      dashList.innerHTML = stateHTML(ICON_EMPTY, "No dashboards yet", "Create your first one above", false);
+      return;
+    }
+
+    var activeId = currentDashboardId();
+
+    dashList.innerHTML = list.slice().sort(function (a, b) {
+      return new Date(b.updated_at || b.created_at || 0) - new Date(a.updated_at || a.created_at || 0);
+    }).map(function (d) {
+      var count = (d.widget_count !== null && d.widget_count !== undefined)
+        ? d.widget_count
+        : (d.widgets ? d.widgets.length : 0);
+      var when = ago(d.updated_at || d.created_at);
+      var meta = count + (count === 1 ? " widget" : " widgets") + (when ? " · " + when : "");
+      var isActive = activeId && String(d.id) === activeId;
+
+      return '<a class="dash-item' + (isActive ? " active" : "") +
+        '" href="/dashboard/view/' + encodeURIComponent(d.id) + '"' +
+        (isActive ? ' aria-current="page"' : "") +
+        ' title="' + esc(d.title) + '">' +
+        '<span class="dot" aria-hidden="true"></span>' +
+        '<span class="txt">' +
+        '<span class="name">' + esc(d.title) + "</span>" +
+        '<span class="meta">' + esc(meta) + "</span>" +
+        "</span></a>";
+    }).join("");
+  }
+
+  function load(force) {
+    if (!dashList || loading) return;
+    if (loaded && !force) return;
+    if (sidebar.dataset.authed !== "yes") return;
+
+    loading = true;
+    if (!dashList.innerHTML) {
+      dashList.innerHTML = stateHTML(ICON_SPIN, "Loading dashboards", "", false);
+    }
+
+    var token = store.get("token");
+
+    fetch("/api/dashboard/list", {
+      headers: token ? { Authorization: "Bearer " + token } : {},
+      credentials: "same-origin"
+    }).then(function (res) {
+      if (res.status === 401 || res.status === 422) {
+        dashList.innerHTML = stateHTML(ICON_WARN, "Session expired", "Sign in again to see dashboards", false);
+        loaded = true;
+        return null;
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    }).then(function (data) {
+      if (!data) return;
+      render(Array.isArray(data.dashboards) ? data.dashboards : []);
+      loaded = true;
+    }).catch(function () {
+      dashList.innerHTML = stateHTML(ICON_WARN, "Couldn't load dashboards", "Check your connection", true);
+    }).then(function () {
+      loading = false;
+    });
+  }
+
+  if (dashList) {
+    dashList.addEventListener("click", function (e) {
+      var btn = e.target.closest ? e.target.closest("[data-retry]") : null;
+      if (!btn) return;
+      e.preventDefault();
+      dashList.innerHTML = "";
+      load(true);
+    });
+  }
+
+  // Pick up newly created / renamed dashboards when the tab regains focus.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && acc && acc.dataset.open === "true") load(true);
+  });
+
+  /* ---------------- Rail tooltips ---------------- */
+
+  var tip = null;
+
+  function hideTip() {
+    if (tip) tip.classList.remove("show");
+  }
+
+  function showTip(el) {
+    if (!sidebar.classList.contains("rail") || !isDesktop()) return;
+    var label = el.getAttribute("data-label");
+    if (!label) return;
+    if (!tip) {
+      tip = document.createElement("div");
+      tip.id = "sbTip";
+      tip.setAttribute("role", "tooltip");
+      document.body.appendChild(tip);
+    }
+    tip.textContent = label;
+    var r = el.getBoundingClientRect();
+    tip.style.left = (r.right + 12) + "px";
+    tip.style.top = (r.top + r.height / 2 - 14) + "px";
+    tip.classList.add("show");
+  }
+
+  Array.prototype.forEach.call(sidebar.querySelectorAll("[data-label]"), function (el) {
+    el.addEventListener("mouseenter", function () { showTip(el); });
+    el.addEventListener("focus", function () { showTip(el); });
+    el.addEventListener("mouseleave", hideTip);
+    el.addEventListener("blur", hideTip);
+  });
+
+  sidebar.addEventListener("scroll", hideTip, true);
+  window.addEventListener("scroll", hideTip, { passive: true });
+
+  /* ---------------- Logout ---------------- */
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", function (e) {
+      e.preventDefault();
+      try { localStorage.clear(); sessionStorage.clear(); } catch (err) { /* ignore */ }
+      window.location.href = "/logout";
+    });
+  }
+
+  /* ---------------- Boot ---------------- */
+
+  applyRail(isDesktop() && store.get(RAIL_KEY) === "1");
+
+  // Always reveal the list while viewing a dashboard; otherwise restore.
+  if ((onDashboardPage || store.get(ACC_KEY) === "1") &&
+      !(sidebar.classList.contains("rail") && isDesktop())) {
+    setAccOpen(true, true);
+  }
+
+  // Warm the badge without competing with first paint.
+  var idle = window.requestIdleCallback || function (fn) { return setTimeout(fn, 900); };
+  idle(function () { load(); });
+})();
+</script>

@@ -1,0 +1,1413 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Builder - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+
+  .pulse-dot {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Enhanced Form Styles */
+  .form-input {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(229, 231, 235, 0.8);
+    border-radius: 12px;
+    padding: 16px;
+    font-size: 16px;
+    color: #374151;
+    transition: all 0.3s ease;
+  }
+  
+  .form-input:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+  }
+  
+  .form-input:hover {
+    border-color: #9ca3af;
+  }
+
+  /* Button Enhancements */
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 16px 32px;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+  }
+  
+  .btn-primary:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.9);
+    color: #374151;
+    border: 2px solid rgba(229, 231, 235, 0.8);
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .btn-secondary:hover {
+    background: white;
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  /* Progress Step Styles */
+  .step-active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .step-inactive {
+    background: rgba(255, 255, 255, 0.8);
+    color: #9ca3af;
+    border: 2px solid #e5e7eb;
+  }
+
+  /* Error message styles */
+  .error-message {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  /* Widget-specific styles */
+  .loader {
+    border-top-color: #667eea;
+    animation: spinner 0.7s linear infinite;
+  }
+  
+  @keyframes spinner {
+    to { transform: rotate(360deg); }
+  }
+  
+  .widget-tab {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-bottom: 2px solid transparent;
+    position: relative;
+  }
+  
+  .widget-tab.active {
+    border-bottom-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+  }
+  
+  .widget-tab:hover {
+    background: rgba(102, 126, 234, 0.05);
+  }
+  
+  .widget-tab-content {
+    transition: all 0.3s ease;
+  }
+  
+  .size-preset {
+    transition: all 0.2s ease;
+  }
+  
+  .size-preset:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  /* Enhanced scrollbar styling */
+  .widget-tab-content {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 #f8fafc;
+  }
+  
+  .widget-tab-content::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  .widget-tab-content::-webkit-scrollbar-track {
+    background: rgba(248, 250, 252, 0.8);
+    border-radius: 8px;
+  }
+  
+  .widget-tab-content::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #cbd5e1, #94a3b8);
+    border-radius: 8px;
+  }
+  
+  .widget-tab-content::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #94a3b8, #64748b);
+  }
+
+  /* Enhanced widget styling */
+  .grid-stack-item-content {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.12);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .grid-stack-item-content:hover {
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.2);
+    transform: translateY(-2px);
+  }
+
+  .widget-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px 16px 0 0;
+    cursor: move;
+  }
+
+  .widget-header input {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    color: white;
+    padding: 8px 12px;
+  }
+
+  .widget-header input::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  .widget-header input:focus {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    outline: none;
+  }
+
+  /* Enhanced form inputs */
+  textarea, select {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+  }
+
+  textarea:focus, select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+  }
+
+  /* Enhanced button styles */
+  .generate-sql-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2) !important;
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .generate-sql-btn:hover {
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+  }
+
+  .generate-preview-btn {
+    background: linear-gradient(135deg, #10b981, #3b82f6) !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  .generate-preview-btn:hover {
+    box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+    transform: translateY(-2px);
+  }
+
+  /* Enhanced canvas styling */
+  canvas {
+    border-radius: 12px;
+    background: white;
+  }
+
+  /* Range slider enhancements */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-track {
+    background: #e2e8f0;
+    height: 6px;
+    border-radius: 3px;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+</style>
+
+<!-- External Dependencies -->
+<link href="https://cdn.jsdelivr.net/npm/gridstack@9.2.0/dist/gridstack.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gridstack@9.2.0/dist/gridstack-all.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen relative" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 25%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="content-loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+        <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-400 rounded-full animate-spin pulse-dot mx-auto"></div>
+      </div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Creating your dashboard...</p>
+    </div>
+  </div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fas fa-tachometer-alt"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">Dashboard Builder</h1>
+          <p class="text-gray-600 mt-1">Create your personalized analytics dashboard</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Progress Steps -->
+  <nav aria-label="Dashboard creation progress" class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.1s">
+      <div class="flex items-center justify-center">
+        <div class="flex items-center space-x-8 max-w-2xl w-full">
+          <!-- Step 1 - Active -->
+          <div class="flex flex-col items-center">
+            <div class="w-12 h-12 rounded-full step-active flex items-center justify-center font-bold">
+              <i class="fas fa-check"></i>
+            </div>
+            <div class="mt-3 text-center">
+              <p class="font-semibold text-gray-800">Create Dashboard</p>
+              <p class="text-sm text-gray-600">Basic information</p>
+            </div>
+          </div>
+          
+          <!-- Progress Line -->
+          <div class="flex-1 h-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full"></div>
+          
+          <!-- Step 2 - Inactive -->
+          <div class="flex flex-col items-center">
+            <div id="step2-indicator" class="w-12 h-12 rounded-full step-inactive flex items-center justify-center font-bold">
+              2
+            </div>
+            <div class="mt-3 text-center">
+              <p class="font-semibold text-gray-500">Add Widgets</p>
+              <p class="text-sm text-gray-400">Customize layout</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Creation Form -->
+  <div class="mx-6 mt-6">
+    <form id="dashboardForm" class="glass-card max-w-4xl mx-auto p-8 rounded-2xl shadow-xl slide-in space-y-8" style="animation-delay: 0.2s" novalidate>
+      <!-- Form Header -->
+      <div class="text-center mb-8">
+        <div class="w-20 h-20 bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <i class="fas fa-plus text-3xl text-white"></i>
+        </div>
+        <h2 class="text-3xl font-bold text-gray-900 mb-3">Create Your Dashboard</h2>
+        <p class="text-gray-600 text-lg">Set up your personalized analytics dashboard in just a few steps</p>
+      </div>
+
+      <!-- Form Fields -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Dashboard Title -->
+        <div class="space-y-3">
+          <label for="title" class="block text-sm font-bold text-gray-700">
+            <i class="fas fa-tag text-purple-600 mr-2"></i>Dashboard Title <span class="text-red-600">*</span>
+          </label>
+          <input type="text" id="title" name="title" placeholder="e.g., Sales Performance Q4"
+            class="form-input w-full"
+            required aria-describedby="title-error" />
+          <p id="title-error" class="hidden error-message" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>Dashboard title is required
+          </p>
+        </div>
+
+        <!-- Description -->
+        <div class="space-y-3">
+          <label for="description" class="block text-sm font-bold text-gray-700">
+            <i class="fas fa-align-left text-blue-600 mr-2"></i>Description
+          </label>
+          <input type="text" id="description" name="description" placeholder="Brief description of your dashboard"
+            class="form-input w-full" />
+        </div>
+
+        <!-- Data Source Agent -->
+        <div class="lg:col-span-2 space-y-3">
+          <label for="agentSelect" class="block text-sm font-bold text-gray-700">
+            <i class="fas fa-database text-green-600 mr-2"></i>Data Source Agent <span class="text-red-600">*</span>
+          </label>
+          <select id="agentSelect" name="agentSelect"
+            class="form-input w-full cursor-pointer"
+            required aria-describedby="agent-error">
+            <option value="" disabled selected>Choose your data source agent</option>
+          </select>
+          <p id="agent-error" class="hidden error-message" role="alert">
+            <i class="fas fa-exclamation-circle mr-2"></i>Please select a data source agent
+          </p>
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <div class="flex justify-center pt-8">
+        <button type="submit" id="createDashboardBtn"
+          class="btn-primary text-lg px-12 py-4">
+          <i class="fas fa-rocket"></i>
+          <span>Create Dashboard</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Divider -->
+  <div class="mx-6 my-12">
+    <div class="max-w-4xl mx-auto border-t border-gray-200"></div>
+  </div>
+
+  <!-- Widget Section -->
+  <section id="widgetSection" class="mx-6 mb-8 hidden" aria-label="Add Widgets To Dashboard">
+    <!-- Widget Controls Header -->
+    <div class="glass-card rounded-2xl p-8 mb-6 slide-in">
+      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div class="flex items-center space-x-4">
+          <div class="w-16 h-16 bg-gradient-to-r from-green-500 to-blue-500 rounded-2xl flex items-center justify-center shadow-lg">
+            <i class="fas fa-th-large text-2xl text-white"></i>
+          </div>
+          <div>
+            <h3 class="text-2xl font-bold text-gray-900">Design Your Dashboard</h3>
+            <p class="text-gray-600 mt-1">Add widgets and arrange them as you like</p>
+          </div>
+        </div>
+        
+        <!-- Widget Controls -->
+        <div class="flex items-center space-x-4">
+          <button type="button" onclick="addWidget()" id="addWidgetBtn"
+            class="btn-primary"
+            aria-label="Add Widget">
+            <i class="fas fa-plus"></i>
+            <span>Add Widget</span>
+          </button>
+          
+          <!-- Layout Templates -->
+          <div class="relative">
+            <button type="button" id="layoutTemplatesBtn"
+              class="btn-secondary">
+              <i class="fas fa-layer-group"></i>
+              <span>Templates</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Grid Container with Helper Text -->
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div
+        id="widgetsContainer"
+        class="grid-stack min-h-[500px] relative rounded-xl border-2 border-dashed border-gray-300"
+        aria-live="polite"
+        aria-relevant="additions removals"
+        aria-atomic="true"
+        tabindex="0"
+      >
+        <!-- Empty State -->
+        <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+          <div class="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center mb-6">
+            <i class="fas fa-th-large text-4xl text-gray-400"></i>
+          </div>
+          <h4 class="text-xl font-semibold text-gray-700 mb-3">Your dashboard is empty</h4>
+          <p class="text-center max-w-md text-gray-600 mb-6">Click "Add Widget" to start building your dashboard. You can drag and resize widgets to customize your layout.</p>
+          <button onclick="addWidget()" class="btn-primary">
+            <i class="fas fa-plus"></i>
+            Add First Widget
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Toast Notification -->
+  <div id="toast"
+    class="fixed bottom-4 right-4 px-6 py-4 rounded-xl shadow-2xl bg-green-600 text-white opacity-0 transition-all duration-500 z-50 border border-green-400"
+    role="alert" aria-live="assertive" aria-atomic="true"></div>
+</div>
+
+<script>
+class DashboardBuilder {
+  constructor() {
+    this.form = document.getElementById('dashboardForm');
+    this.titleInput = document.getElementById('title');
+    this.descriptionInput = document.getElementById('description');
+    this.agentSelect = document.getElementById('agentSelect');
+    this.createButton = document.getElementById('createDashboardBtn');
+    this.currentDashboardId = null;
+    this.agentId = null;
+    this.grid = null;
+    this.chartInstances = {};
+    
+    this.setupEventListeners();
+    this.loadAgents();
+    this.initializeGrid();
+  }
+
+  initializeGrid() {
+    // Initialize GridStack with enhanced options
+    this.grid = GridStack.init({
+      float: true,
+      column: 12,
+      cellHeight: 80,
+      resizable: { handles: 'all' },
+      draggable: { handle: '.widget-header' },
+      disableOneColumnMode: true,
+      margin: 12,
+      animate: true,
+      acceptWidgets: true
+    });
+
+    // Setup auto-save for layout changes
+    this.grid.on('change', (event, items) => {
+      if (!items || !this.currentDashboardId) return;
+      
+      const layout = items.map(i => ({
+        id: i.el.getAttribute('gs-id'),
+        x: i.x, y: i.y, w: i.w, h: i.h
+      }));
+      
+      // Debounced save
+      clearTimeout(window.layoutSaveTimeout);
+      window.layoutSaveTimeout = setTimeout(() => {
+        this.saveLayoutUpdate(layout);
+      }, 1000);
+    });
+  }
+
+  setupEventListeners() {
+    // Form validation
+    this.titleInput.addEventListener('input', () => this.validateForm());
+    this.agentSelect.addEventListener('change', () => this.validateForm());
+    
+    // Form submission
+    this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+  }
+
+  validateForm() {
+    const title = this.titleInput.value.trim();
+    const agent = this.agentSelect.value;
+    
+    let isValid = true;
+    
+    // Validate title
+    const titleError = document.getElementById('title-error');
+    if (!title) {
+      titleError.classList.remove('hidden');
+      isValid = false;
+    } else {
+      titleError.classList.add('hidden');
+    }
+    
+    // Validate agent selection
+    const agentError = document.getElementById('agent-error');
+    if (!agent) {
+      agentError.classList.remove('hidden');
+      isValid = false;
+    } else {
+      agentError.classList.add('hidden');
+    }
+    
+    this.createButton.disabled = !isValid;
+    return isValid;
+  }
+
+  async loadAgents() {
+    try {
+      const response = await fetch('/api/agent/get-agents', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.agents && data.agents.length > 0) {
+        data.agents.forEach(agent => {
+          const option = document.createElement('option');
+          option.value = agent.id;
+          option.textContent = agent.name;
+          this.agentSelect.appendChild(option);
+        });
+      } else {
+        const option = document.createElement("option");
+        option.disabled = true;
+        option.textContent = "No agents available";
+        this.agentSelect.appendChild(option);
+      }
+    } catch (error) {
+      console.error('Failed to load agents:', error);
+      this.showToast('Failed to load data source agents', true);
+    }
+  }
+
+  async handleSubmit(e) {
+    e.preventDefault();
+    
+    this.clearFormErrors();
+    if (!this.validateForm()) return;
+    
+    this.showLoader();
+    
+    try {
+      this.createButton.disabled = true;
+      this.createButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Creating Dashboard...';
+      
+      const formData = new FormData(this.form);
+      const payload = {
+        title: formData.get('title').trim(),
+        description: formData.get('description').trim(),
+        agent_id: formData.get('agentSelect')
+      };
+      
+      const response = await fetch("/api/dashboard/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(payload),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        this.currentDashboardId = data.dashboard_id;
+        this.agentId = formData.get("agentSelect");
+        
+        this.disableDashboardForm();
+        this.enableStepTwo();
+        this.showWidgetSection();
+        
+        this.showToast("✅ Dashboard created successfully!");
+        
+        // Smooth scroll to widget section
+        setTimeout(() => {
+          document.getElementById("widgetSection").scrollIntoView({ 
+            behavior: "smooth",
+            block: "start"
+          });
+        }, 500);
+        
+      } else {
+        throw new Error(data.message || 'Failed to create dashboard');
+      }
+      
+    } catch (error) {
+      console.error('Error creating dashboard:', error);
+      this.showToast("❌ " + error.message, true);
+    } finally {
+      this.hideLoader();
+      this.createButton.disabled = false;
+      this.createButton.innerHTML = '<i class="fas fa-rocket mr-2"></i>Create Dashboard';
+    }
+  }
+
+  addWidget() {
+    if (!this.currentDashboardId) {
+      this.showToast("Please create a dashboard first.", false);
+      return;
+    }
+    
+    // Hide empty state
+    const emptyState = document.getElementById('emptyState');
+    if (emptyState) {
+      emptyState.style.display = 'none';
+    }
+    
+    const widgetId = `widget-${Date.now()}`;
+    const widgetContent = this.createWidgetHTML(widgetId);
+    
+    // Create widget element
+    const widgetDiv = document.createElement('div');
+    widgetDiv.setAttribute('gs-id', widgetId);
+    widgetDiv.setAttribute('gs-w', '6');
+    widgetDiv.setAttribute('gs-h', '8');
+    widgetDiv.setAttribute('gs-x', '0');
+    widgetDiv.setAttribute('gs-y', '0');
+    widgetDiv.setAttribute('tabindex', '0');
+    widgetDiv.setAttribute('aria-label', 'Widget: drag handle in header');
+    widgetDiv.classList.add('grid-stack-item');
+    widgetDiv.innerHTML = widgetContent;
+
+    this.grid.addWidget(widgetDiv);
+    this.setupWidgetInteractions(widgetDiv, widgetId);
+    
+    this.showToast("Widget added successfully! Configure it using the tabs.");
+  }
+
+  createWidgetHTML(widgetId) {
+    return `
+      <div class="grid-stack-item-content glass-card relative flex flex-col overflow-hidden hover:hover-lift smooth-transition">
+        <!-- Enhanced Widget Header -->
+        <div class="widget-header text-white p-4 flex items-center justify-between select-none">
+          <div class="flex items-center gap-3 flex-1">
+            <i class="fas fa-chart-bar text-lg opacity-75"></i>
+            <input type="text" name="title" placeholder="Enter widget title..." 
+              class="bg-transparent border-none focus:ring-0 text-white font-semibold placeholder-white placeholder-opacity-60 flex-1"
+              style="outline: none;" />
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Widget Settings -->
+            <button type="button" class="widget-settings-btn p-2 rounded-lg hover:bg-white hover:bg-opacity-20 smooth-transition" title="Widget Settings">
+              <i class="fas fa-cog"></i>
+            </button>
+            <!-- Remove Button -->
+            <button type="button" class="p-2 rounded-lg hover:bg-red-500 hover:bg-opacity-20 smooth-transition text-red-200 hover:text-white" 
+              onclick="confirmWidgetRemoval('${widgetId}')" title="Remove Widget">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Widget Content with Enhanced Tabs -->
+        <div class="flex-1 flex flex-col">
+          <!-- Tab Navigation -->
+          <div class="border-b border-gray-100 bg-gray-50">
+            <nav class="flex px-4" role="tablist">
+              <button class="widget-tab active px-6 py-3 text-sm font-semibold text-purple-600 border-b-2 border-purple-600 flex items-center gap-2" 
+                data-tab="query" role="tab">
+                <i class="fas fa-code"></i>
+                Query
+              </button>
+              <button class="widget-tab px-6 py-3 text-sm font-semibold text-gray-500 hover:text-gray-700 flex items-center gap-2" 
+                data-tab="design" role="tab">
+                <i class="fas fa-palette"></i>
+                Design
+              </button>
+              <button class="widget-tab px-6 py-3 text-sm font-semibold text-gray-500 hover:text-gray-700 flex items-center gap-2" 
+                data-tab="preview" role="tab">
+                <i class="fas fa-eye"></i>
+                Preview
+              </button>
+            </nav>
+          </div>
+
+          <!-- Tab Content -->
+          <div class="flex-1 overflow-auto">
+            <!-- Query Tab -->
+            <div class="widget-tab-content active p-6 space-y-6" data-content="query">
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <i class="fas fa-comment-alt text-blue-600"></i>
+                  Ask in Plain English
+                </label>
+                <textarea name="nl_query" placeholder="e.g., Show me sales by month for the last 6 months" rows="3"
+                  class="w-full p-4 border-2 border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 smooth-transition"></textarea>
+              </div>
+              
+              <button 
+                type="button" 
+                class="generate-sql-btn w-full text-white px-6 py-4 rounded-xl font-bold flex items-center justify-center gap-3 smooth-transition focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-300"
+                aria-label="Generate SQL from Natural Language Query"
+              >
+                <i class="fas fa-magic text-lg"></i>
+                <span class="text-lg">Generate SQL Query</span>
+              </button>
+
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                  <i class="fas fa-database text-green-600"></i>
+                  Generated SQL
+                </label>
+                <textarea name="sql_query" placeholder="SQL will be generated automatically..." rows="5"
+                  class="w-full p-4 border-2 border-gray-200 rounded-xl resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 smooth-transition font-mono text-sm bg-gray-50"></textarea>
+              </div>
+            </div>
+
+            <!-- Design Tab -->
+            <div class="widget-tab-content p-6 space-y-6 hidden" data-content="design">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <i class="fas fa-chart-pie text-purple-600"></i>
+                    Chart Type
+                  </label>
+                  <select name="chart_type" class="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 cursor-pointer">
+                    <option value="bar">📊 Bar Chart</option>
+                    <option value="line">📈 Line Chart</option>
+                    <option value="pie">🥧 Pie Chart</option>
+                    <option value="area">📊 Area Chart</option>
+                    <option value="table">📋 Table</option>
+                    <option value="summary">📄 Summary</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <i class="fas fa-refresh text-blue-600"></i>
+                    Refresh Rate
+                  </label>
+                  <select name="refresh_rate" class="w-full p-4 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 cursor-pointer">
+                    <option value="daily">📅 Daily</option>
+                    <option value="weekly">📅 Weekly</option>
+                    <option value="monthly">📅 Monthly</option>
+                    <option value="manual">🔄 Manual</option>
+                  </select>
+                </div>
+              </div>
+              
+              <!-- Enhanced Position Controls -->
+              <div>
+                <label class="block text-sm font-bold text-gray-700 mb-4 flex items-center gap-2">
+                  <i class="fas fa-expand-arrows-alt text-orange-600"></i>
+                  Position & Size
+                </label>
+                <div class="glass-card p-6 rounded-xl space-y-6">
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600 mb-2">Width (columns)</label>
+                      <input type="range" name="width_slider" min="1" max="12" value="6" 
+                        class="w-full accent-purple-500" onchange="updateWidgetSize('${widgetId}', 'width', this.value)">
+                      <div class="text-sm text-center text-gray-500 mt-2 font-medium">
+                        <span class="width-display">6</span> / 12 columns
+                      </div>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-600 mb-2">Height (rows)</label>
+                      <input type="range" name="height_slider" min="2" max="20" value="8" 
+                        class="w-full accent-purple-500" onchange="updateWidgetSize('${widgetId}', 'height', this.value)">
+                      <div class="text-sm text-center text-gray-500 mt-2 font-medium">
+                        <span class="height-display">8</span> rows
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Quick Size Presets -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-3">Quick Sizes</label>
+                    <div class="flex gap-3 flex-wrap">
+                      <button type="button" class="size-preset px-4 py-2 text-sm bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 smooth-transition font-medium" 
+                        onclick="applyWidgetSize('${widgetId}', 3, 6)">
+                        <i class="fas fa-compress mr-1"></i>Small
+                      </button>
+                      <button type="button" class="size-preset px-4 py-2 text-sm bg-blue-100 text-blue-700 rounded-full hover:bg-blue-200 smooth-transition font-medium" 
+                        onclick="applyWidgetSize('${widgetId}', 6, 8)">
+                        <i class="fas fa-square mr-1"></i>Medium
+                      </button>
+                      <button type="button" class="size-preset px-4 py-2 text-sm bg-green-100 text-green-700 rounded-full hover:bg-green-200 smooth-transition font-medium" 
+                        onclick="applyWidgetSize('${widgetId}', 8, 10)">
+                        <i class="fas fa-expand mr-1"></i>Large
+                      </button>
+                      <button type="button" class="size-preset px-4 py-2 text-sm bg-orange-100 text-orange-700 rounded-full hover:bg-orange-200 smooth-transition font-medium" 
+                        onclick="applyWidgetSize('${widgetId}', 12, 8)">
+                        <i class="fas fa-arrows-alt-h mr-1"></i>Full Width
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview Tab -->
+            <div class="widget-tab-content p-6 space-y-6 hidden" data-content="preview">
+              <div class="text-center">
+                <button type="button" class="generate-preview-btn text-white px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-3 mx-auto smooth-transition"
+                  aria-label="Show Preview Chart">
+                  <i class="fas fa-play text-lg"></i>
+                  <span class="text-lg">Generate Preview</span>
+                </button>
+              </div>
+              <div class="glass-card rounded-xl p-6">
+                <canvas id="preview-${widgetId}" class="w-full h-80"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Setup widget interactions
+  setupWidgetInteractions(widgetEl, widgetId) {
+    // Tab switching with enhanced animations
+    const tabs = widgetEl.querySelectorAll('.widget-tab');
+    const contents = widgetEl.querySelectorAll('.widget-tab-content');
+    
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+        
+        // Remove active classes with animation
+        tabs.forEach(t => {
+          t.classList.remove('active', 'text-purple-600', 'border-purple-600');
+          t.classList.add('text-gray-500');
+        });
+        contents.forEach(c => {
+          c.classList.add('hidden');
+          c.classList.remove('active');
+        });
+        
+        // Add active classes with animation
+        tab.classList.add('active', 'text-purple-600', 'border-purple-600');
+        tab.classList.remove('text-gray-500');
+        const targetContent = widgetEl.querySelector(`[data-content="${targetTab}"]`);
+        targetContent.classList.remove('hidden');
+        targetContent.classList.add('active');
+      });
+    });
+
+    this.setupWidgetEvents(widgetEl, widgetId);
+  }
+
+  // Setup widget events
+  setupWidgetEvents(widgetEl, widgetId) {
+    // Generate SQL button
+    widgetEl.querySelector(".generate-sql-btn").addEventListener("click", async () => {
+      const nlq = widgetEl.querySelector("[name='nl_query']").value.trim();
+      const sqlInput = widgetEl.querySelector("[name='sql_query']");
+      const chartSelect = widgetEl.querySelector("[name='chart_type']");
+
+      if (!nlq || !this.currentDashboardId) {
+        this.showToast("Please fill the Natural Language Query and create the dashboard first.", true);
+        return;
+      }
+
+      this.showLoader();
+      try {
+        const response = await fetch(`/api/query/graph/${this.agentId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ nlq })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.sql) {
+          sqlInput.value = data.sql;
+          chartSelect.value = data.chart_type || chartSelect.value;
+          
+          this.showToast("✅ SQL query generated successfully!");
+          
+          // Auto-switch to design tab
+          setTimeout(() => {
+            widgetEl.querySelector('[data-tab="design"]').click();
+          }, 1000);
+          
+        } else {
+          throw new Error(data.message || "Failed to generate SQL");
+        }
+      } catch (error) {
+        console.error('Error generating SQL:', error);
+        this.showToast("❌ " + error.message, true);
+      } finally {
+        this.hideLoader();
+      }
+    });
+
+    // Generate Preview button
+    widgetEl.querySelector(".generate-preview-btn").addEventListener("click", async () => {
+      const sql = widgetEl.querySelector("[name='sql_query']").value.trim();
+      const ctx = widgetEl.querySelector("canvas").getContext("2d");
+      const chartSelect = widgetEl.querySelector("[name='chart_type']");
+      const chartType = chartSelect.value || "bar";
+
+      if (!sql) {
+        this.showToast("Please generate or enter an SQL query first.", true);
+        return;
+      }
+
+      this.showLoader();
+      try {
+        const response = await fetch(`/api/query/graph/sqltograph/${this.agentId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ sql })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.chart_labels && data.chart_values) {
+          // Destroy existing chart
+          if (this.chartInstances[widgetId]) {
+            this.chartInstances[widgetId].destroy();
+          }
+
+          // Create new enhanced chart
+          this.chartInstances[widgetId] = new Chart(ctx, {
+            type: chartType,
+            data: {
+              labels: data.chart_labels,
+              datasets: [{
+                label: data.value_key || "Result",
+                data: data.chart_values,
+                backgroundColor: this.generateChartColors(data.chart_values.length),
+                borderColor: this.generateChartColors(data.chart_values.length, true),
+                borderWidth: 2,
+                borderRadius: chartType === 'bar' ? 8 : 0,
+                tension: chartType === 'line' ? 0.4 : 0
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: { 
+                  display: true,
+                  position: 'top',
+                  labels: {
+                    usePointStyle: true,
+                    padding: 20
+                  }
+                },
+                title: { 
+                  display: true, 
+                  text: "Preview from SQL",
+                  font: {
+                    size: 16,
+                    weight: 'bold'
+                  }
+                }
+              },
+              scales: chartType !== 'pie' && chartType !== 'doughnut' ? {
+                y: {
+                  beginAtZero: true,
+                  grid: {
+                    color: 'rgba(0, 0, 0, 0.05)'
+                  }
+                },
+                x: {
+                  grid: {
+                    display: false
+                  }
+                }
+              } : {}
+            }
+          });
+
+          this.showToast("✅ Preview generated successfully!");
+        } else {
+          throw new Error("No data returned for preview.");
+        }
+      } catch (error) {
+        console.error('Error generating preview:', error);
+        this.showToast("❌ Error fetching preview data.", true);
+      } finally {
+        this.hideLoader();
+      }
+    });
+  }
+
+  // Helper functions
+  generateChartColors(count, border = false) {
+    const baseColors = [
+      '#667eea', '#764ba2', '#f093fb', '#f5576c',
+      '#4facfe', '#00f2fe', '#43e97b', '#38f9d7',
+      '#ffecd2', '#fcb69f', '#a8edea', '#fed6e3'
+    ];
+    
+    const colors = [];
+    for (let i = 0; i < count; i++) {
+      const baseColor = baseColors[i % baseColors.length];
+      colors.push(border ? baseColor : baseColor + '80');
+    }
+    return colors;
+  }
+
+  updateWidgetSize(widgetId, dimension, value) {
+    const widgetEl = document.querySelector(`[gs-id="${widgetId}"]`);
+    if (!widgetEl) return;
+    
+    const display = widgetEl.querySelector(`.${dimension}-display`);
+    if (display) display.textContent = value;
+    
+    if (dimension === 'width') {
+      this.grid.update(widgetEl, {w: parseInt(value)});
+    } else if (dimension === 'height') {
+      this.grid.update(widgetEl, {h: parseInt(value)});
+    }
+  }
+
+  applyWidgetSize(widgetId, width, height) {
+    const widgetEl = document.querySelector(`[gs-id="${widgetId}"]`);
+    if (!widgetEl) return;
+    
+    // Update sliders and displays
+    const widthSlider = widgetEl.querySelector('[name="width_slider"]');
+    const heightSlider = widgetEl.querySelector('[name="height_slider"]');
+    const widthDisplay = widgetEl.querySelector('.width-display');
+    const heightDisplay = widgetEl.querySelector('.height-display');
+    
+    if (widthSlider) {
+      widthSlider.value = width;
+      widthDisplay.textContent = width;
+    }
+    if (heightSlider) {
+      heightSlider.value = height;
+      heightDisplay.textContent = height;
+    }
+    
+    // Update grid with animation
+    this.grid.update(widgetEl, {w: width, h: height});
+  }
+
+  showWidgetSection() {
+    document.getElementById('widgetSection').classList.remove('hidden');
+  }
+
+  updateProgressStep(step) {
+    const step2Indicator = document.getElementById('step2-indicator');
+    if (step === 2) {
+      step2Indicator.classList.remove('step-inactive');
+      step2Indicator.classList.add('step-active');
+      step2Indicator.innerHTML = '<i class="fas fa-check"></i>';
+    }
+  }
+
+  showLoader() {
+    document.getElementById('content-loader').classList.remove('hidden');
+  }
+
+  hideLoader() {
+    document.getElementById('content-loader').classList.add('hidden');
+  }
+
+  showToast(message, isError = false) {
+    const toast = document.getElementById("toast");
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="flex-shrink-0">
+          ${isError ? 
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/></svg>' :
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>'
+          }
+        </div>
+        <span class="font-medium">${message}</span>
+      </div>
+    `;
+    
+    toast.classList.remove("opacity-0", "bg-green-600", "bg-red-600");
+    toast.classList.add(
+      isError ? "bg-red-500" : "bg-green-500", 
+      "opacity-100",
+      "shadow-2xl",
+      "border",
+      isError ? "border-red-400" : "border-green-400"
+    );
+    
+    setTimeout(() => {
+      toast.classList.remove("opacity-100");
+      toast.classList.add("opacity-0");
+    }, 4000);
+  }
+
+  // Form validation and error handling
+  clearFormErrors() {
+    ["title-error", "agent-error"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.add("hidden");
+      }
+    });
+  }
+
+  disableDashboardForm() {
+    const form = document.getElementById("dashboardForm");
+    Array.from(form.elements).forEach(el => {
+      el.disabled = true;
+      el.classList.add("opacity-50", "cursor-not-allowed");
+    });
+  }
+
+  enableStepTwo() {
+    const step2 = document.getElementById("step2-indicator");
+    if (step2) {
+      step2.classList.remove("step-inactive");
+      step2.classList.add("step-active");
+      step2.innerHTML = '<i class="fas fa-check"></i>';
+    }
+    
+    // Add save button when step 2 is enabled
+    setTimeout(() => this.addSaveButton(), 500);
+  }
+
+  // Save functionality
+  async saveAllWidgets() {
+    if (!this.currentDashboardId) return;
+    
+    this.showLoader();
+    try {
+      const widgets = [];
+      const gridItems = document.querySelectorAll('.grid-stack-item');
+      
+      gridItems.forEach(item => {
+        const widgetId = item.getAttribute('gs-id');
+        const titleInput = item.querySelector('[name="title"]');
+        const nlQueryInput = item.querySelector('[name="nl_query"]');
+        const sqlQueryInput = item.querySelector('[name="sql_query"]');
+        const chartTypeSelect = item.querySelector('[name="chart_type"]');
+        const refreshRateSelect = item.querySelector('[name="refresh_rate"]');
+        
+        if (titleInput && nlQueryInput && sqlQueryInput) {
+          const widgetData = {
+            widget_id: widgetId,
+            widget_name: titleInput.value.trim() || 'Untitled Widget',
+            nl_query: nlQueryInput.value.trim(),
+            sql_query: sqlQueryInput.value.trim(),
+            chart_type: chartTypeSelect ? chartTypeSelect.value : 'bar',
+            refresh_rate: refreshRateSelect ? refreshRateSelect.value : 'daily',
+            position: {
+              x: parseInt(item.getAttribute('gs-x')) || 0,
+              y: parseInt(item.getAttribute('gs-y')) || 0,
+              w: parseInt(item.getAttribute('gs-w')) || 4,
+              h: parseInt(item.getAttribute('gs-h')) || 8
+            },
+            chart_data: this.chartInstances[widgetId] ? {
+              labels: this.chartInstances[widgetId].data.labels,
+              datasets: this.chartInstances[widgetId].data.datasets
+            } : null
+          };
+          widgets.push(widgetData);
+        }
+      });
+      
+      if (widgets.length === 0) {
+        this.showToast("No widgets to save.", true);
+        return;
+      }
+      
+      const response = await fetch(`/api/dashboard/${this.currentDashboardId}/widgets/bulk-save`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ widgets })
+      });
+      
+      if (response.ok) {
+        this.showToast('✅ All widgets saved successfully!');
+        
+        // Redirect to dashboard view after successful save
+        setTimeout(() => {
+          window.location.href = `/dashboard/view/${this.currentDashboardId}`;
+        }, 2000);
+        
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to save widgets');
+      }
+    } catch (error) {
+      console.error('Error saving widgets:', error);
+      this.showToast('❌ ' + error.message, true);
+    } finally {
+      this.hideLoader();
+    }
+  }
+
+  addSaveButton() {
+    const controlsDiv = document.querySelector('#widgetSection .flex.items-center.space-x-4');
+    if (controlsDiv && !document.getElementById('saveAllBtn')) {
+      const saveBtn = document.createElement('button');
+      saveBtn.id = 'saveAllBtn';
+      saveBtn.type = 'button';
+      saveBtn.onclick = () => this.saveAllWidgets();
+      saveBtn.className = 'btn-primary text-lg px-8 py-4';
+      saveBtn.innerHTML = `
+        <i class="fas fa-save text-lg"></i>
+        <span>Save Dashboard</span>
+      `;
+      controlsDiv.appendChild(saveBtn);
+    }
+  }
+
+  async saveLayoutUpdate(layout) {
+    if (!this.currentDashboardId) return;
+    
+    try {
+      const response = await fetch(`/api/dashboard/${this.currentDashboardId}/layout`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ layout })
+      });
+      
+      if (response.ok) {
+        console.log('Layout saved automatically');
+      }
+    } catch (error) {
+      console.error('Error saving layout:', error);
+    }
+  }
+}
+
+// Global helper functions
+function addWidget() {
+  if (window.dashboardBuilder) {
+    window.dashboardBuilder.addWidget();
+  }
+}
+
+function confirmWidgetRemoval(id) {
+  if (confirm("Are you sure you want to delete this widget?")) {
+    removeWidget(id);
+  }
+}
+
+function removeWidget(id) {
+  if (window.dashboardBuilder) {
+    const el = document.querySelector(`[gs-id="${id}"]`);
+    if (!el) return;
+    
+    // Destroy chart instance
+    if (window.dashboardBuilder.chartInstances[id]) {
+      window.dashboardBuilder.chartInstances[id].destroy();
+      delete window.dashboardBuilder.chartInstances[id];
+    }
+    
+    // Remove from grid
+    window.dashboardBuilder.grid.removeWidget(el, true);
+    
+    // Show empty state if no widgets remain
+    const remainingWidgets = document.querySelectorAll('.grid-stack-item').length;
+    if (remainingWidgets === 0) {
+      const emptyState = document.getElementById('emptyState');
+      if (emptyState) {
+        emptyState.style.display = 'flex';
+      }
+    }
+    
+    window.dashboardBuilder.showToast('Widget removed successfully');
+  }
+}
+
+function updateWidgetSize(widgetId, dimension, value) {
+  if (window.dashboardBuilder) {
+    window.dashboardBuilder.updateWidgetSize(widgetId, dimension, value);
+  }
+}
+
+function applyWidgetSize(widgetId, width, height) {
+  if (window.dashboardBuilder) {
+    window.dashboardBuilder.applyWidgetSize(widgetId, width, height);
+  }
+}
+
+// Initialize enhanced dashboard builder
+document.addEventListener('DOMContentLoaded', () => {
+  window.dashboardBuilder = new DashboardBuilder();
+});
+</script>
+
+{% endblock %}

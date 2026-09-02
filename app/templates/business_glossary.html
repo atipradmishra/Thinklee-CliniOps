@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block title %}Business Glossary{% endblock %}
+{% block content %}
+<div class="ml-64 p-6 bg-gray-50 min-h-screen">
+
+  <h1 class="text-2xl font-bold mb-4">Business Glossary</h1>
+  <p class="text-gray-600 mb-6">Add terms to your glossary by pasting them, uploading a CSV/Excel/JSON file, and assigning them to an AI Agent.</p>
+
+  <div class="flex space-x-4 border-b mb-4">
+    <button id="tab-bulk" class="pb-2 border-b-2 border-indigo-600 font-semibold" onclick="switchGlossaryTab('bulk')">Bulk Upload</button>
+  </div>
+
+  <!-- Bulk Upload -->
+  <div id="glossary-tab-bulk">
+    <form id="bulkGlossaryForm" onsubmit="submitGlossaryForm(event)">
+
+      <!-- AI Agent Selection -->
+      <div class="mb-4">
+        <label for="agentSelect" class="block font-semibold mb-1">Select AI Agent</label>
+        <select id="agentSelect" name="agentId" class="w-full px-3 py-2 border rounded-md" required>
+          <option value="">-- Select an Agent --</option>
+        </select>
+      </div>
+
+      <!-- Paste Terms -->
+      <div>
+        <label class="block font-semibold mb-1">Paste Multiple Terms</label>
+        <textarea name="bulkText" rows="6" placeholder="term,definition,category" class="w-full px-3 py-2 border rounded-md"></textarea>
+      </div>
+
+      <!-- Upload File -->
+      <div class="mt-4">
+        <label class="block font-semibold mb-1">Or Upload CSV/Excel/JSON</label>
+        <input type="file" name="file" accept=".csv,.xlsx,.xls,.json" onchange="handleFileUpload(event)" />
+        <p class="text-sm text-gray-500 mt-1">
+          <a href="/download-business-glossary-template" class="text-indigo-600 underline">Download sample CSV</a>
+        </p>
+      </div>
+
+      <!-- Preview -->
+      <div id="previewContainer" class="mt-4 hidden">
+        <h3 class="font-semibold mb-2">Preview</h3>
+        <table id="previewTable" class="w-full border-collapse border border-gray-300">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border p-2">Term</th>
+              <th class="border p-2">Definition</th>
+              <th class="border p-2">Category</th>
+              <th class="border p-2">Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- Submit -->
+      <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded mt-4">Upload</button>
+    </form>
+  </div>
+
+  <script>
+    // Load agents dynamically
+    async function loadAgents() {
+      try {
+        const res = await fetch("/api/agent/get-agents", {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.agents)) {
+          const select = document.getElementById("agentSelect");
+          data.agents.forEach(agent => {
+            const option = document.createElement("option");
+            option.value = agent.id;
+            option.textContent = agent.name;
+            select.appendChild(option);
+          });
+        }
+      } catch (err) {
+        console.error("❌ Error loading agents", err);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", loadAgents);
+
+    function switchGlossaryTab(tab) {
+      // For future tab handling
+    }
+
+    function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (file.name.endsWith(".csv")) {
+        Papa.parse(file, {
+          header: false,
+          skipEmptyLines: true,
+          complete: results => previewData(results.data)
+        });
+      } else if (file.name.endsWith(".json")) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const jsonData = JSON.parse(e.target.result);
+            const dataArray = jsonData.map(item => [item.term, item.definition, item.category || ""]);
+            previewData(dataArray);
+          } catch (err) {
+            alert("❌ Invalid JSON format");
+          }
+        };
+        reader.readAsText(file);
+      } else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const workbook = XLSX.read(e.target.result, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const sheetData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+          previewData(sheetData);
+        };
+        reader.readAsBinaryString(file);
+      } else {
+        alert("❌ Unsupported file format");
+      }
+    }
+
+    function previewData(rows) {
+      const tbody = document.querySelector("#previewTable tbody");
+      tbody.innerHTML = "";
+
+      rows.forEach(row => {
+        const term = row[0]?.trim();
+        const definition = row[1]?.trim();
+        const category = row[2]?.trim() || "";
+        let status = "✅ OK";
+
+        if (!term || !definition) {
+          status = "❌ Missing term or definition";
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td class="border p-2">${term || ""}</td>
+          <td class="border p-2">${definition || ""}</td>
+          <td class="border p-2">${category}</td>
+          <td class="border p-2">${status}</td>
+        `;
+        if (status.startsWith("❌")) tr.classList.add("bg-red-100");
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById("previewContainer").classList.remove("hidden");
+    }
+
+    async function submitGlossaryForm(event) {
+      event.preventDefault();
+
+      const previewErrors = document.querySelectorAll("#previewTable tbody tr.bg-red-100").length;
+      if (previewErrors > 0) {
+        alert("Please fix errors before uploading.");
+        return;
+      }
+
+      const form = document.getElementById("bulkGlossaryForm");
+      const formData = new FormData(form);
+
+      if (!formData.get("agentId")) {
+        alert("Please select an AI agent.");
+        return;
+      }
+
+      const res = await fetch("/api/agent/glossary/bulk-upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ ${data.message}`);
+        form.reset();
+        document.getElementById("previewContainer").classList.add("hidden");
+      } else {
+        alert("❌ " + (data.error || "Upload failed"));
+      }
+    }
+  </script>
+</div>
+{% endblock %}

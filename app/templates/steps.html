@@ -1,0 +1,442 @@
+{% extends 'base.html' %}
+{% block title %}Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  /* Keep all your existing CSS styles here */
+  .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      display: block !important; /* Ensure all cards are visible */
+      opacity: 1 !important;     /* Ensure all cards are opaque */
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .progress-glow {
+    box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
+  }
+  
+  .step-complete {
+    background: linear-gradient(135deg, #10b981, #059669);
+  }
+  
+  .step-current {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+  }
+  
+  .step-pending {
+    background: linear-gradient(135deg, #e5e7eb, #d1d5db);
+  }
+  
+  .pulse-ring {
+    animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  }
+  
+  @keyframes pulse-ring {
+    0% { transform: scale(0.33); }
+    40%, 50% { opacity: 0; }
+    100% { opacity: 0; transform: scale(1.33); }
+  }
+
+  .loading {
+    opacity: 0.6;
+    pointer-events: none;
+  }
+</style>
+
+<!-- Loading Indicator -->
+<div id="loadingIndicator" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50" style="display: none;">
+  <div class="text-center">
+    <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-purple-600"></div>
+    <p class="mt-4 text-gray-600">Loading dashboard data...</p>
+  </div>
+</div>
+
+<!-- Main Dashboard -->
+<div class="ml-64 min-h-screen" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  <!-- Header Section -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <div class="relative">
+          <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold shadow-lg">
+            T
+          </div>
+          <div class="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+            <i class="fas fa-check text-white text-xs"></i>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">Welcome to Your Thinklee</h1>
+          <p class="text-gray-600 mt-1">AI-Powered Business Intelligence at your fingertips</p>
+          <p class="text-xs text-gray-500 mt-1">Last updated: <span id="lastUpdated">Loading...</span></p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button id="replayTour" class="tour-launch" title="Replay the guided walkthrough">
+          <i class="fas fa-play"></i>
+          <span>Replay tour</span>
+        </button>
+        <div class="flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+          <i class="fas fa-user-circle text-purple-600"></i>
+          <span class="font-medium" id="userName">User Dashboard</span>
+        </div>
+        <button id="refreshData" class="flex items-center space-x-2 text-purple-600 hover:text-purple-800 font-semibold smooth-transition">
+          <i class="fas fa-sync-alt"></i>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Progress Section -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+            <i class="fas fa-rocket text-purple-600 mr-3"></i>
+            Your Setup Journey
+          </h2>
+          <p class="text-gray-600 mt-1">Complete these steps to unlock the full power of Thinklee</p>
+        </div>
+        <div class="text-right">
+          <div class="text-3xl font-bold text-purple-600" id="progressPercentage">0%</div>
+          <div class="text-sm text-gray-500">Complete</div>
+        </div>
+      </div>
+      
+      <!-- Progress Bar -->
+      <div class="relative">
+        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+          <div id="progressBar" 
+               class="h-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full smooth-transition progress-glow relative overflow-hidden" 
+               style="width: 0%">
+            <div class="absolute inset-0 bg-white opacity-30 animate-pulse"></div>
+          </div>
+        </div>
+        <div class="flex justify-between mt-3 text-sm">
+          <span class="text-green-600 font-semibold flex items-center">
+            <i class="fas fa-check-circle mr-1"></i>Started
+          </span>
+          <span class="text-purple-600 font-semibold flex items-center">
+            <i class="fas fa-clock mr-1"></i>In Progress
+          </span>
+          <span class="text-gray-400 flex items-center">
+            <i class="fas fa-trophy mr-1"></i>Complete
+          </span>
+        </div>
+      </div>
+      
+      <!-- Quick Stats -->
+      <div class="grid grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-200">
+        <div class="text-center">
+          <div class="text-2xl font-bold text-green-600" id="completedSteps">0</div>
+          <div class="text-sm text-gray-600">Steps Completed</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-purple-600" id="inProgressSteps">0</div>
+          <div class="text-sm text-gray-600">In Progress</div>
+        </div>
+        <div class="text-center">
+          <div class="text-2xl font-bold text-gray-400" id="remainingSteps">0</div>
+          <div class="text-sm text-gray-600">Remaining</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Steps Grid -->
+  <div class="mx-6 mt-6 pb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="stepsContainer">
+      <!-- Steps will be populated dynamically -->
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="mx-6 pb-8">
+    <div class="glass-card rounded-2xl p-8 slide-in" style="animation-delay: 0.7s">
+      <h3 class="text-xl font-bold text-gray-800 mb-6 flex items-center">
+        <i class="fas fa-bolt text-yellow-500 mr-3"></i>
+        Quick Actions
+      </h3>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <button onclick="document.location='/data-management'" 
+                class="flex items-center space-x-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl smooth-transition">
+          <i class="fas fa-database text-blue-600 text-xl"></i>
+          <div class="text-left">
+            <div class="font-semibold text-gray-800">Manage Data</div>
+            <div class="text-sm text-gray-600">View connections</div>
+          </div>
+        </button>
+        
+        <button onclick="document.location='/agent-management'" 
+                class="flex items-center space-x-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl smooth-transition">
+          <i class="fas fa-robot text-purple-600 text-xl"></i>
+          <div class="text-left">
+            <div class="font-semibold text-gray-800">AI Agents</div>
+            <div class="text-sm text-gray-600">Configure settings</div>
+          </div>
+        </button>
+        
+        <button onclick="document.location='/help'" 
+                class="flex items-center space-x-3 p-4 bg-green-50 hover:bg-green-100 rounded-xl smooth-transition">
+          <i class="fas fa-question-circle text-green-600 text-xl"></i>
+          <div class="text-left">
+            <div class="font-semibold text-gray-800">Get Help</div>
+            <div class="text-sm text-gray-600">Documentation</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  class StepsManager {
+    constructor() {
+      // Real progress for this organization, replacing the sample payload
+      // that /api/progress-data used to return.
+      this.apiUrl = '/api/profile/setup-progress';
+      this.init();
+    }
+
+    async init() {
+      await this.loadDashboardData();
+      this.setupEventListeners();
+    }
+
+    setupEventListeners() {
+      document.getElementById('refreshData').addEventListener('click', () => {
+        this.loadDashboardData(true);
+      });
+
+      document.getElementById('replayTour').addEventListener('click', () => {
+        if (window.ThinkleeTour) window.ThinkleeTour.start();
+      });
+
+      this.addCardHoverEffects();
+    }
+
+    async loadDashboardData(showLoading = true) {
+      if (showLoading) {
+        this.showLoading();
+      }
+
+      try {
+        const response = await fetch(this.apiUrl, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        });
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        this.updateDashboard(data);
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        this.showError('Failed to load setup progress. Please try again.');
+      } finally {
+        if (showLoading) {
+          this.hideLoading();
+        }
+      }
+    }
+
+    updateDashboard(data) {
+      // Update user info
+      if (data.user) {
+        document.getElementById('userName').textContent = data.user.name || 'User Dashboard';
+      }
+
+      // Update progress
+      if (data.progress) {
+        this.updateProgress(data.progress);
+      }
+
+      // Update steps
+      if (data.steps) {
+        this.updateSteps(data.steps);
+      }
+
+      // Update last updated time
+      document.getElementById('lastUpdated').textContent = data.last_updated || 'Unknown';
+    }
+
+    updateProgress(progress) {
+      const progressBar = document.getElementById('progressBar');
+      const progressPercentage = document.getElementById('progressPercentage');
+      const completedSteps = document.getElementById('completedSteps');
+      const inProgressSteps = document.getElementById('inProgressSteps');
+      const remainingSteps = document.getElementById('remainingSteps');
+
+      // Animate progress bar
+      setTimeout(() => {
+        progressBar.style.width = `${progress.percentage}%`;
+        progressPercentage.textContent = `${progress.percentage}%`;
+      }, 100);
+
+      // Update stats
+      completedSteps.textContent = progress.completed_steps || 0;
+      inProgressSteps.textContent = progress.in_progress_steps || 0;
+      remainingSteps.textContent = progress.remaining_steps || 0;
+    }
+
+    updateSteps(steps) {
+      const container = document.getElementById('stepsContainer');
+      container.innerHTML = '';
+
+      steps.forEach((step, index) => {
+        const stepCard = this.createStepCard(step, index);
+        container.appendChild(stepCard);
+      });
+
+      // Re-apply animations
+      this.staggerAnimations();
+    }
+
+    createStepCard(step, index) {
+        const div = document.createElement('div');
+        div.className = `glass-card rounded-2xl p-6 smooth-transition hover:hover-lift slide-in border-l-4`;
+        div.style.animationDelay = `${index * 0.1}s`;
+
+        let statusClass, borderClass, badgeClass, buttonClass, iconContent;
+        
+        switch (step.status) {
+            case 'completed':
+                statusClass = 'step-complete';
+                borderClass = 'border-green-500';
+                badgeClass = 'bg-green-100 text-green-800';
+                buttonClass = 'bg-green-50 text-green-700 hover:bg-green-100';
+                iconContent = '<i class="fas fa-check"></i>';
+                break;
+            case 'current':
+                statusClass = 'step-current';
+                borderClass = 'border-purple-500';
+                badgeClass = 'bg-purple-100 text-purple-800';
+                buttonClass = 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:from-purple-700 hover:to-blue-700 shadow-lg';
+                iconContent = step.id;
+                div.classList.add('ring-2', 'ring-purple-200');
+                break;
+            default:
+                statusClass = 'step-pending';
+                borderClass = 'border-gray-300';
+                badgeClass = 'bg-gray-100 text-gray-600';
+                buttonClass = 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+                iconContent = step.id;
+        }
+
+        div.classList.add(borderClass);
+
+        div.innerHTML = `
+            <div class="flex items-start justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 ${statusClass} rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg${step.status === 'current' ? ' relative' : ''}">
+                        ${iconContent}
+                        ${step.status === 'current' ? '<div class="absolute inset-0 rounded-xl bg-purple-400 opacity-50 pulse-ring"></div>' : ''}
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-800">${step.title}</h3>
+                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${badgeClass}">
+                            <i class="fas fa-${step.status === 'completed' ? 'check-circle' : step.status === 'current' ? 'clock' : 'circle-dot'} mr-1"></i>
+                            ${step.status === 'completed' ? 'Completed' : step.status === 'current' ? 'Next Up' : 'Not started'}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="text-gray-600 text-sm mb-4 leading-relaxed">
+                ${step.description}
+            </p>
+            
+            <div class="flex items-center justify-between">
+                <div class="flex items-center text-xs font-medium ${step.status === 'completed' ? 'text-green-600' : step.status === 'current' ? 'text-purple-600' : 'text-gray-500'}">
+                    <i class="${step.icon} mr-2"></i>
+                    ${step.detail || (step.status === 'completed' ? 'Completed' : 'Not started')}
+                </div>
+                <button onclick="${step.action_url !== '#' ? `document.location='${step.action_url}'` : 'return false'}" 
+                        class="px-4 py-2 ${buttonClass} rounded-lg smooth-transition font-medium text-sm">
+                    <i class="fas fa-${step.status === 'completed' ? 'cog' : 'arrow-right'} mr-2"></i>
+                    ${step.action_text}
+                </button>
+            </div>
+        `;
+
+        return div;
+    }
+
+    showLoading() {
+      document.getElementById('loadingIndicator').style.display = 'flex';
+    }
+
+    hideLoading() {
+      document.getElementById('loadingIndicator').style.display = 'none';
+    }
+
+    showError(message) {
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-50';
+      toast.textContent = message;
+      document.body.appendChild(toast);
+
+      setTimeout(() => {
+        toast.remove();
+      }, 5000);
+    }
+
+    addCardHoverEffects() {
+      const cards = document.querySelectorAll('.glass-card');
+      cards.forEach(card => {
+        card.addEventListener('mouseenter', function() {
+          this.style.transform = 'translateY(-4px)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+          this.style.transform = 'translateY(0)';
+        });
+      });
+    }
+
+    staggerAnimations() {
+      const stepCards = document.querySelectorAll('.slide-in');
+      stepCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+      });
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    new StepsManager();
+  });
+</script>
+
+{% endblock %}

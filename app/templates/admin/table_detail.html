@@ -1,0 +1,69 @@
+{% extends "admin/base.html" %}
+{% block title %}Table: {{ table.table_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Table Details: {{ table.table_name }}</h1>
+</div>
+<div class="row mb-4">
+    <div class="bg-white rounded-2xl shadow-md p-6">
+        <!-- Header -->
+        <p class="text-gray-600 mb-6">Created At: {{ table.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+
+        <!-- Schema Section -->
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">Schema</h2>
+        <div class="overflow-x-auto bg-gray-50 rounded-lg border border-gray-200 p-4 mb-6">
+            <table class="min-w-full text-left text-sm">
+                <thead>
+                    <tr>
+                        <th class="px-4 py-2 border-b font-medium text-gray-600">Column</th>
+                        <th class="px-4 py-2 border-b font-medium text-gray-600">Type</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for col, dtype in table.schema.items() %}
+                    <tr>
+                        <td class="px-4 py-2 border-b">{{ col }}</td>
+                        <td class="px-4 py-2 border-b text-gray-500">{{ dtype }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Related Files -->
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">Uploaded Files</h2>
+        {% if table.files %}
+        <ul class="list-disc list-inside text-gray-600 mb-6">
+            {% for file in table.files %}
+            <li>{{ file.original_filename }} (Uploaded: {{ file.uploaded_at.strftime('%Y-%m-%d') }})</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-500 mb-6">No files linked to this table.</p>
+        {% endif %}
+
+        <!-- Related Agents -->
+        <h2 class="text-xl font-semibold text-gray-700 mb-2">Mapped Agents</h2>
+        {% if table.agentmap %}
+        <ul class="list-disc list-inside text-gray-600">
+            {% for mapping in table.agentmap %}
+            <li>Agent ID: {{ mapping.agent_id }},   
+                Agent Name: {{mapping.agent.name}}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-gray-500">No agents mapped to this table.</p>
+        {% endif %}
+
+        <!-- Back Button -->
+        <div class="mt-6">
+            <a href="{{ url_for('admin_frontend.tables') }}"
+               class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                ← Back to Tables
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

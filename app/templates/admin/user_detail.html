@@ -1,0 +1,147 @@
+{% extends "admin/base.html" %}
+
+{% block title %}User Details - {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">User Details - {{ user.username }}</h1>
+    <div>
+        <a href="{{ url_for('admin_frontend.edit_user', user_id=user.id) }}" class="btn btn-primary me-2">
+            <i class="fas fa-edit"></i> Edit User
+        </a>
+        <a href="{{ url_for('admin_frontend.users') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Users
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Basic Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>ID:</strong></td>
+                        <td>{{ user.id }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Username:</strong></td>
+                        <td>{{ user.username }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Email:</strong></td>
+                        <td>{{ user.email }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            {% if user.status %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Created:</strong></td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Token Information</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Token Quota:</strong></td>
+                        <td>{{ "{:,}".format(user.token_quota) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Tokens Used Today:</strong></td>
+                        <td>{{ "{:,}".format(user.tokens_used_today) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Remaining Tokens:</strong></td>
+                        <td>{{ "{:,}".format(user.token_quota - user.tokens_used_today) }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Usage Percentage:</strong></td>
+                        <td>
+                            {% set usage_percent = (user.tokens_used_today / user.token_quota * 100) if user.token_quota > 0 else 0 %}
+                            <div class="progress" style="width: 200px;">
+                                <div class="progress-bar {{ 'bg-success' if usage_percent < 50 else ('bg-warning' if usage_percent < 80 else 'bg-danger') }}" 
+                                     style="width: {{ usage_percent }}%">
+                                    {{ "%.1f"|format(usage_percent) }}%
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Trial Expires:</strong></td>
+                        <td>
+                            {% if user.trial_expires_at %}
+                                {{ user.trial_expires_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                            {% else %}
+                                <span class="text-muted">No trial period</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Roles & Permissions</h5>
+            </div>
+            <div class="card-body">
+                {% if user.roles %}
+                    {% for role in user.roles %}
+                        <span class="badge bg-primary me-2 mb-2 p-2">
+                            <i class="fas fa-user-tag"></i> {{ role.name|title }}
+                            {% if role.description %}
+                                <br><small>{{ role.description }}</small>
+                            {% endif %}
+                        </span>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No roles assigned</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5>Related Data</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>Agents:</strong></td>
+                        <td>{{ user.agents|length }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Dashboards:</strong></td>
+                        <td>{{ user.dashboards|length }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

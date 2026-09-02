@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% block title %}Graph Query{% endblock %}
+
+{% block content %}
+
+<!-- Loader Overlay -->
+<div id="pageLoader" class="fixed inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+  <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-blue-600"></div>
+</div>
+
+<!-- Main Page Content -->
+<div class="ml-64 px-6 py-8 bg-gray-50 min-h-screen space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <h2 class="text-3xl font-bold text-gray-800 flex items-center space-x-2">
+      <span>🧠</span><span>Graph Query</span>
+    </h2>
+    <div class="text-sm text-gray-600">👤 Logged in as <strong>{{ session.username }}</strong> ({{ session.role }})</div>
+  </div>
+
+  <!-- Step Instructions -->
+  <div class="bg-white p-6 rounded-xl shadow text-sm text-gray-700 leading-6">
+    <h2 class="text-base font-semibold mb-2">🚀 How to Use Graph Query Copilot:</h2>
+    <ol class="list-decimal ml-6 space-y-1">
+      <li>Select an <strong>AI Agent</strong> from the dropdown menu.</li>
+      <li>Enter your natural language <strong>graph query</strong>.</li>
+      <li>Click <strong>"Generate"</strong> to visualize the data.</li>
+    </ol>
+  </div>
+
+  <!-- Query Form -->
+  <div class="bg-white p-6 rounded-xl shadow">
+    <form id="graphForm" class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+      <div>
+        <label for="agentSelect" class="block text-sm font-medium text-gray-700 mb-1">Select AI Agent</label>
+        <select id="agentSelect" required
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500">
+          <option disabled selected>-- Choose Agent --</option>
+        </select>
+      </div>
+
+      <div class="md:col-span-2">
+        <label for="graph_query" class="block text-sm font-medium text-gray-700 mb-1">Your Query</label>
+        <input type="text" name="graph_query" id="graph_query"
+              placeholder="e.g., Total complaints by site"
+              class="w-full border border-gray-300 px-3 py-2 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+              required>
+      </div>
+
+      <div class="md:col-span-3">
+        <button type="submit"
+                class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm shadow">
+          🔍 Generate
+        </button>
+      </div>
+    </form>
+  </div>
+
+
+  <!-- Chart Section -->
+  <div id="chartSection" class="hidden bg-white p-6 rounded-xl shadow fade-in">
+    <div class="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+      📊 Visualization
+    </div>
+    <div class="mb-4 flex items-center justify-between">
+      <div id="drillPathDisplay" class="text-sm text-gray-600 font-medium"></div>
+      <button id="backDrillBtn"
+              class="hidden bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm"
+              onclick="handleDrillBack()">⬅️ Back</button>
+    </div>
+    <div class="relative h-[400px]">
+      <canvas id="graphChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toastify CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+<!-- Chart + Logic -->
+<script>
+  const agentSelect = document.getElementById('agentSelect');
+  const form = document.getElementById('graphForm');
+  const chartSection = document.getElementById('chartSection');
+  const loader = document.getElementById('pageLoader');
+  let currentChart = null;
+
+  function showToast(msg, type = "success") {
+    Toastify({
+      text: msg,
+      duration: 3000,
+      gravity: "top",
+      position: "right",
+      backgroundColor: type === "success" ? "#16a34a" : "#dc2626",
+      stopOnFocus: true,
+    }).showToast();
+  }
+
+  function showLoader() {
+    loader.classList.remove("hidden");
+  }
+
+  function hideLoader() {
+    loader.classList.add("hidden");
+  }
+
+  async function loadAgents() {
+    showLoader();
+    try {
+      const res = await fetch('/api/agent/get-agents', {
+        method: 'GET',
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      const agents = await res.json();
+      agents.agents.forEach(agent => {
+        const opt = document.createElement('option');
+        opt.value = agent.id;
+        opt.textContent = agent.name;
+        agentSelect.appendChild(opt);
+      });
+      showToast("Agents loaded successfully");
+    } catch (error) {
+      console.error("Agent load failed:", error);
+      showToast("Failed to load agents", "error");
+    } finally {
+      hideLoader();
+    }
+  }
+
+  async function fetchChartData(agentId, query) {
+    try {
+      const res = await fetch(`/api/query/graph/${agentId}`, {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ agent_id: agentId, graph_query: query })
+      });
+
+      return await res.json();
+    } catch (error) {
+      console.error("Chart fetch error:", error);
+      showToast("Error fetching chart data", "error");
+    }
+  }
+
+  function renderChart(data, agentId) {
+    const ctx = document.getElementById("graphChart").getContext("2d");
+    if (currentChart) currentChart.destroy();
+
+    currentChart = new Chart(ctx, {
+      type: data.chart_type,
+      data: {
+        labels: data.chart_labels,
+        datasets: [{
+          label: "Count",
+          data: data.chart_values,
+          backgroundColor: data.chart_colors,
+          borderColor: data.chart_colors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: data.value_key || 'X-Axis',
+              font: {
+                size: 14,
+                weight: 'bold'
+              }
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: data.label_key || 'Y-Axis',
+              font: {
+                size: 14,
+                weight: 'bold'
+              }
+            }
+          }
+        },
+        onClick: async (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const label = data.chart_labels[index];
+
+            try {
+              showLoader();
+              const response = await fetch(`/api/query/graph/drilldown`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify({
+                  agent_id: agentId,
+                  original_query: baseQuery,
+                  drill_label: label,
+                  drill_path: drillPath
+                })
+              });
+
+              const result = await response.json();
+              hideLoader();
+
+              if (result.chart_type) {
+                drillPath = result.drill_path || [...drillPath, label]; // fallback
+                renderChart(result, agentId);
+                updateDrillUI();
+                showToast(`Drilled into ${label}`);
+              } else if (result.message) {
+                showToast(result.message);
+              } else {
+                showToast('No drilldown data available', 'error');
+              }
+            } catch (error) {
+              console.error(error);
+              showToast('Drilldown failed', 'error');
+              hideLoader();
+            }
+          }
+        }
+      }
+    });
+
+    updateDrillUI();
+  }
+
+
+  let drillPath = [];
+  let baseQuery = "";
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const agentId = agentSelect.value;
+    const query = document.getElementById('graph_query').value;
+
+    if (!agentId || !query) {
+      showToast("Please select an agent and enter a query", "error");
+      return;
+    }
+
+    drillPath = [];
+    baseQuery = query;
+
+    showLoader();
+    const chartData = await fetchChartData(agentId, query);
+    hideLoader();
+
+    if (chartData && chartData.chart_type) {
+      renderChart(chartData, agentId);
+      chartSection.classList.remove('hidden');
+      showToast("Chart generated successfully");
+    } else {
+      showToast("No chart data returned", "error");
+      chartSection.classList.add('hidden');
+    }
+  });
+
+  function updateDrillUI() {
+    const drillDisplay = document.getElementById("drillPathDisplay");
+    const backBtn = document.getElementById("backDrillBtn");
+
+    if (drillPath.length > 0) {
+      drillDisplay.textContent = "🔎 Drill Path: " + drillPath.join(" > ");
+      backBtn.classList.remove("hidden");
+    } else {
+      drillDisplay.textContent = "";
+      backBtn.classList.add("hidden");
+    }
+  }
+
+  async function handleDrillBack() {
+    if (drillPath.length === 0) return;
+
+    drillPath.pop();
+
+    try {
+      showLoader();
+      const response = await fetch(`/api/query/graph/drilldown`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          agent_id: agentSelect.value,
+          original_query: baseQuery,
+          drill_label: drillPath[drillPath.length - 1] || "",
+          drill_path: drillPath
+        })
+      });
+
+      const result = await response.json();
+      hideLoader();
+
+      if (result.chart_type) {
+        renderChart(result, agentSelect.value);
+        showToast("Returned to previous drill level");
+      } else {
+        showToast(result.message || "No data", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showToast("Error stepping back", "error");
+      hideLoader();
+    }
+  }
+
+
+  document.addEventListener('DOMContentLoaded', loadAgents);
+</script>
+
+<style>
+  .fade-in {
+    animation: fadeIn 0.4s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+{% endblock %}

@@ -1,0 +1,1108 @@
+<style>
+    /* Modern Sidebar Styles */
+    #sidebar {
+        background: linear-gradient(180deg, #0f1419 0%, #1a1f36 50%, #0d1117 100%);
+        backdrop-filter: blur(24px);
+        border-right: 1px solid rgba(99, 102, 241, 0.15);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Logo Container */
+    .logo-container {
+        padding: 0px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.08));
+        position: relative;
+        overflow: hidden;
+    }
+
+    .logo-container::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transition: left 0.6s;
+    }
+
+    .logo-container:hover::before {
+        left: 100%;
+    }
+
+    .logo-container img {
+        height: 6vmax;
+        width: auto;
+        filter: brightness(1.3) contrast(1.1);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        z-index: 1;
+        drop-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .logo-container:hover img {
+        transform: scale(1.08) rotate(2deg);
+        filter: brightness(1.5) contrast(1.2);
+    }
+
+    /* User Welcome Section */
+    .user-welcome {
+        padding: 24px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(139, 92, 246, 0.12));
+        border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+        margin: 0;
+        position: relative;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .user-avatar {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: white;
+        font-size: 18px;
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .user-avatar::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        transform: rotate(45deg);
+        transition: transform 0.6s;
+    }
+
+    .user-avatar:hover {
+        transform: scale(1.05);
+        box-shadow: 0 12px 28px rgba(59, 130, 246, 0.5);
+    }
+
+    .user-avatar:hover::before {
+        transform: rotate(45deg) translate(50%, 50%);
+    }
+
+    .user-details h4 {
+        color: #f8fafc;
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0;
+        letter-spacing: -0.025em;
+    }
+
+    .user-details p {
+        color: #94a3b8;
+        font-size: 13px;
+        margin: 4px 0 0 0;
+        font-weight: 500;
+    }
+
+    /* Navigation Styles */
+    .nav-container {
+        padding: 24px 16px 120px;
+        height: calc(100vh - 220px);
+        overflow-y: auto;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
+    }
+
+    .nav-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .nav-container::-webkit-scrollbar-track {
+        background: rgba(15, 20, 25, 0.3);
+        border-radius: 3px;
+    }
+
+    .nav-container::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+        border-radius: 3px;
+    }
+
+    .nav-container::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #2563eb, #7c3aed);
+    }
+
+    .nav-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .nav-list li {
+        margin-bottom: 8px;
+    }
+
+    /* Navigation Items */
+    .nav-item {
+        display: flex;
+        align-items: center;
+        padding: 14px 18px;
+        color: #cbd5e1;
+        text-decoration: none;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        border: 1px solid transparent;
+    }
+
+    .nav-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+        transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 0;
+    }
+
+    .nav-item:hover::before {
+        left: 0;
+    }
+
+    .nav-item:hover {
+        color: #ffffff;
+        transform: translateX(8px) scale(1.02);
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+    }
+
+    .nav-item.active {
+        color: #ffffff;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+        box-shadow: 0 12px 32px rgba(59, 130, 246, 0.4);
+        transform: translateX(4px);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-item.active::before {
+        display: none;
+    }
+
+    .nav-item .icon {
+        width: 24px;
+        height: 24px;
+        margin-right: 16px;
+        position: relative;
+        z-index: 1;
+        transition: all 0.3s ease;
+        flex-shrink: 0;
+    }
+
+    .nav-item:hover .icon {
+        transform: scale(1.1);
+    }
+
+    .nav-item .label {
+        flex: 1;
+        position: relative;
+        z-index: 1;
+        letter-spacing: -0.025em;
+    }
+
+    /* Section Headers */
+    .nav-section-header {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        padding: 24px 18px 12px;
+        margin-top: 16px;
+        position: relative;
+    }
+
+    .nav-section-header:first-child {
+        margin-top: 0;
+    }
+
+    .nav-section-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 18px;
+        right: 18px;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+    }
+
+    /* Dashboard Dropdown Styles */
+    .dashboard-dropdown {
+        position: relative;
+        margin-bottom: 8px;
+    }
+
+    .dashboard-dropdown-trigger {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        background: transparent;
+        border: 1px solid transparent;
+        color: #cbd5e1;
+        text-align: left;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 600;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-dropdown-trigger::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
+        transition: left 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 0;
+    }
+
+    .dashboard-dropdown-trigger:hover::before {
+        left: 0;
+    }
+
+    .dashboard-dropdown-trigger:hover {
+        color: #ffffff;
+        transform: translateX(8px) scale(1.02);
+        border-color: rgba(99, 102, 241, 0.3);
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.25);
+    }
+
+    .dashboard-dropdown-trigger .trigger-content {
+        display: flex;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
+
+    .dropdown-chevron {
+        width: 20px;
+        height: 20px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        color: #64748b;
+        position: relative;
+        z-index: 1;
+    }
+
+    .dropdown-chevron.rotated {
+        transform: rotate(180deg);
+        color: #3b82f6;
+    }
+
+    .dashboard-dropdown-menu {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: linear-gradient(135deg, #1e293b, #1a1f36);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        border-radius: 20px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(99, 102, 241, 0.1);
+        z-index: 60;
+        max-height: 420px;
+        overflow-y: auto;
+        margin-top: 12px;
+        backdrop-filter: blur(24px);
+        transform: translateY(-10px) scale(0.95);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .dashboard-dropdown-menu.show {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+    }
+
+    /* Create Dashboard Button */
+    .create-dashboard-btn {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 18px 24px;
+        background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+        color: white;
+        text-decoration: none;
+        border-radius: 16px;
+        font-size: 15px;
+        font-weight: 700;
+        margin: 20px;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        position: relative;
+        overflow: hidden;
+        letter-spacing: -0.025em;
+    }
+
+    .create-dashboard-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.2));
+        transition: left 0.6s;
+    }
+
+    .create-dashboard-btn:hover::before {
+        left: 100%;
+    }
+
+    .create-dashboard-btn:hover {
+        background: linear-gradient(135deg, #2563eb, #7c3aed, #0891b2);
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 16px 40px rgba(59, 130, 246, 0.5);
+    }
+
+    .create-dashboard-btn:active {
+        transform: translateY(-1px) scale(1.01);
+    }
+
+    /* Dashboard Items */
+    .dashboard-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        text-decoration: none;
+        color: #cbd5e1;
+        font-size: 14px;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        font-weight: 500;
+    }
+
+    .dashboard-item:last-child {
+        border-bottom: none;
+        border-radius: 0 0 20px 20px;
+    }
+
+    .dashboard-item::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, #3b82f6, #8b5cf6);
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+    }
+
+    .dashboard-item:hover::before {
+        transform: scaleY(1);
+    }
+
+    .dashboard-item:hover {
+        background: rgba(59, 130, 246, 0.12);
+        color: #f8fafc;
+        padding-left: 32px;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .dashboard-item-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .dashboard-item-title {
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-bottom: 6px;
+        letter-spacing: -0.025em;
+    }
+
+    .dashboard-item-meta {
+        font-size: 12px;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-weight: 500;
+    }
+
+    .dashboard-item-meta svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    /* Loading and Empty States */
+    .dashboard-dropdown-loading,
+    .dashboard-dropdown-empty {
+        padding: 32px 24px;
+        text-align: center;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .dashboard-dropdown-loading svg {
+        width: 24px;
+        height: 24px;
+        margin: 0 auto 12px;
+        color: #3b82f6;
+    }
+
+    .dashboard-dropdown-empty svg {
+        width: 40px;
+        height: 40px;
+        margin: 0 auto 16px;
+        color: #475569;
+    }
+
+    /* Logout Button */
+    .logout-btn {
+        color: #f87171 !important;
+        border: 1px solid rgba(248, 113, 113, 0.2) !important;
+        background: rgba(248, 113, 113, 0.05) !important;
+    }
+
+    .logout-btn::before {
+        background: linear-gradient(135deg, rgba(248, 113, 113, 0.15), rgba(239, 68, 68, 0.15)) !important;
+    }
+
+    .logout-btn:hover {
+        background: rgba(248, 113, 113, 0.12) !important;
+        color: #fca5a5 !important;
+        box-shadow: 0 8px 24px rgba(248, 113, 113, 0.3) !important;
+        border-color: rgba(248, 113, 113, 0.4) !important;
+    }
+
+    /* Powered By */
+    #powered-by {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: #64748b;
+        padding: 16px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.9));
+        border-radius: 12px;
+        border: 1px solid rgba(99, 102, 241, 0.1);
+        backdrop-filter: blur(12px);
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+
+    /* Mobile Responsiveness */
+    @media (max-width: 1024px) {
+        #sidebar {
+            transform: translateX(-100%);
+        }
+
+        #sidebar.open {
+            transform: translateX(0);
+        }
+    }
+
+    /* Badge/Notification Styles */
+    .nav-badge {
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: white;
+        font-size: 10px;
+        padding: 4px 8px;
+        border-radius: 12px;
+        margin-left: auto;
+        font-weight: 700;
+        min-width: 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    }
+
+    /* Icon hover animations */
+    .nav-item .icon svg {
+        transition: all 0.3s ease;
+    }
+
+    .nav-item:hover .icon svg {
+        transform: scale(1.1);
+        filter: drop-shadow(0 2px 4px rgba(59, 130, 246, 0.3));
+    }
+
+    .nav-item.active .icon svg {
+        filter: drop-shadow(0 2px 8px rgba(255, 255, 255, 0.3));
+    }
+    /* Extra small devices (phones, <640px) */
+    @media (max-width: 639px) {
+      #sidebar {
+        width: 100vw;
+        z-index: 100;
+      }
+
+      .logo-container {
+        padding: 20px 16px;
+      }
+
+      .user-welcome {
+        padding: 16px;
+      }
+
+      .user-avatar {
+        width: 40px;
+        height: 40px;
+        font-size: 16px;
+      }
+
+      .user-details h4 {
+        font-size: 14px;
+      }
+
+      .user-details p {
+        font-size: 12px;
+      }
+
+      .nav-container {
+        padding: 16px 12px 100px;
+      }
+
+      .nav-item {
+        padding: 12px 14px;
+        font-size: 14px;
+      }
+
+      .nav-item .icon {
+        width: 20px;
+        height: 20px;
+        margin-right: 12px;
+      }
+
+      .nav-section-header {
+        font-size: 10px;
+        padding: 16px 14px 8px;
+      }
+
+      .create-dashboard-btn {
+        font-size: 14px;
+        padding: 14px 18px;
+        margin: 16px;
+      }
+
+      .dashboard-item {
+        padding: 14px 18px;
+        font-size: 13px;
+      }
+
+      #powered-by {
+        font-size: 10px;
+        padding: 12px;
+      }
+    }
+
+    /* Medium devices (tablets, <768px) */
+    @media (max-width: 767px) {
+      .logo-container {
+        padding: 24px 18px;
+      }
+
+      .user-welcome {
+        padding: 20px;
+      }
+
+      .user-avatar {
+        width: 44px;
+        height: 44px;
+        font-size: 17px;
+      }
+
+      .user-details h4 {
+        font-size: 15px;
+      }
+
+      .user-details p {
+        font-size: 12.5px;
+      }
+
+      .nav-container {
+        padding: 20px 14px 100px;
+      }
+
+      .nav-item {
+        padding: 13px 16px;
+        font-size: 14.5px;
+      }
+
+      .nav-section-header {
+        font-size: 11px;
+        padding: 20px 16px 10px;
+      }
+
+      .create-dashboard-btn {
+        font-size: 14.5px;
+        padding: 16px 20px;
+        margin: 18px;
+      }
+
+      .dashboard-item {
+        font-size: 13.5px;
+        padding: 15px 20px;
+      }
+
+      #powered-by {
+        font-size: 11px;
+        padding: 14px;
+      }
+    }
+
+</style>
+
+<div id="sidebar" class="fixed top-0 left-0 h-full w-64 z-40">
+  <!-- Logo Section -->
+  <div class="logo-container">
+    <img src="/static/CliniOpsLOGO.png" alt="CloudHub Logo">
+  </div>
+
+  <!-- User Welcome Section -->
+  {% if session.get("email") %}
+    <div class="user-welcome">
+      <div class="user-info">
+        <div class="user-avatar">
+          {{ session.email[0].upper() }}
+        </div>
+        <div class="user-details">
+          <h4>Welcome back!</h4>
+          <p>{{ session.email }}</p>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Navigation Container -->
+  <div class="nav-container">
+    <ul class="nav-list">
+
+      <!-- Main Navigation Section -->
+      <div class="nav-section-header">Main</div>
+      
+      <li>
+        <a href="/home" class="nav-item {{ 'active' if request.path == '/home' else '' }}">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+          </div>
+          <span class="label">Home</span>
+        </a>
+      </li>
+
+      <li>
+        <a href="/data-management" class="nav-item {{ 'active' if request.path == '/data-management' else '' }}">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+            </svg>
+          </div>
+          <span class="label">Data Management</span>
+        </a>
+      </li>
+
+      <li>
+        <a href="/agent-management" class="nav-item {{ 'active' if request.path == '/agent-management' else '' }}">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+            </svg>
+          </div>
+          <span class="label">AI Agents</span>
+        </a>
+      </li>
+
+      <li>
+        <a href="/steps" class="nav-item {{ 'active' if request.path == '/steps' else '' }}">
+          <div class="icon">
+            <i class="fa-regular fa-circle-question" style='font-size:2vh;'></i>
+          </div>
+          <span class="label">Help</span>
+        </a>
+      </li>
+
+      <!-- Dashboard Section -->
+      <div class="nav-section-header">Dashboards</div>
+
+      <!-- My Dashboards Dropdown -->
+      <li class="dashboard-dropdown">
+        <button onclick="toggleDashboardDropdown()" class="dashboard-dropdown-trigger">
+          <div class="trigger-content">
+            <div class="icon">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+              </svg>
+            </div>
+            <span class="label">My Dashboards</span>
+          </div>
+          <svg class="dropdown-chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </button>
+        
+        <div id="dashboardDropdownMenu" class="dashboard-dropdown-menu hidden">
+          <!-- Create New Dashboard Button -->
+          <a href="/dashboard/builder" class="create-dashboard-btn">
+            <svg style="width: 20px; height: 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            Create New Dashboard
+          </a>
+          
+          <!-- Dashboards List Container -->
+          <div id="dashboardsList">
+            <div class="dashboard-dropdown-loading">
+              <svg class="animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Loading dashboards...
+            </div>
+          </div>
+        </div>
+      </li>
+
+      <li>
+        <a href="/dashboard-config" class="nav-item {{ 'active' if request.path == '/dashboard-config' else '' }}">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+          </div>
+          <span class="label">Mange Dashboard</span>
+        </a>
+      </li>
+
+      <!-- AI & Analytics Section -->
+      <div class="nav-section-header">AI & Analytics</div>
+
+      <li>
+        <a href="/copilot-page" class="nav-item {{ 'active' if request.path == '/copilot-page' else '' }}">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+            </svg>
+          </div>
+          <span class="label">Co-Pilot Query</span>
+        </a>
+      </li>
+
+      <li>
+        <a href="/graph-query" class="nav-item {{ 'active' if request.path == '/graph-query' else '' }}">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+            </svg>
+          </div>
+          <span class="label">Graph Query</span>
+        </a>
+      </li>
+
+      <li>
+        <a href="/query-log-analyzer" class="nav-item {{ 'active' if request.path == '/query-log-analyzer' else '' }}">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+          </div>
+          <span class="label">Query Log</span>
+        </a>
+      </li>
+
+      <!-- Account Section -->
+      <div class="nav-section-header">Account</div>
+
+      <li>
+        <a href="/profile" class="nav-item {{ 'active' if request.path == '/profile' else '' }}">
+          <div class="icon">
+            <i class="fa-regular fa-user" style='font-size:2vh;'></i>
+          </div>
+          <span class="label">Profile</span>
+        </a>
+      </li>
+
+      {% if 'org_admin' in session.get('roles', []) %}  
+      <li>
+        <a href="/org-users" class="nav-item {{ 'active' if request.path == '/org-users' else '' }}">
+          <div class="icon">
+            <i class="fa-solid fa-user-group" style="font-size:2vh;"></i>
+          </div>
+          <span class="label">Organization Users</span>
+        </a>
+      </li>
+      {% endif %}
+
+      <li>
+        <a href="#" class="nav-item logout-btn" id="logoutBtn">
+          <div class="icon">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+            </svg>
+          </div>
+          <span class="label">Logout</span>
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Powered By Footer -->
+  <div id="powered-by">
+    Powered by CloudHub
+  </div>
+</div>
+
+<!-- Mobile Menu Toggle Button -->
+<button id="mobileMenuToggle" class="lg:hidden fixed top-4 left-4 z-50 p-3 rounded-xl bg-slate-800 text-white shadow-xl border border-slate-600 hover:bg-slate-700 transition-all duration-300">
+  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+  </svg>
+</button>
+
+<script>
+let dashboardDropdownOpen = false;
+let dashboards = [];
+
+document.getElementById("logoutBtn").addEventListener("click", function (e) {
+    e.preventDefault();
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = "/logout";
+  });
+
+document.getElementById('mobileMenuToggle')?.addEventListener('click', function() {
+  const sidebar = document.getElementById('sidebar');
+  const button = this;
+  
+  sidebar.classList.toggle('open');
+  
+  // Animate button
+  button.style.transform = sidebar.classList.contains('open') ? 'scale(0.9)' : 'scale(1)';
+  setTimeout(() => {
+    button.style.transform = 'scale(1)';
+  }, 150);
+});
+
+// Enhanced dropdown toggle
+function toggleDashboardDropdown() {
+  const menu = document.getElementById('dashboardDropdownMenu');
+  const chevron = document.querySelector('.dropdown-chevron');
+  
+  dashboardDropdownOpen = !dashboardDropdownOpen;
+  
+  if (dashboardDropdownOpen) {
+    menu.classList.remove('hidden');
+    // Trigger reflow for animation
+    menu.offsetHeight;
+    menu.classList.add('show');
+    chevron.classList.add('rotated');
+    loadDashboards();
+  } else {
+    menu.classList.remove('show');
+    chevron.classList.remove('rotated');
+    setTimeout(() => {
+      menu.classList.add('hidden');
+    }, 400);
+  }
+}
+
+// Load dashboards with enhanced error handling
+async function loadDashboards() {
+  const container = document.getElementById('dashboardsList');
+  
+  try {
+    const response = await fetch('/api/dashboard/list', {
+      headers: {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    dashboards = data.dashboards || [];
+    
+    renderDashboards();
+  } catch (error) {
+    console.error('Error loading dashboards:', error);
+    container.innerHTML = `
+      <div class="dashboard-dropdown-empty">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <div>Unable to load dashboards</div>
+        <div style="font-size: 11px; margin-top: 4px; opacity: 0.7;">Please try again later</div>
+      </div>
+    `;
+  }
+}
+
+// Enhanced dashboard rendering
+function renderDashboards() {
+  const container = document.getElementById('dashboardsList');
+  
+  if (dashboards.length === 0) {
+    container.innerHTML = `
+      <div class="dashboard-dropdown-empty">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+        </svg>
+        <div>No dashboards yet</div>
+        <div style="font-size: 11px; margin-top: 4px; opacity: 0.7;">Create your first dashboard</div>
+      </div>
+    `;
+    return;
+  }
+  
+  // Sort dashboards by most recently updated
+  const sortedDashboards = [...dashboards].sort((a, b) => 
+    new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at)
+  );
+  
+  container.innerHTML = sortedDashboards.map(dashboard => `
+    <a href="/dashboard/view/${dashboard.id}" class="dashboard-item" title="${dashboard.title}">
+      <div class="dashboard-item-info">
+        <div class="dashboard-item-title">${dashboard.title}</div>
+        <div class="dashboard-item-meta">
+          <span style="display: flex; align-items: center; gap: 4px;">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"></path>
+            </svg>
+            ${dashboard.widgets ? dashboard.widgets.length : 0} widgets
+          </span>
+          <span>${formatDate(dashboard.updated_at || dashboard.created_at)}</span>
+        </div>
+      </div>
+      <svg style="width: 16px; height: 16px; color: #64748b; transition: all 0.3s ease;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+      </svg>
+    </a>
+  `).join('');
+}
+
+// Enhanced date formatting
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffTime = Math.abs(now - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffHours = Math.ceil(diffTime / (1000 * 60 * 60));
+  const diffMinutes = Math.ceil(diffTime / (1000 * 60));
+  
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays <= 7) return `${diffDays}d ago`;
+  if (diffDays <= 30) return `${Math.ceil(diffDays / 7)}w ago`;
+  
+  return date.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+}
+
+// Enhanced outside click handling
+document.addEventListener('click', (event) => {
+  const sidebar = document.getElementById('sidebar');
+  const toggle = document.getElementById('mobileMenuToggle');
+  const dropdown = document.querySelector('.dashboard-dropdown');
+  
+  // Handle mobile sidebar
+  if (sidebar && !sidebar.contains(event.target) && !toggle?.contains(event.target)) {
+    sidebar.classList.remove('open');
+  }
+  
+  // Handle dropdown
+  if (dropdown && !dropdown.contains(event.target) && dashboardDropdownOpen) {
+    toggleDashboardDropdown();
+  }
+});
+
+// Auto-refresh dashboards
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && dashboardDropdownOpen) {
+    loadDashboards();
+  }
+});
+
+// Enhanced nav item interactions
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function(e) {
+    // Ripple effect
+    const rect = this.getBoundingClientRect();
+    const ripple = document.createElement('div');
+    const size = Math.max(rect.width, rect.height);
+    const x = e.clientX - rect.left - size / 2;
+    const y = e.clientY - rect.top - size / 2;
+    
+    ripple.style.cssText = `
+      position: absolute;
+      width: ${size}px;
+      height: ${size}px;
+      left: ${x}px;
+      top: ${y}px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 50%;
+      transform: scale(0);
+      animation: ripple 0.6s ease-out;
+      pointer-events: none;
+      z-index: 10;
+    `;
+    
+    this.style.position = 'relative';
+    this.appendChild(ripple);
+    
+    setTimeout(() => ripple.remove(), 600);
+  });
+});
+
+// Add ripple animation keyframes
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes ripple {
+    to {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+`;
+document.head.appendChild(style);
+</script>

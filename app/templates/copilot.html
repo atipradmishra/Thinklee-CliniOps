@@ -1,0 +1,1210 @@
+{% extends 'base.html' %}
+{% block title %}AI Copilot - Thinklee{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .message-bubble {
+    max-width: 70%;
+    word-wrap: break-word;
+    border-radius: 18px;
+    padding: 12px 18px;
+    margin: 8px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
+  }
+  
+  .user-message {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+  }
+  
+  .bot-message {
+    background: white;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    border-bottom-left-radius: 4px;
+    margin-right: auto;
+  }
+  
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    padding: 12px 18px;
+    background: white;
+    border-radius: 18px;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-right: auto;
+    max-width: fit-content;
+  }
+  
+  .typing-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #9ca3af;
+    margin: 0 2px;
+    animation: typing 1.4s infinite;
+  }
+  
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+    30% { transform: translateY(-10px); opacity: 1; }
+  }
+  
+  .input-container {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 25px;
+    padding: 4px;
+    transition: all 0.3s ease;
+  }
+  
+  .input-container:focus-within {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+  
+  .send-button {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .send-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  
+  .send-button:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  .example-query {
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid rgba(102, 126, 234, 0.2);
+    border-radius: 20px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    color: #4f46e5;
+    font-weight: 500;
+  }
+  
+  .example-query:hover {
+    background: rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  .followup-question {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 16px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 13px;
+    color: #2563eb;
+    font-weight: 500;
+    margin: 2px;
+    display: inline-block;
+  }
+  
+  .followup-question:hover {
+    background: rgba(59, 130, 246, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  .chat-header {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 16px;
+    border-radius: 16px 16px 0 0;
+  }
+  
+  .pulse-dot {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .suggestions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  
+  .feedback-section {
+    border-top: 1px solid #f3f4f6;
+    padding-top: 12px;
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+  .feedback-buttons {
+    display: flex;
+    align-items: center;
+    space: 8px;
+  }
+  
+  .feedback-btn {
+    background: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 20px;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 12px;
+    margin: 0 4px;
+  }
+  
+  .feedback-btn:hover {
+    background: #f3f4f6;
+  }
+  
+  .feedback-btn.active {
+    background: #10b981;
+    color: white;
+    border-color: #10b981;
+  }
+  
+  .feedback-btn.negative {
+    background: #ef4444;
+    color: white;
+    border-color: #ef4444;
+  }
+  
+  .followup-container {
+    background: #f8faff;
+    border-radius: 12px;
+    padding: 12px;
+    margin-top: 12px;
+    border-left: 3px solid #667eea;
+  }
+  
+  .response-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f3f4f6;
+    font-size: 12px;
+  }
+  
+  .action-btn {
+    background: none;
+    border: none;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  }
+  
+  .action-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .message-content h1,
+  .message-content h2,
+  .message-content h3 {
+    font-weight: 600;
+    margin-top: 16px;
+    margin-bottom: 8px;
+  }
+
+  .message-content p {
+    margin-bottom: 10px;
+    line-height: 1.6;
+  }
+
+  .message-content ul {
+    margin-left: 18px;
+    margin-bottom: 12px;
+  }
+
+  .message-content li {
+    margin-bottom: 6px;
+  }
+
+  .message-content pre {
+    background: #111827;
+    color: #f9fafb;
+    padding: 12px;
+    border-radius: 10px;
+    overflow-x: auto;
+    font-size: 13px;
+  }
+
+  .message-content code {
+    background: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 13px;
+  }
+  .bot-message {
+    max-width: 720px;
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+        <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-400 rounded-full animate-spin pulse-dot mx-auto"></div>
+      </div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Processing your query...</p>
+    </div>
+  </div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fas fa-robot"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">AI Copilot</h1>
+          <p class="text-gray-600 mt-1">Your intelligent data assistant</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+          <i class="fas fa-user-circle text-purple-600"></i>
+          <span class="font-medium">{{ session.username }}</span>
+          <span class="text-gray-400">•</span>
+          <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">{{ session.role }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Agent Selection -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-6 slide-in">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+          <i class="fas fa-cogs text-blue-600"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-gray-800">Agent Configuration</h3>
+          <p class="text-sm text-gray-600">Select your AI agent for optimal responses</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <label for="agentSelect" class="text-sm font-semibold text-gray-700">
+          <i class="fas fa-robot text-purple-600 mr-2"></i>Active Agent:
+        </label>
+        <select id="agentSelect" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white min-w-48">
+          <option value="">Choose your AI agent...</option>
+        </select>
+        <div id="agent-status" class="flex items-center space-x-2 hidden">
+          <div class="w-2 h-2 bg-green-500 rounded-full pulse-dot"></div>
+          <span class="text-sm text-green-600 font-medium">Connected</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chat Interface -->
+  <div class="mx-6 mt-6 pb-8">
+    <div class="glass-card rounded-2xl shadow-2xl overflow-hidden slide-in">
+      <!-- Chat Header -->
+      <div class="chat-header">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+              <i class="fas fa-comments"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold">Intelligent Query Assistant</h3>
+              <p class="text-sm opacity-90">Ask anything about your data in natural language</p>
+            </div>
+          </div>
+          <button onclick="clearChat()" class="px-4 py-2 bg-white bg-opacity-20 rounded-lg hover:bg-opacity-30 smooth-transition">
+            <i class="fas fa-trash-alt mr-2"></i>Clear Chat
+          </button>
+        </div>
+      </div>
+
+      <!-- Chat Messages Area -->
+      <div id="chatContainer" class="h-[60vh] overflow-y-auto bg-gray-50 p-6 space-y-4">
+        <!-- Welcome Message -->
+        <div class="text-center py-8">
+          <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-lg">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h4 class="text-xl font-bold text-gray-800 mb-2">Welcome to AI Copilot!</h4>
+          <p class="text-gray-600 mb-6">I'm here to help you explore your data. Ask me anything!</p>
+          
+          <!-- Example Queries -->
+          <div class="max-w-2xl mx-auto">
+            <p class="text-sm font-semibold text-gray-700 mb-3">Try these example queries:</p>
+            <div class="suggestions-grid">
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-chart-bar mr-2"></i>Show me sales trends for this quarter
+              </div>
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-users mr-2"></i>What are our top performing regions?
+              </div>
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-money-bill-wave mr-2"></i>Calculate total revenue this month
+              </div>
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-shopping-cart mr-2"></i>Which products have the highest demand?
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="p-6 bg-white border-t border-gray-200">
+        <div class="input-container">
+          <div class="flex items-center space-x-3 px-4 py-3">
+            <input type="text" 
+                   id="queryInput" 
+                   placeholder="Ask me anything about your data..." 
+                   class="flex-1 border-none outline-none text-gray-700 placeholder-gray-400"
+                   onkeypress="handleKeyPress(event)">
+            <button id="sendButton" onclick="sendQuery()" class="send-button" disabled>
+              <i class="fas fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="flex items-center justify-between mt-4">
+          <div class="flex items-center space-x-2">
+            <span class="text-xs text-gray-500">Quick actions:</span>
+            <button onclick="useExampleQuery('Show me a summary of recent data')" class="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 smooth-transition">
+              <i class="fas fa-chart-pie mr-1"></i>Summary
+            </button>
+            <button class="text-xs px-3 py-1 bg-gray-100 text-gray-600 rounded-full hover:bg-gray-200 smooth-transition">
+              <i class="fas fa-download mr-1"></i>Export
+            </button>
+          </div>
+          
+          <div class="flex items-center space-x-2 text-xs text-gray-500">
+            <i class="fas fa-info-circle"></i>
+            <span>Press Enter to send</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Response Statistics -->
+  <div id="statsSection" class="hidden mx-6 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="glass-card rounded-2xl p-4 text-center">
+        <div class="text-2xl font-bold text-purple-600" id="totalQueries">0</div>
+        <div class="text-sm text-gray-600">Total Queries</div>
+      </div>
+      <div class="glass-card rounded-2xl p-4 text-center">
+        <div class="text-2xl font-bold text-green-600" id="avgResponseTime">0ms</div>
+        <div class="text-sm text-gray-600">Avg Response</div>
+      </div>
+      <div class="glass-card rounded-2xl p-4 text-center">
+        <div class="text-2xl font-bold text-blue-600" id="successRate">0%</div>
+        <div class="text-sm text-gray-600">Success Rate</div>
+      </div>
+      <div class="glass-card rounded-2xl p-4 text-center">
+        <div class="text-2xl font-bold text-orange-600" id="activeSession">0m</div>
+        <div class="text-sm text-gray-600">Session Time</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions FAB -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <div class="relative">
+      <button id="fab-main" onclick="toggleFAB()" class="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+      </button>
+      
+      <div id="fab-menu" class="absolute bottom-20 right-0 space-y-3 transform scale-0 origin-bottom-right smooth-transition">
+        <button onclick="clearChat(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-broom text-gray-600"></i>
+          <span class="font-medium">Clear Chat</span>
+        </button>
+        <button onclick="exportChat(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-download text-blue-600"></i>
+          <span class="font-medium">Export Chat</span>
+        </button>
+        <button onclick="openSettings(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-cog text-purple-600"></i>
+          <span class="font-medium">Settings</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Modal -->
+<div id="feedbackModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card w-full max-w-md rounded-2xl p-8 relative shadow-2xl mx-4">
+    <button onclick="closeFeedbackModal()" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 text-2xl smooth-transition">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Feedback</h2>
+      <p class="text-gray-600">Help us improve by providing feedback on this response</p>
+    </div>
+
+    <div id="feedbackContent" class="space-y-4">
+      <!-- Content will be populated by JavaScript -->
+    </div>
+  </div>
+</div>
+
+<script>
+  const LS_KEY = 'thinklee_chat_history';
+  const LS_LAST_AGENT_ID = 'thinklee_last_agent';
+  let chatHistory = {};
+
+  function getRecentChatTurns(agentId, n = 3) {
+      const history = chatHistory[agentId] || [];
+      const recentTurns = [];
+
+      for (let i = history.length - 1; i >= 1 && recentTurns.length < n; i--) {
+        const current = history[i];
+        const previous = history[i - 1];
+
+        if (previous?.type === 'user' && current?.type === 'bot') {
+          recentTurns.unshift({
+            user: previous.content,
+            ai: current.sql,
+            response: current.content
+          });
+        }
+      }
+      return recentTurns;
+  }
+
+  class CopilotManager {
+    constructor() {
+      this.selectedAgent = null;
+      this.queryCount = 0;
+      this.sessionStartTime = Date.now();
+      this.responseStats = { total: 0, successful: 0, totalTime: 0 };
+      this.fabOpen = false;
+      this.messageId = 0;
+
+      this.loadHistoryFromStorage();
+      this.initializeEventListeners();
+      this.loadAgents();
+      this.startSessionTimer();
+    }
+
+    // ---------- LocalStorage ----------
+    saveHistory() {
+      localStorage.setItem(LS_KEY, JSON.stringify(chatHistory));
+    }
+
+    loadHistoryFromStorage() {
+      try {
+        const data = JSON.parse(localStorage.getItem(LS_KEY));
+        if (data && typeof data === 'object') chatHistory = data;
+      } catch (_) {
+        chatHistory = {};
+      }
+    }
+
+    saveLastAgent(agentId) {
+      localStorage.setItem(LS_LAST_AGENT_ID, agentId);
+    }
+
+    loadLastAgent() {
+      return localStorage.getItem(LS_LAST_AGENT_ID);
+    }
+
+    persistMessage(agentId, messageObj) {
+      if (!chatHistory[agentId]) chatHistory[agentId] = [];
+      chatHistory[agentId].push(messageObj);
+      this.saveHistory();
+    }
+
+    restoreChat(agentId) {
+      const container = document.getElementById('chatContainer');
+      container.innerHTML = "";
+      this.messageId = 0;
+
+      if (chatHistory[agentId] && chatHistory[agentId].length > 0) {
+        chatHistory[agentId].forEach(msg => {
+          this.addMessage(msg.content, msg.type === "user", false, [], msg.meta || null, true);
+        });
+      } else {
+        // Show welcome
+        container.innerHTML = `
+          <div class="text-center py-8">
+            <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-lg">
+              <i class="fas fa-robot"></i>
+            </div>
+            <h4 class="text-xl font-bold text-gray-800 mb-2">Welcome to AI Copilot!</h4>
+            <p class="text-gray-600 mb-6">Ready for your next query. How can I help you?</p>
+            
+            <div class="max-w-2xl mx-auto">
+              <p class="text-sm font-semibold text-gray-700 mb-3">Try these example queries:</p>
+              <div class="suggestions-grid">
+                <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                  <i class="fas fa-chart-bar mr-2"></i>Show me sales trends for this quarter
+                </div>
+                <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                  <i class="fas fa-users mr-2"></i>What are our top performing regions?
+                </div>
+                <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                  <i class="fas fa-money-bill-wave mr-2"></i>Calculate total revenue this month
+                </div>
+                <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                  <i class="fas fa-shopping-cart mr-2"></i>Which products have the highest demand?
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+
+    initializeEventListeners() {
+      const input = document.getElementById('queryInput');
+      const sendButton = document.getElementById('sendButton');
+      input.addEventListener('input', () => {
+        sendButton.disabled = !input.value.trim();
+      });
+
+      document.getElementById('agentSelect').addEventListener('change', (e) => {
+        this.selectedAgent = e.target.value;
+        this.saveLastAgent(this.selectedAgent);
+        this.updateAgentStatus();
+      });
+
+    }
+
+    updateProgress(percentage) {
+      document.getElementById('progress-bar').style.width = `${percentage}%`;
+    }
+
+    showToast(message, type = 'success', duration = 5000) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        info: 'fas fa-info-circle',
+        warning: 'fas fa-exclamation-triangle'
+      };
+      const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500',
+        warning: 'bg-yellow-500'
+      };
+      toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+      toast.innerHTML = `
+        <i class="${icons[type]}"></i>
+        <span class="font-medium">${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-auto">
+          <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+        </button>
+      `;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    showLoader(text = 'Processing your query...') {
+      document.getElementById('loader-text').textContent = text;
+      document.getElementById('loader').classList.remove('hidden');
+    }
+
+    hideLoader() {
+      document.getElementById('loader').classList.add('hidden');
+    }
+
+    async loadAgents() {
+      this.updateProgress(30);
+      try {
+        const response = await fetch('/api/agent/get-agents', {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        const agents = await response.json();
+        const select = document.getElementById('agentSelect');
+        select.innerHTML = '<option value="">Choose your AI agent...</option>';
+
+        if (agents.agents && agents.agents.length > 0) {
+          agents.agents.forEach(agent => {
+            const option = document.createElement('option');
+            option.value = agent.id;
+            option.textContent = agent.name;
+            select.appendChild(option);
+          });
+
+          // Auto-select last agent
+          const lastAgent = this.loadLastAgent();
+          if (lastAgent && agents.agents.some(a => a.id == lastAgent)) {
+            select.value = lastAgent;
+            this.selectedAgent = lastAgent;
+            this.updateAgentStatus();
+          }
+
+          this.showToast("Agents loaded successfully");
+        } else {
+          this.showToast("No agents found. Please create an agent first.", 'warning');
+        }
+      } catch (error) {
+        console.error("Agent load failed:", error);
+        this.showToast("Failed to load agents", "error");
+      } finally {
+        this.updateProgress(100);
+        setTimeout(() => this.updateProgress(0), 1000);
+      }
+    }
+
+    updateAgentStatus() {
+      const status = document.getElementById('agent-status');
+
+      if (this.selectedAgent) {
+        status.classList.remove('hidden');
+        // ✅ Instead of re-rendering history manually, just call restoreChat
+        this.restoreChat(this.selectedAgent);
+      } else {
+        status.classList.add('hidden');
+      }
+    }
+
+
+    addMessage(content, isUser = false, isTyping = false, followUps = [], messageData = null, skipPersist = false) {
+      const container = document.getElementById('chatContainer');
+      const messageDiv = document.createElement('div');
+      const currentMessageId = ++this.messageId;
+
+      if (isTyping) {
+        messageDiv.className = 'typing-indicator';
+        messageDiv.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>`;
+      } else {
+        messageDiv.className = `message-bubble ${isUser ? 'user-message' : 'bot-message'}`;
+        messageDiv.setAttribute('data-message-id', currentMessageId);
+        if (isUser) {
+          messageDiv.innerHTML = `
+            <div class="flex items-start space-x-2">
+              <div class="flex-1">${content}</div>
+              <div class="w-6 h-6 bg-white bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <i class="fas fa-user text-xs"></i>
+              </div>
+            </div>
+          `;
+        } else {
+          messageDiv.innerHTML = `
+            <div class="flex items-start space-x-2">
+              <div class="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                <i class="fas fa-robot text-purple-600 text-xs"></i>
+              </div>
+              <div class="flex-1">
+                <div class="message-content prose prose-sm max-w-none">
+                  ${marked.parse(content)}
+                </div>
+                ${followUps.length > 0 ? `
+                  <div class="followup-container">
+                    <div class="text-xs font-semibold text-gray-600 mb-2 flex items-center">
+                      <i class="fas fa-lightbulb text-yellow-500 mr-2"></i>
+                      Follow-up questions:
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                      ${followUps.map(q => `<span class="followup-question" onclick="useExampleQuery('${q}')">${q}</span>`).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+                <div class="feedback-section">
+                  <div class="text-xs text-gray-500">${new Date().toLocaleTimeString()}</div>
+                  <div class="feedback-buttons">
+                    <button class="feedback-btn" onclick="provideFeedback(${currentMessageId}, 'helpful')"><i class="fas fa-thumbs-up mr-1"></i>Helpful</button>
+                    <button class="feedback-btn" onclick="provideFeedback(${currentMessageId}, 'not-helpful')"><i class="fas fa-thumbs-down mr-1"></i>Not Helpful</button>
+                    <button class="action-btn hover:text-purple-600 smooth-transition" onclick="copyResponse(${currentMessageId})" title="Copy to clipboard"><i class="fas fa-copy"></i></button>
+                    <button class="action-btn hover:text-purple-600 smooth-transition" onclick="regenerateResponse(${currentMessageId})" title="Re-generate Response"><i class="fas fa-redo"></i></button>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+        }
+      }
+
+      const welcomeMsg = container.querySelector('.text-center');
+      if (welcomeMsg) welcomeMsg.style.display = 'none';
+      container.appendChild(messageDiv);
+      container.scrollTop = container.scrollHeight;
+
+      // ✅ only persist if it's a *new* message
+      if (!isTyping && this.selectedAgent && !skipPersist) {
+        this.persistMessage(this.selectedAgent, {
+          type: isUser ? "user" : "bot",
+          content,
+          sql: messageData?.responseData?.sql || null,
+          timestamp: new Date().toISOString(),
+          meta: messageData
+        });
+      }
+
+      if (messageData && !isUser) {
+        messageDiv.setAttribute('data-original-query', messageData.originalQuery);
+        messageDiv.setAttribute('data-response-data', JSON.stringify(messageData));
+        messageDiv.setAttribute('data-query-id', messageData.queryId);
+      }
+
+      return messageDiv;
+    }
+
+    async sendQuery() {
+      const input = document.getElementById('queryInput');
+      const query = input.value.trim();
+      
+      if (!query) return;
+      
+      if (!this.selectedAgent) {
+        this.showToast('Please select an AI agent first', 'warning');
+        return;
+      }
+      
+      // Add user message
+      this.addMessage(query, true);
+      input.value = '';
+      document.getElementById('sendButton').disabled = true;
+      
+      // Show typing indicator
+      const typingMsg = this.addMessage('', false, true);
+      
+      const startTime = Date.now();
+      
+      try {
+        const response = await fetch(`/api/query/copilot/${this.selectedAgent}`, {
+          method: 'POST',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ 
+            agent_id: this.selectedAgent, 
+            user_query: query,
+            chat_history: getRecentChatTurns(this.selectedAgent, 3)
+          })
+        });
+        
+        const data = await response.json();
+        const responseTime = Date.now() - startTime;
+        
+        // Remove typing indicator
+        typingMsg.remove();
+        
+        if (response.ok && data.ai_response) {
+          const followUps = data.followups || [];
+          this.addMessage(data.ai_response, false, false, followUps, {
+            originalQuery: query,
+            responseData: data,
+            agentId: this.selectedAgent,
+            queryId: data.query_id
+          });
+
+          this.updateStats(responseTime, true);
+          this.showToast('Query processed successfully');
+        } else {
+          this.addMessage(data.response || 'Sorry, I encountered an error processing your request. Please try again.');
+          this.updateStats(responseTime, false);
+          this.showToast(data.message || 'Query failed', 'error');
+        }
+      } catch (error) {
+        console.error('Query failed:', error);
+        typingMsg.remove();
+        this.addMessage('I apologize, but I\'m having trouble connecting right now. Please try again in a moment.');
+        this.updateStats(Date.now() - startTime, false);
+        this.showToast('Network error. Please try again.', 'error');
+      }
+    }
+
+    updateStats(responseTime, success) {
+      this.responseStats.total++;
+      this.responseStats.totalTime += responseTime;
+      if (success) this.responseStats.successful++;
+      
+      // Update UI
+      document.getElementById('totalQueries').textContent = this.responseStats.total;
+      document.getElementById('avgResponseTime').textContent = `${Math.round(this.responseStats.totalTime / this.responseStats.total)}ms`;
+      document.getElementById('successRate').textContent = `${Math.round((this.responseStats.successful / this.responseStats.total) * 100)}%`;
+      
+      // Show stats section
+      document.getElementById('statsSection').classList.remove('hidden');
+    }
+
+    startSessionTimer() {
+      setInterval(() => {
+        const elapsed = Math.floor((Date.now() - this.sessionStartTime) / 60000);
+        document.getElementById('activeSession').textContent = `${elapsed}m`;
+      }, 60000);
+    }
+
+    clearChat() {
+      const container = document.getElementById('chatContainer');
+      container.innerHTML = `
+        <div class="text-center py-8">
+          <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl mx-auto mb-4 shadow-lg">
+            <i class="fas fa-robot"></i>
+          </div>
+          <h4 class="text-xl font-bold text-gray-800 mb-2">Chat Cleared!</h4>
+          <p class="text-gray-600 mb-6">Ready for your next query. How can I help you?</p>
+          
+          <div class="max-w-2xl mx-auto">
+            <p class="text-sm font-semibold text-gray-700 mb-3">Try these example queries:</p>
+            <div class="suggestions-grid">
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-chart-bar mr-2"></i>Show me sales trends for this quarter
+              </div>
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-users mr-2"></i>What are our top performing regions?
+              </div>
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-money-bill-wave mr-2"></i>Calculate total revenue this month
+              </div>
+              <div class="example-query" onclick="useExampleQuery(this.textContent)">
+                <i class="fas fa-shopping-cart mr-2"></i>Which products have the highest demand?
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      this.messageId = 0;
+
+      if (this.selectedAgent) {
+        delete chatHistory[this.selectedAgent];
+        this.saveHistory();
+      }
+
+      this.showToast("Chat history cleared");
+    }
+
+    exportChat() {
+      const messages = document.querySelectorAll('.message-bubble:not(.typing-indicator)');
+      const chatData = Array.from(messages).map(msg => {
+        const isUser = msg.classList.contains('user-message');
+        const content = msg.textContent.trim();
+        return { type: isUser ? 'user' : 'bot', content, timestamp: new Date().toISOString() };
+      });
+      
+      const blob = new Blob([JSON.stringify(chatData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chat_export_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      
+      this.showToast('Chat exported successfully!');
+    }
+
+    toggleFAB() {
+      this.fabOpen = !this.fabOpen;
+      const menu = document.getElementById('fab-menu');
+      const icon = document.querySelector('#fab-main i');
+      
+      if (this.fabOpen) {
+        menu.style.transform = 'scale(1)';
+        icon.style.transform = 'rotate(45deg)';
+      } else {
+        menu.style.transform = 'scale(0)';
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+  }
+
+  // Global functions for compatibility
+  function handleKeyPress(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      sendQuery();
+    }
+  }
+
+  function sendQuery() {
+    if (window.copilotManager) window.copilotManager.sendQuery();
+  }
+
+  function useExampleQuery(query) {
+    document.getElementById('queryInput').value = query;
+    document.getElementById('sendButton').disabled = false;
+    document.getElementById('queryInput').focus();
+  }
+
+  function clearChat() {
+    if (window.copilotManager) window.copilotManager.clearChat();
+  }
+
+  function exportChat() {
+    if (window.copilotManager) window.copilotManager.exportChat();
+  }
+
+  function toggleFAB() {
+    if (window.copilotManager) window.copilotManager.toggleFAB();
+  }
+
+  function openSettings() {
+    alert('Settings panel coming soon!');
+  }
+
+  function provideFeedback(messageId, feedbackType) {
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageEl) return;
+
+    const queryId = messageEl.getAttribute("data-query-id");
+
+    const buttons = messageEl.querySelectorAll(".feedback-btn");
+    buttons.forEach(btn => {
+      btn.classList.remove("active", "negative");
+      if ((feedbackType === "helpful" && btn.textContent.includes("Helpful")) ||
+          (feedbackType === "not-helpful" && btn.textContent.includes("Not Helpful"))) {
+        btn.classList.add(feedbackType === "helpful" ? "active" : "negative");
+      }
+    });
+
+    if (feedbackType === "not-helpful") {
+      openFeedbackModal(messageId);
+    } else {
+      const feedbackData = {
+        query_id: queryId,
+        message_id: messageId,
+        feedback_type: "positive",
+        issues: [],
+        comments: null
+      };
+      sendFeedbackToAPI(feedbackData);
+      window.copilotManager.showToast("Thank you for your feedback!");
+    }
+  }
+
+
+  function openFeedbackModal(messageId) {
+    const modal = document.getElementById('feedbackModal');
+    const content = document.getElementById('feedbackContent');
+    
+    content.innerHTML = `
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">What could be improved?</label>
+          <div class="space-y-2">
+            <label class="flex items-center">
+              <input type="checkbox" name="feedback-issue" value="inaccurate" class="mr-2">
+              <span class="text-sm">Information was inaccurate</span>
+            </label>
+            <label class="flex items-center">
+              <input type="checkbox" name="feedback-issue" value="incomplete" class="mr-2">
+              <span class="text-sm">Response was incomplete</span>
+            </label>
+            <label class="flex items-center">
+              <input type="checkbox" name="feedback-issue" value="unclear" class="mr-2">
+              <span class="text-sm">Response was unclear</span>
+            </label>
+            <label class="flex items-center">
+              <input type="checkbox" name="feedback-issue" value="irrelevant" class="mr-2">
+              <span class="text-sm">Response was irrelevant</span>
+            </label>
+            <label class="flex items-center">
+              <input type="checkbox" name="feedback-issue" value="other" class="mr-2">
+              <span class="text-sm">Other</span>
+            </label>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Additional comments (optional)</label>
+          <textarea id="feedback-comments" rows="3" class="w-full px-3 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition resize-none" placeholder="Tell us more about how we can improve..."></textarea>
+        </div>
+        
+        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+          <button onclick="closeFeedbackModal()" class="px-6 py-2 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+            Cancel
+          </button>
+          <button onclick="submitDetailedFeedback(${messageId})" class="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition font-medium">
+            Submit Feedback
+          </button>
+        </div>
+      </div>
+    `;
+    
+    modal.classList.remove('hidden');
+  }
+
+  function closeFeedbackModal() {
+    document.getElementById('feedbackModal').classList.add('hidden');
+  }
+
+  function submitDetailedFeedback(messageId) {
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageEl) return;
+
+    const queryId = messageEl.getAttribute("data-query-id");
+
+    const selectedIssues = Array.from(
+      document.querySelectorAll("input[name='feedback-issue']:checked")
+    ).map(cb => cb.value);
+
+    const comments = document.getElementById("feedback-comments").value.trim();
+
+    const feedbackData = {
+      query_id: queryId,
+      message_id: messageId,
+      feedback_type: "negative",
+      issues: selectedIssues,
+      comments: comments
+    };
+
+    sendFeedbackToAPI(feedbackData);
+    closeFeedbackModal();
+    window.copilotManager.showToast("Detailed feedback submitted. Thank you!");
+  }
+
+  async function sendFeedbackToAPI(feedbackData) {
+    console.log("Sending feedback:", feedbackData);
+
+    try {
+      const response = await fetch("/api/query/feedback/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify(feedbackData)
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit feedback");
+      }
+
+      console.log("Feedback submitted:", feedbackData);
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      window.copilotManager.showToast("Error submitting feedback", "error");
+    }
+  }
+
+  function copyResponse(messageId) {
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageEl) return;
+    
+    const content = messageEl.querySelector('.message-content').textContent;
+    navigator.clipboard.writeText(content).then(() => {
+      window.copilotManager.showToast('Response copied to clipboard!');
+    }).catch(() => {
+      window.copilotManager.showToast('Failed to copy response', 'error');
+    });
+  }
+
+  function regenerateResponse(messageId) {
+    const messageEl = document.querySelector(`[data-message-id="${messageId}"]`);
+    if (!messageEl) return;
+    
+    const originalQuery = messageEl.getAttribute('data-original-query');
+    if (originalQuery) {
+      // Remove the current message
+      messageEl.remove();
+      
+      // Resend the query
+      useExampleQuery(originalQuery);
+      sendQuery();
+      
+      window.copilotManager.showToast('Regenerating response...');
+    }
+  }
+
+  // Initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    window.copilotManager = new CopilotManager();
+  });
+</script>
+
+{% endblock %}

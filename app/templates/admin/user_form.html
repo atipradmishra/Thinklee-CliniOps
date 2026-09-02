@@ -1,0 +1,113 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ 'Edit User' if user else 'Create User' }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">{{ 'Edit User' if user else 'Create User' }}</h1>
+    <a href="{{ url_for('admin_frontend.users') }}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Users
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="POST">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username *</label>
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       value="{{ user.username if user else '' }}" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       value="{{ user.email if user else '' }}" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="password" class="form-label">
+                                    Password {{ '*' if not user else '(leave blank to keep current)' }}
+                                </label>
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       {{ 'required' if not user else '' }}>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="token_quota" class="form-label">Token Quota</label>
+                                <input type="number" class="form-control" id="token_quota" name="token_quota" 
+                                       value="{{ user.token_quota if user else 100000 }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="trial_expires_at" class="form-label">Trial Expires At</label>
+                                <input type="datetime-local" class="form-control" id="trial_expires_at" 
+                                       name="trial_expires_at" 
+                                       value="{{ user.trial_expires_at.strftime('%Y-%m-%dT%H:%M') if user and user.trial_expires_at else '' }}">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="tokens_used_today" class="form-label">Tokens Used Today</label>
+                                <input type="number" class="form-control" id="tokens_used_today" 
+                                       name="tokens_used_today" 
+                                       value="{{ user.tokens_used_today if user else 0 }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="status" 
+                                           name="status" value="1" 
+                                           {{ 'checked' if (user and user.status) or not user else '' }}>
+                                    <label class="form-check-label" for="status">
+                                        Active User
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="roles" class="form-label">Roles</label>
+                                <select multiple class="form-select" id="roles" name="roles">
+                                    {% for role in available_roles %}
+                                        <option value="{{ role.name }}" 
+                                                {{ 'selected' if user and role in user.roles else '' }}>
+                                            {{ role.name|title }} - {{ role.description }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">Hold Ctrl (Cmd on Mac) to select multiple roles</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> {{ 'Update User' if user else 'Create User' }}
+                        </button>
+                        <a href="{{ url_for('admin_frontend.users') }}" class="btn btn-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

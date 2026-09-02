@@ -1,0 +1,968 @@
+{% extends 'base.html' %}
+{% block title %}My Dashboards - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    scrollbar-width: thin;
+    scrollbar-color: #8b5cf6 transparent;
+  }
+  #loader {
+    z-index: 80 !important;
+  }
+  .glass-card::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .glass-card::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+  }
+
+  .glass-card::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #8b5cf6, #3b82f6);
+    border-radius: 10px;
+  }
+
+  .glass-card::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7c3aed, #2563eb);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-6px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(102, 126, 234, 0.25);
+  }
+  
+  .dashboard-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .dashboard-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+  }
+  
+  .status-active {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #166534;
+    border: 1px solid #16a34a;
+  }
+  
+  .status-inactive {
+    background: linear-gradient(135deg, #fef2f2, #fecaca);
+    color: #991b1b;
+    border: 1px solid #dc2626;
+  }
+  
+  .dropdown-menu {
+    transform: scale(0.95) translateY(-10px);
+    opacity: 0;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: top right;
+  }
+  
+  .dropdown-menu.active {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+  
+  .pulse-dot {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+  
+  .gradient-border {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    padding: 2px;
+    border-radius: 16px;
+  }
+  
+  .gradient-border-inner {
+    background: white;
+    border-radius: 14px;
+  }
+  
+  .search-input:focus {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+  
+  .view-toggle-active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+  
+  .filter-dropdown:focus {
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="content-loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+        <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-400 rounded-full animate-spin pulse-dot mx-auto"></div>
+      </div>
+      <p class="mt-4 text-gray-600 font-medium">Loading your dashboards...</p>
+    </div>
+  </div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">My Dashboards</h1>
+          <p class="text-gray-600 mt-1">Manage and view all your analytics dashboards</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <button type="button" id="refreshBtn" class="flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 smooth-transition font-medium">
+          <i class="fas fa-sync-alt"></i>
+          <span>Refresh</span>
+        </button>
+        <a href="/dashboard/builder" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition shadow-lg font-semibold">
+          <i class="fas fa-plus"></i>
+          <span>Create Dashboard</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Stats Dashboard -->
+  <div class="mx-6 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 slide-in" style="animation-delay: 0.1s">
+      <div class="glass-card rounded-2xl p-6 smooth-transition hover:hover-lift">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Total Dashboards</p>
+            <p id="totalDashboards" class="text-3xl font-bold text-purple-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-tachometer-alt text-purple-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 smooth-transition hover:hover-lift">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Active Dashboards</p>
+            <p id="activeDashboards" class="text-3xl font-bold text-green-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-chart-line text-green-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 smooth-transition hover:hover-lift">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Recently Viewed</p>
+            <p id="recentlyViewed" class="text-3xl font-bold text-blue-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-eye text-blue-600"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.2s">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+          <i class="fas fa-filter text-blue-600"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-bold text-gray-800">Dashboard Management</h3>
+          <p class="text-sm text-gray-600">Search, filter, and organize your dashboards</p>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center">
+        <!-- Search -->
+        <div class="lg:col-span-5">
+          <div class="relative">
+            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <input type="text" id="searchInput" placeholder="Search dashboards by name or description..." 
+              class="search-input w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white">
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="lg:col-span-7 flex flex-wrap gap-3">
+          <select id="sortFilter" class="filter-dropdown px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white">
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+            <option value="created_desc">Newest First</option>
+            <option value="created_asc">Oldest First</option>
+            <option value="updated_desc">Recently Updated</option>
+          </select>
+
+          <select id="statusFilter" class="filter-dropdown px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white">
+            <option value="all">All Status</option>
+            <option value="1">Active</option>
+            <option value="0">Inactive</option>
+          </select>
+
+          <button type="button" id="viewToggle" class="px-4 py-3 border-2 border-gray-200 rounded-xl hover:bg-gray-50 smooth-transition flex items-center space-x-2">
+            <i class="fas fa-th text-lg"></i>
+            <span class="font-medium">Grid</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboards Container -->
+  <div class="mx-6 mt-6 pb-8">
+    <div id="dashboardsContainer" class="space-y-6">
+      <!-- Loading State -->
+      <div id="loadingState" class="glass-card rounded-2xl p-16 text-center slide-in">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto mb-6"></div>
+        <h3 class="text-xl font-semibold text-gray-800 mb-2">Loading Your Dashboards</h3>
+        <p class="text-gray-600">Please wait while we fetch your dashboard collection...</p>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden glass-card rounded-2xl p-16 text-center slide-in">
+        <div class="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-8">
+          <i class="fas fa-tachometer-alt text-4xl text-purple-600"></i>
+        </div>
+        <h3 class="text-2xl font-bold text-gray-800 mb-4">No Dashboards Found</h3>
+        <p class="text-gray-600 mb-8 max-w-md mx-auto">Start creating beautiful dashboards to visualize your data and gain valuable insights.</p>
+        <a href="/dashboard/builder" class="inline-flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition shadow-lg font-semibold">
+          <i class="fas fa-plus text-lg"></i>
+          <span>Create Your First Dashboard</span>
+        </a>
+      </div>
+
+      <!-- Dashboards Grid -->
+      <div id="dashboardsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 hidden"></div>
+
+      <!-- Dashboards List View -->
+      <div id="dashboardsList" class="space-y-4 hidden"></div>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination" class="glass-card rounded-2xl p-6 mt-6 hidden">
+      <div class="flex items-center justify-between">
+        <div class="text-sm text-gray-600 font-medium">
+          Showing <span id="showingStart" class="text-purple-600 font-semibold">0</span> to 
+          <span id="showingEnd" class="text-purple-600 font-semibold">0</span> of 
+          <span id="totalItems" class="text-purple-600 font-semibold">0</span> dashboards
+        </div>
+        <div class="flex items-center space-x-2">
+          <button id="prevPage" class="px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed smooth-transition font-medium">
+            <i class="fas fa-chevron-left mr-2"></i>Previous
+          </button>
+          <div id="pageNumbers" class="flex space-x-1">
+            <!-- Page numbers will be populated here -->
+          </div>
+          <button id="nextPage" class="px-4 py-2 border-2 border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed smooth-transition font-medium">
+            Next<i class="fas fa-chevron-right ml-2"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions FAB -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <div class="relative">
+      <button id="fab-main" onclick="toggleFAB()" class="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+      </button>
+      
+      <div id="fab-menu" class="absolute bottom-20 right-0 space-y-3 transform scale-0 origin-bottom-right smooth-transition">
+        <a href="/dashboard/builder" onclick="toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-plus text-purple-600"></i>
+          <span class="font-medium">Create Dashboard</span>
+        </a>
+        <button onclick="loadDashboards(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-sync-alt text-blue-600"></i>
+          <span class="font-medium">Refresh List</span>
+        </button>
+        <button onclick="exportDashboards(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-download text-green-600"></i>
+          <span class="font-medium">Export List</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card w-full max-w-md rounded-2xl p-8 relative shadow-2xl mx-4">
+    <div class="text-center">
+      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+        <i class="fas fa-trash-alt text-2xl text-red-600"></i>
+      </div>
+      <h3 class="text-xl font-bold text-gray-800 mb-2">Delete Dashboard</h3>
+      <p class="text-gray-600 mb-4">This action cannot be undone</p>
+      <p class="text-gray-700 mb-8">Are you sure you want to delete "<span id="deleteModalTitle" class="font-semibold text-purple-600"></span>"?</p>
+      
+      <div class="flex space-x-3">
+        <button id="cancelDelete" class="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+          Cancel
+        </button>
+        <button id="confirmDelete" class="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 smooth-transition font-medium">
+          <i class="fas fa-trash-alt mr-2"></i>Delete
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+class DashboardManager {
+  constructor() {
+    this.dashboards = [];
+    this.currentPage = 1;
+    this.itemsPerPage = 9;
+    this.currentView = 'grid';
+    this.currentSort = 'name_asc';
+    this.currentStatus = 'all';
+    this.searchTerm = '';
+    this.dashboardToDelete = null;
+    this.fabOpen = false;
+    
+    this.initializeEventListeners();
+    this.loadDashboards();
+  }
+
+  initializeEventListeners() {
+    // Search
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      this.searchTerm = e.target.value.toLowerCase();
+      this.currentPage = 1;
+      this.filterAndDisplayDashboards();
+    });
+
+    // Filters
+    document.getElementById('sortFilter').addEventListener('change', (e) => {
+      this.currentSort = e.target.value;
+      this.currentPage = 1;
+      this.filterAndDisplayDashboards();
+    });
+
+    document.getElementById('statusFilter').addEventListener('change', (e) => {
+      this.currentStatus = e.target.value;
+      this.currentPage = 1;
+      this.filterAndDisplayDashboards();
+    });
+
+    // View toggle
+    document.getElementById('viewToggle').addEventListener('click', () => this.toggleView());
+
+    // Refresh button
+    document.getElementById('refreshBtn').addEventListener('click', () => this.loadDashboards());
+
+    // Delete modal
+    document.getElementById('cancelDelete').addEventListener('click', () => this.closeDeleteModal());
+    document.getElementById('confirmDelete').addEventListener('click', () => this.deleteDashboard());
+
+    // Close modal on outside click
+    document.getElementById('deleteModal').addEventListener('click', (e) => {
+      if (e.target.id === 'deleteModal') this.closeDeleteModal();
+    });
+
+    // Event delegation for dynamic elements
+    document.addEventListener('click', (e) => this.handleDynamicClicks(e));
+  }
+
+  updateProgress(percentage) {
+    document.getElementById('progress-bar').style.width = `${percentage}%`;
+  }
+
+  showToast(message, type = 'success', duration = 5000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    
+    const icons = {
+      success: 'fas fa-check-circle',
+      error: 'fas fa-exclamation-circle',
+      info: 'fas fa-info-circle',
+      warning: 'fas fa-exclamation-triangle'
+    };
+    
+    const colors = {
+      success: 'bg-green-500',
+      error: 'bg-red-500',
+      info: 'bg-blue-500',
+      warning: 'bg-yellow-500'
+    };
+    
+    toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+    toast.innerHTML = `
+      <i class="${icons[type]}"></i>
+      <span class="font-medium">${message}</span>
+      <button onclick="this.parentElement.remove()" class="ml-auto">
+        <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+      </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  showLoader() {
+    document.getElementById('content-loader').classList.remove('hidden');
+  }
+
+  hideLoader() {
+    document.getElementById('content-loader').classList.add('hidden');
+  }
+
+  async loadDashboards() {
+    this.updateProgress(30);
+    this.showLoader();
+    
+    try {
+      const response = await fetch('/api/dashboard/list', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        this.dashboards = data.dashboards || [];
+        this.updateStats();
+        this.filterAndDisplayDashboards();
+        this.showToast('Dashboards loaded successfully');
+      } else {
+        this.showToast('Failed to load dashboards', 'error');
+        this.showEmptyState();
+      }
+    } catch (error) {
+      console.error('Error loading dashboards:', error);
+      this.showToast('Error loading dashboards', 'error');
+      this.showEmptyState();
+    } finally {
+      this.hideLoader();
+      this.updateProgress(100);
+      setTimeout(() => this.updateProgress(0), 1000);
+    }
+  }
+
+  updateStats() {
+    const total = this.dashboards.length;
+    const active = this.dashboards.filter(d => d.is_active === true).length;
+    const recentlyViewed = this.dashboards.filter(d => {
+      if (!d.last_viewed) return false;
+      const viewedDate = new Date(d.last_viewed);
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      return viewedDate > weekAgo;
+    }).length;
+
+    document.getElementById('totalDashboards').textContent = total;
+    document.getElementById('activeDashboards').textContent = active;
+    document.getElementById('recentlyViewed').textContent = recentlyViewed;
+  }
+
+  filterAndDisplayDashboards() {
+    let filtered = [...this.dashboards];
+
+    // Apply search filter
+    if (this.searchTerm) {
+      filtered = filtered.filter(dashboard => 
+        dashboard.title.toLowerCase().includes(this.searchTerm) ||
+        (dashboard.description && dashboard.description.toLowerCase().includes(this.searchTerm))
+      );
+    }
+
+    // Apply status filter
+    if (this.currentStatus !== 'all') {
+      filtered = filtered.filter(dashboard => 
+        this.currentStatus === '1' ? dashboard.is_active === true : dashboard.is_active === false
+      );
+    }
+
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (this.currentSort) {
+        case 'name_asc':
+          return a.title.localeCompare(b.title);
+        case 'name_desc':
+          return b.title.localeCompare(a.title);
+        case 'created_desc':
+          return new Date(b.created_at) - new Date(a.created_at);
+        case 'created_asc':
+          return new Date(a.created_at) - new Date(b.created_at);
+        case 'updated_desc':
+          return new Date(b.updated_at) - new Date(a.updated_at);
+        default:
+          return 0;
+      }
+    });
+
+    if (filtered.length === 0) {
+      this.showEmptyState();
+    } else {
+      this.displayDashboards(filtered);
+      this.setupPagination(filtered.length);
+    }
+  }
+
+  displayDashboards(filtered) {
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+    const endIndex = startIndex + this.itemsPerPage;
+    const paginatedDashboards = filtered.slice(startIndex, endIndex);
+
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+
+    if (this.currentView === 'grid') {
+      this.displayGridView(paginatedDashboards);
+    } else {
+      this.displayListView(paginatedDashboards);
+    }
+  }
+
+  displayGridView(dashboards) {
+    const grid = document.getElementById('dashboardsGrid');
+    const list = document.getElementById('dashboardsList');
+    
+    list.classList.add('hidden');
+    grid.classList.remove('hidden');
+
+    grid.innerHTML = dashboards.map(dashboard => this.createDashboardCard(dashboard)).join('');
+  }
+
+  displayListView(dashboards) {
+    const grid = document.getElementById('dashboardsGrid');
+    const list = document.getElementById('dashboardsList');
+    
+    grid.classList.add('hidden');
+    list.classList.remove('hidden');
+    list.style.display = "block";   // force override
+    list.style.opacity = "1"; 
+
+    console.log("List dashboards:", dashboards);
+
+    list.innerHTML = dashboards.map(dashboard => this.createDashboardListItem(dashboard)).join('');
+    console.log("Rendering List View with", dashboards.length, "items");
+  }
+
+  createDashboardCard(dashboard) {
+    const statusBadge = dashboard.is_active === true 
+      ? '<span class="status-badge status-active"><i class="fas fa-circle text-xs"></i>Active</span>'
+      : '<span class="status-badge status-inactive"><i class="fas fa-circle text-xs"></i>Inactive</span>';
+
+    return `
+      <div class="dashboard-card glass-card rounded-2xl overflow-hidden slide-in">
+        <div class="p-6">
+          <div class="flex items-start justify-between mb-4">
+            <div class="flex items-center space-x-3 flex-1">
+              <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                <i class="fas fa-tachometer-alt text-white text-lg"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <h3 class="font-bold text-gray-800 text-lg mb-1 truncate">${dashboard.title}</h3>
+                ${statusBadge}
+              </div>
+            </div>
+            <div class="relative">
+              <button class="dashboard-menu-btn p-2 hover:bg-gray-100 rounded-lg smooth-transition" data-dashboard-id="${dashboard.id}">
+                <i class="fas fa-ellipsis-v text-gray-500"></i>
+              </button>
+              <div class="dropdown-menu absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border hidden z-10">
+                <a href="/dashboard/view/${dashboard.id}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 smooth-transition flex items-center space-x-2 rounded-t-xl">
+                  <i class="fas fa-eye text-blue-600"></i>
+                  <span>View Dashboard</span>
+                </a>
+                <a href="/dashboard/build/${dashboard.id}" class="block px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 smooth-transition flex items-center space-x-2">
+                  <i class="fas fa-edit text-green-600"></i>
+                  <span>Edit</span>
+                </a>
+                <button class="delete-dashboard-btn w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 smooth-transition flex items-center space-x-2 rounded-b-xl" data-dashboard-id="${dashboard.id}" data-dashboard-title="${dashboard.title}">
+                  <i class="fas fa-trash-alt"></i>
+                  <span>Delete</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <p class="text-gray-600 mb-4 text-sm leading-relaxed line-clamp-2">${dashboard.description || 'No description available'}</p>
+          
+          <div class="space-y-4">
+            <div class="flex items-center justify-between text-sm text-gray-500">
+              <div class="flex items-center space-x-1">
+                <i class="fas fa-cubes"></i>
+                <span>${dashboard.widget_count || 0} widgets</span>
+              </div>
+              <div class="flex items-center space-x-1">
+                <i class="fas fa-clock"></i>
+                <span>${this.formatDate(dashboard.updated_at)}</span>
+              </div>
+            </div>
+            
+            <div class="flex space-x-2">
+              <a href="/dashboard/view/${dashboard.id}" 
+                class="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-center py-3 px-4 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition font-semibold shadow-lg">
+                <i class="fas fa-eye mr-2"></i>View
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  createDashboardListItem(dashboard) {
+    console.log("Creating list item for:", dashboard);
+
+    const statusBadge = dashboard.is_active === true
+      ? '<span class="status-badge status-active"><i class="fas fa-circle text-xs"></i>Active</span>'
+      : '<span class="status-badge status-inactive"><i class="fas fa-circle text-xs"></i>Inactive</span>';
+
+    return `
+      <div class="glass-card rounded-2xl p-6 slide-in">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4 flex-1">
+            <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+              <i class="fas fa-tachometer-alt text-white text-lg"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center space-x-3 mb-1">
+                <h3 class="font-bold text-gray-800 text-lg truncate">${dashboard.title || "Untitled"}</h3>
+                ${statusBadge}
+              </div>
+              <p class="text-gray-600 mb-2 text-sm">${dashboard.description || "No description available"}</p>
+              <div class="flex items-center space-x-4 text-sm text-gray-500">
+                <span><i class="fas fa-cubes mr-1"></i>${dashboard.widget_count || 0} widgets</span>
+                <span><i class="fas fa-clock mr-1"></i>Updated ${dashboard.updated_at ? this.formatDate(dashboard.updated_at) : "N/A"}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="flex items-center space-x-3">
+            <a href="/dashboard/view/${dashboard.id}" 
+              class="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition font-semibold shadow-lg">
+              <i class="fas fa-eye mr-2"></i>View
+            </a>
+            <a href="/dashboard/build/${dashboard.id}" 
+              class="px-4 py-3 border-2 border-gray-300 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+              <i class="fas fa-edit"></i>
+            </a>
+            <button class="delete-dashboard-btn p-3 text-red-600 hover:bg-red-50 rounded-xl smooth-transition" 
+              data-dashboard-id="${dashboard.id}" data-dashboard-title="${dashboard.title}">
+              <i class="fas fa-trash-alt"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+
+  setupPagination(totalItems) {
+    const totalPages = Math.ceil(totalItems / this.itemsPerPage);
+    const pagination = document.getElementById('pagination');
+    
+    if (totalPages <= 1) {
+      pagination.classList.add('hidden');
+      return;
+    }
+
+    pagination.classList.remove('hidden');
+    
+    // Update showing text
+    const startIndex = (this.currentPage - 1) * this.itemsPerPage + 1;
+    const endIndex = Math.min(this.currentPage * this.itemsPerPage, totalItems);
+    document.getElementById('showingStart').textContent = startIndex;
+    document.getElementById('showingEnd').textContent = endIndex;
+    document.getElementById('totalItems').textContent = totalItems;
+
+    // Update buttons
+    const prevBtn = document.getElementById('prevPage');
+    const nextBtn = document.getElementById('nextPage');
+    
+    prevBtn.disabled = this.currentPage === 1;
+    nextBtn.disabled = this.currentPage === totalPages;
+    
+    prevBtn.onclick = () => {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.filterAndDisplayDashboards();
+      }
+    };
+    
+    nextBtn.onclick = () => {
+      if (this.currentPage < totalPages) {
+        this.currentPage++;
+        this.filterAndDisplayDashboards();
+      }
+    };
+
+    // Update page numbers
+    const pageNumbers = document.getElementById('pageNumbers');
+    pageNumbers.innerHTML = '';
+    
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= this.currentPage - 1 && i <= this.currentPage + 1)) {
+        const btn = document.createElement('button');
+        btn.textContent = i;
+        btn.className = `px-3 py-2 rounded-lg smooth-transition font-medium ${i === this.currentPage ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg' : 'border-2 border-gray-300 hover:bg-gray-50'}`;
+        btn.onclick = () => {
+          this.currentPage = i;
+          this.filterAndDisplayDashboards();
+        };
+        pageNumbers.appendChild(btn);
+      } else if (i === this.currentPage - 2 || i === this.currentPage + 2) {
+        const span = document.createElement('span');
+        span.textContent = '...';
+        span.className = 'px-2 py-2 text-gray-500 font-medium';
+        pageNumbers.appendChild(span);
+      }
+    }
+  }
+
+  toggleView() {
+    this.currentView = this.currentView === 'grid' ? 'list' : 'grid';
+    const toggleBtn = document.getElementById('viewToggle');
+    
+    if (this.currentView === 'grid') {
+      toggleBtn.innerHTML = `
+        <i class="fas fa-th text-lg"></i>
+        <span class="font-medium">Grid</span>
+      `;
+      toggleBtn.classList.remove('view-toggle-active');
+    } else {
+      toggleBtn.innerHTML = `
+        <i class="fas fa-list text-lg"></i>
+        <span class="font-medium">List</span>
+      `;
+      toggleBtn.classList.add('view-toggle-active');
+    }
+    
+    this.filterAndDisplayDashboards();
+  }
+
+  showEmptyState() {
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('dashboardsGrid').classList.add('hidden');
+    document.getElementById('dashboardsList').classList.add('hidden');
+    document.getElementById('pagination').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+  }
+
+  openDeleteModal(dashboardId, dashboardTitle) {
+    this.dashboardToDelete = dashboardId;
+    document.getElementById('deleteModalTitle').textContent = dashboardTitle;
+    document.getElementById('deleteModal').classList.remove('hidden');
+  }
+
+  closeDeleteModal() {
+    this.dashboardToDelete = null;
+    document.getElementById('deleteModal').classList.add('hidden');
+  }
+
+  async deleteDashboard() {
+    if (!this.dashboardToDelete) return;
+
+    try {
+      const response = await fetch(`/api/dashboard/delete/${this.dashboardToDelete}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        this.showToast('Dashboard deleted successfully');
+        this.closeDeleteModal();
+        this.loadDashboards();
+      } else {
+        this.showToast('Failed to delete dashboard', 'error');
+      }
+    } catch (error) {
+      console.error('Error deleting dashboard:', error);
+      this.showToast('Error deleting dashboard', 'error');
+    }
+  }
+
+  formatDate(dateString) {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = now - date;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "today";
+    if (diffDays === 1) return "yesterday";
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+      return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+    }
+    return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  handleDynamicClicks(e) {
+    // Dashboard menu toggle
+    if (e.target.closest('.dashboard-menu-btn')) {
+      const menu = e.target.closest('.dashboard-menu-btn').nextElementSibling;
+      document.querySelectorAll('.dropdown-menu').forEach(m => {
+        if (m !== menu) {
+          m.classList.add('hidden');
+          m.classList.remove('active');
+        }
+      });
+      menu.classList.toggle('hidden');
+      menu.classList.toggle('active');
+    }
+    
+    // Delete dashboard button
+    if (e.target.closest('.delete-dashboard-btn')) {
+      const btn = e.target.closest('.delete-dashboard-btn');
+      const dashboardId = btn.dataset.dashboardId;
+      const dashboardTitle = btn.dataset.dashboardTitle;
+      this.openDeleteModal(dashboardId, dashboardTitle);
+    }
+    
+    // Close dropdowns when clicking outside
+    if (!e.target.closest('.dashboard-menu-btn') && !e.target.closest('.dropdown-menu')) {
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.add('hidden');
+        menu.classList.remove('active');
+      });
+    }
+  }
+
+  toggleFAB() {
+    this.fabOpen = !this.fabOpen;
+    const menu = document.getElementById('fab-menu');
+    const icon = document.querySelector('#fab-main i');
+    
+    if (this.fabOpen) {
+      menu.style.transform = 'scale(1)';
+      icon.style.transform = 'rotate(45deg)';
+    } else {
+      menu.style.transform = 'scale(0)';
+      icon.style.transform = 'rotate(0deg)';
+    }
+  }
+
+  exportDashboards() {
+    const data = this.dashboards.map(d => ({
+      title: d.title,
+      description: d.description,
+      status: d.is_active ? 'Active' : 'Inactive',
+      widgets: d.widget_count || 0,
+      created: new Date(d.created_at).toLocaleDateString(),
+      updated: new Date(d.updated_at).toLocaleDateString()
+    }));
+    
+    const csv = [
+      ['Title', 'Description', 'Status', 'Widgets', 'Created', 'Updated'],
+      ...data.map(d => [d.title, d.description, d.status, d.widgets, d.created, d.updated])
+    ].map(row => row.map(field => `"${field}"`).join(',')).join('\n');
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `dashboards_export_${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    
+    this.showToast('Dashboard list exported successfully!');
+  }
+}
+
+// Global functions for compatibility
+function toggleFAB() {
+  if (window.dashboardManager) window.dashboardManager.toggleFAB();
+}
+
+function loadDashboards() {
+  if (window.dashboardManager) window.dashboardManager.loadDashboards();
+}
+
+function exportDashboards() {
+  if (window.dashboardManager) window.dashboardManager.exportDashboards();
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.dashboardManager = new DashboardManager();
+});
+</script>
+
+{% endblock %}

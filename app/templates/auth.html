@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Thinklee</title>
+  <link rel="icon" type="image/x-icon" href="/static/logo.ico">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #778ce7b7 0%, #7c5e9bc5 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .smooth-transition {
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .slide-in {
+      animation: slideInUp 0.5s ease-out;
+    }
+    
+    .fade-in {
+      animation: fadeIn 0.3s ease-out;
+    }
+    
+    @keyframes slideInUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .input-focus {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
+    }
+    
+    .pulse-ring {
+      animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+    }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(0.8); }
+      40%, 50% { opacity: 0; }
+      100% { opacity: 0; transform: scale(1.2); }
+    }
+    
+    .progress-bar {
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      height: 3px;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+  <!-- Progress Bar -->
+  <div class="fixed top-0 left-0 w-full bg-gray-200 h-1 z-50">
+    <div id="progress-bar" class="progress-bar w-0"></div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+        <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-400 rounded-full animate-spin pulse-ring mx-auto"></div>
+      </div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Processing...</p>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="glass-card rounded-3xl shadow-2xl w-full max-w-6xl flex flex-col lg:flex-row overflow-hidden min-h-[600px]">
+    
+    <!-- Left Section - Welcome -->
+    <div class="lg:w-1/2 flex flex-col items-center justify-center p-12 text-white relative overflow-hidden" style='background: linear-gradient(135deg,#B2D8CE  0%,  #667eea 100%);'>
+      <div class="absolute inset-0 bg-black bg-opacity-10"></div>
+      <div class="relative z-10 text-center">
+        <div class="mb-8">
+          <img src="/static/CliniOpsLOGO.png" alt="Thinklee Logo" class="w-29 h-29 mb-2 mx-auto drop-shadow-lg" />
+          <h1 class="text-4xl lg:text-5xl font-bold mb-4">Welcome to Thinklee</h1>
+          <p class="text-xl lg:text-2xl mb-6 opacity-90">AI-Powered Business Intelligence</p>
+          <div class="flex items-center justify-center space-x-6 text-sm opacity-75">
+            <span class="flex items-center"><i class="fas fa-bolt mr-2"></i>Fast</span>
+            <span class="flex items-center"><i class="fas fa-expand-arrows-alt mr-2"></i>Scalable</span>
+            <span class="flex items-center"><i class="fas fa-shield-alt mr-2"></i>Secure</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Decorative Elements -->
+      <div class="absolute top-10 left-10 w-20 h-20 bg-white bg-opacity-10 rounded-full"></div>
+      <div class="absolute bottom-10 right-10 w-32 h-32 bg-white bg-opacity-5 rounded-full"></div>
+    </div>
+
+    <!-- Right Section - Authentication Form -->
+    <div class="lg:w-1/2 p-8 lg:p-12 flex flex-col justify-center">
+      
+      <!-- Step Indicator -->
+      <div id="step-indicator" class="mb-8 hidden">
+        <div class="flex items-center justify-center space-x-4">
+          <div id="step-1" class="flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white text-sm font-semibold smooth-transition">1</div>
+          <div class="w-12 h-1 bg-gray-200 rounded smooth-transition" id="connector-1"></div>
+          <div id="step-2" class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-600 text-sm font-semibold smooth-transition">2</div>
+        </div>
+        <div class="text-center mt-3">
+          <p id="step-description" class="text-sm text-gray-600 font-medium">Enter your credentials</p>
+        </div>
+      </div>
+
+      <!-- Form Header -->
+      <div class="text-center mb-8">
+        <h2 id="form-title" class="text-3xl font-bold text-gray-800 mb-2">Sign In</h2>
+        <p id="form-subtitle" class="text-gray-600">Access your Thinklee dashboard</p>
+      </div>
+
+      <!-- Authentication Form -->
+      <form id="auth-form" class="space-y-6">
+        
+        <!-- Email Section -->
+        <div id="email-section" class="smooth-transition">
+          <label for="email" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-envelope mr-2 text-purple-600"></i>Email Address
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500 smooth-transition"
+            placeholder="Enter your email address"
+            required
+          >
+          <div id="email-feedback" class="mt-2 text-sm hidden"></div>
+        </div>
+
+        <!-- Password Section -->
+        <div id="password-section" class="smooth-transition">
+          <div class="flex items-center justify-between mb-2">
+            <label for="password" class="block text-sm font-semibold text-gray-700">
+              <i class="fas fa-lock mr-2 text-purple-600"></i>Password
+            </label>
+            <a href="#" id="forgot-password-link" class="text-sm text-purple-600 hover:text-purple-800 font-semibold hover:underline smooth-transition">
+              Forgot Password?
+            </a>
+          </div>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="password" 
+              class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500 smooth-transition pr-12"
+              placeholder="Enter your password"
+            >
+            <button type="button" id="toggle-password" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-purple-600">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          <div id="password-strength" class="mt-2 hidden">
+            <div class="flex space-x-1 mb-2">
+              <div class="h-1 bg-gray-200 rounded flex-1 smooth-transition" id="strength-1"></div>
+              <div class="h-1 bg-gray-200 rounded flex-1 smooth-transition" id="strength-2"></div>
+              <div class="h-1 bg-gray-200 rounded flex-1 smooth-transition" id="strength-3"></div>
+              <div class="h-1 bg-gray-200 rounded flex-1 smooth-transition" id="strength-4"></div>
+            </div>
+            <p id="strength-text" class="text-xs text-gray-600"></p>
+          </div>
+          <div id="password-requirements" class="mt-3 text-xs text-gray-600 hidden">
+            <p class="font-semibold mb-1">Password must contain:</p>
+            <ul class="grid grid-cols-2 gap-x-2 gap-y-1">
+              <li id="req-length" class="flex items-center"><i class="fas fa-times text-red-500 mr-2 w-3"></i>At least 8 characters</li>
+              <li id="req-upper" class="flex items-center"><i class="fas fa-times text-red-500 mr-2 w-3"></i>One uppercase letter</li>
+              <li id="req-lower" class="flex items-center"><i class="fas fa-times text-red-500 mr-2 w-3"></i>One lowercase letter</li>
+              <li id="req-number" class="flex items-center"><i class="fas fa-times text-red-500 mr-2 w-3"></i>One number</li>
+              <li id="req-special" class="flex items-center"><i class="fas fa-times text-red-500 mr-2 w-3"></i>One special character [@$!%*?&#]</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Confirm Password Section -->
+        <div id="confirm-password-section" class="smooth-transition hidden">
+          <label for="confirm-password" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-lock mr-2 text-purple-600"></i>Confirm Password
+          </label>
+          <input 
+            type="password" 
+            id="confirm-password" 
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500 smooth-transition"
+            placeholder="Confirm your password"
+          >
+          <div id="confirm-password-feedback" class="mt-2 text-sm hidden"></div>
+        </div>
+
+        <!-- OTP Section -->
+        <div id="otp-section" class="smooth-transition hidden">
+          <label for="otp" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-shield-alt mr-2 text-purple-600"></i>Verification Code
+          </label>
+          <div class="flex space-x-2 mb-4">
+            <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition" />
+            <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition" />
+            <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition" />
+            <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition" />
+            <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition" />
+            <input type="text" maxlength="1" class="otp-input w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition" />
+          </div>
+          <div class="text-center">
+            <p class="text-sm text-gray-600 mb-2">Enter the 6-digit code sent to <span id="otp-email" class="font-semibold text-purple-600"></span></p>
+            <div class="flex items-center justify-center space-x-2">
+              <span class="text-sm text-gray-500">Didn't receive the code?</span>
+              <button type="button" id="resend-otp" class="text-sm text-purple-600 font-semibold hover:underline disabled:opacity-50 disabled:cursor-not-allowed">
+                Resend <span id="resend-timer"></span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button 
+          type="submit" 
+          id="submit-btn"
+          class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-3 px-6 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+        >
+          <span id="submit-text">Sign In</span>
+          <i id="submit-icon" class="fas fa-arrow-right ml-2"></i>
+        </button>
+
+        <!-- Form Toggle -->
+        <div class="text-center pt-6 border-t border-gray-200">
+          <p class="text-sm text-gray-600">
+            <span id="toggle-question">Don't have an account?</span>
+            <button 
+              type="button" 
+              id="form-toggle"
+              class="text-purple-600 font-semibold hover:underline ml-1 smooth-transition"
+            >
+              Create Account
+            </button>
+          </p>
+        </div>
+      </form>
+    </div>
+    
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div id="forgot-password-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-3xl shadow-2xl w-full max-w-md mx-4 p-8 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <h3 class="text-2xl font-bold text-gray-800">Reset Password</h3>
+        <button onclick="thinkleeAuth.closeForgotPasswordModal()" class="text-gray-500 hover:text-gray-700">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+      
+      <div class="mb-6">
+        <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+          <div class="flex">
+            <i class="fas fa-info-circle text-blue-400 mr-3 mt-1"></i>
+            <div>
+              <p class="text-sm text-blue-700">
+                Enter your email address and we'll send you instructions to reset your password.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form id="forgot-password-form" class="space-y-4">
+        <div>
+          <label for="forgot-email" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-envelope mr-2 text-purple-600"></i>Email Address
+          </label>
+          <input 
+            type="email" 
+            id="forgot-email" 
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-purple-500 smooth-transition"
+            placeholder="Enter your email"
+            required
+          >
+          <div id="forgot-email-feedback" class="mt-2 text-sm hidden"></div>
+        </div>
+
+        <button 
+          type="submit"
+          id="forgot-submit-btn"
+          class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-3 px-6 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition transform hover:scale-105"
+        >
+          <i class="fas fa-paper-plane mr-2"></i>
+          <span>Send Reset Link</span>
+        </button>
+
+        <button 
+          type="button"
+          onclick="thinkleeAuth.closeForgotPasswordModal()"
+          class="w-full bg-gray-100 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-200 smooth-transition"
+        >
+          <i class="fas fa-arrow-left mr-2"></i>
+          <span>Back to Login</span>
+        </button>
+      </form>
+
+      <!-- Success Message (hidden by default) -->
+      <div id="forgot-success-message" class="hidden text-center">
+        <div class="mb-6">
+          <div class="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-check text-white text-3xl"></i>
+          </div>
+          <h4 class="text-xl font-bold text-gray-800 mb-2">Check Your Email!</h4>
+          <p class="text-gray-600">
+            We've sent password reset instructions to <strong id="sent-email"></strong>
+          </p>
+          <p class="text-sm text-gray-500 mt-3">
+            Didn't receive it? Check your spam folder or <a href="#" onclick="thinkleeAuth.resendResetLink()" class="text-purple-600 hover:underline font-semibold">resend the link</a>.
+          </p>
+        </div>
+        <button 
+          onclick="thinkleeAuth.closeForgotPasswordModal()"
+          class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold py-3 px-6 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition"
+        >
+          <i class="fas fa-check mr-2"></i>
+          Got It
+        </button>
+      </div>
+    </div>
+  </div>
+
+
+  <script>
+    class ThinkleeAuth {
+      constructor() {
+        this.isSignupMode = false;
+        this.otpSent = false;
+        this.otpTimer = null;
+        this.resendCountdown = 0;
+        
+        this.initializeEventListeners();
+        this.setupOTPInputs();
+      }
+
+      initializeEventListeners() {
+        // Form submission
+        document.getElementById('auth-form').addEventListener('submit', (e) => this.handleSubmit(e));
+        
+        // Form toggle
+        document.getElementById('form-toggle').addEventListener('click', () => this.toggleForm());
+        
+        // Password visibility toggle
+        document.getElementById('toggle-password').addEventListener('click', () => this.togglePasswordVisibility());
+        
+        // Real-time validation
+        document.getElementById('email').addEventListener('input', (e) => this.validateEmail(e.target.value));
+        document.getElementById('password').addEventListener('input', (e) => this.validatePassword(e.target.value));
+        document.getElementById('confirm-password').addEventListener('input', (e) => this.validateConfirmPassword(e.target.value));
+        
+        // OTP resend
+        document.getElementById('resend-otp').addEventListener('click', () => this.resendOTP());
+
+        document.getElementById('forgot-password-link').addEventListener('click', (e) => {
+          e.preventDefault();
+          this.openForgotPasswordModal();
+        });
+
+        document.getElementById('forgot-password-form').addEventListener('submit', (e) => {
+          this.handleForgotPasswordSubmit(e);
+        });
+        
+        // Input focus effects
+        this.addInputFocusEffects();
+      }
+
+      openForgotPasswordModal() {
+        document.getElementById('forgot-password-modal').classList.remove('hidden');
+        document.getElementById('forgot-password-form').classList.remove('hidden');
+        document.getElementById('forgot-success-message').classList.add('hidden');
+        document.getElementById('forgot-email').value = document.getElementById('email').value || '';
+      }
+
+      closeForgotPasswordModal() {
+        document.getElementById('forgot-password-modal').classList.add('hidden');
+        document.getElementById('forgot-password-form').reset();
+      }
+
+      async handleForgotPasswordSubmit(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('forgot-email').value.trim();
+        const btn = document.getElementById('forgot-submit-btn');
+        
+        if (!this.validateForgotEmail(email)) {
+          this.showToast('Please enter a valid email address', 'error');
+          return;
+        }
+        
+        try {
+          btn.disabled = true;
+          btn.innerHTML = '<div class="spinner"></div><span>Sending...</span>';
+          this.showLoader('Sending reset instructions...');
+          
+          const response = await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          
+          const data = await response.json();
+          this.hideLoader();
+          
+          // Always show success to prevent email enumeration [web:15]
+          document.getElementById('forgot-password-form').classList.add('hidden');
+          document.getElementById('forgot-success-message').classList.remove('hidden');
+          document.getElementById('sent-email').textContent = email;
+          
+          if (response.ok) {
+            this.showToast('Password reset email sent successfully', 'success');
+          }
+          
+        } catch (error) {
+          this.hideLoader();
+          console.error('Forgot password error:', error);
+          
+          // Still show success message to prevent user enumeration [web:15]
+          document.getElementById('forgot-password-form').classList.add('hidden');
+          document.getElementById('forgot-success-message').classList.remove('hidden');
+          document.getElementById('sent-email').textContent = email;
+        } finally {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i><span>Send Reset Link</span>';
+        }
+      }
+
+      validateForgotEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const feedback = document.getElementById('forgot-email-feedback');
+        const input = document.getElementById('forgot-email');
+        
+        if (!email) {
+          feedback.className = 'mt-2 text-sm hidden';
+          input.classList.remove('border-green-500', 'border-red-500');
+          return false;
+        }
+        
+        if (emailRegex.test(email)) {
+          feedback.className = 'mt-2 text-sm text-green-600 flex items-center';
+          feedback.innerHTML = '<i class="fas fa-check mr-2"></i>Valid email address';
+          input.classList.remove('border-red-500');
+          input.classList.add('border-green-500');
+          return true;
+        } else {
+          feedback.className = 'mt-2 text-sm text-red-600 flex items-center';
+          feedback.innerHTML = '<i class="fas fa-times mr-2"></i>Invalid email address';
+          input.classList.remove('border-green-500');
+          input.classList.add('border-red-500');
+          return false;
+        }
+      }
+
+      async resendResetLink() {
+        const email = document.getElementById('forgot-email').value;
+        this.showLoader('Resending reset link...');
+        
+        try {
+          await fetch('/api/auth/forgot-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          
+          this.hideLoader();
+          this.showToast('Reset link resent successfully', 'success');
+        } catch (error) {
+          this.hideLoader();
+          this.showToast('Failed to resend link. Please try again.', 'error');
+        }
+      }
+
+      setupOTPInputs() {
+        const otpInputs = document.querySelectorAll('.otp-input');
+        otpInputs.forEach((input, index) => {
+          input.addEventListener('input', (e) => {
+            if (e.target.value.length === 1 && index < otpInputs.length - 1) {
+              otpInputs[index + 1].focus();
+            }
+          });
+          
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
+              otpInputs[index - 1].focus();
+            }
+          });
+        });
+      }
+
+      addInputFocusEffects() {
+        const inputs = document.querySelectorAll('input');
+        inputs.forEach(input => {
+          input.addEventListener('focus', () => input.classList.add('input-focus'));
+          input.addEventListener('blur', () => input.classList.remove('input-focus'));
+        });
+      }
+
+      updateProgress(percentage) {
+        document.getElementById('progress-bar').style.width = `${percentage}%`;
+      }
+
+      showToast(message, type = 'success', duration = 5000) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        const icons = {
+          success: 'fas fa-check-circle',
+          error: 'fas fa-exclamation-circle',
+          info: 'fas fa-info-circle',
+          warning: 'fas fa-exclamation-triangle'
+        };
+        
+        const colors = {
+          success: 'bg-green-500',
+          error: 'bg-red-500',
+          info: 'bg-blue-500',
+          warning: 'bg-yellow-500'
+        };
+        
+        toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+        toast.innerHTML = `
+          <i class="${icons[type]}"></i>
+          <span class="font-medium">${message}</span>
+          <button onclick="this.parentElement.remove()" class="ml-auto">
+            <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+          </button>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.style.transform = 'translateX(100%)';
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 300);
+        }, duration);
+      }
+
+      showLoader(text = 'Processing...') {
+        document.getElementById('loader-text').textContent = text;
+        document.getElementById('loader').classList.remove('hidden');
+      }
+
+      hideLoader() {
+        document.getElementById('loader').classList.add('hidden');
+      }
+
+      updateStepIndicator(step) {
+        const step1 = document.getElementById('step-1');
+        const step2 = document.getElementById('step-2');
+        const connector = document.getElementById('connector-1');
+        const description = document.getElementById('step-description');
+        
+        if (step === 1) {
+          step1.className = 'flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white text-sm font-semibold smooth-transition';
+          step2.className = 'flex items-center justify-center w-8 h-8 rounded-full bg-gray-300 text-gray-600 text-sm font-semibold smooth-transition';
+          connector.className = 'w-12 h-1 bg-gray-200 rounded smooth-transition';
+          description.textContent = 'Enter your credentials';
+        } else {
+          step1.className = 'flex items-center justify-center w-8 h-8 rounded-full bg-green-500 text-white text-sm font-semibold smooth-transition';
+          step2.className = 'flex items-center justify-center w-8 h-8 rounded-full bg-purple-600 text-white text-sm font-semibold smooth-transition';
+          connector.className = 'w-12 h-1 bg-green-500 rounded smooth-transition';
+          description.textContent = 'Verify your email';
+        }
+      }
+
+      validateEmail(email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const feedback = document.getElementById('email-feedback');
+        const input = document.getElementById('email');
+        
+        if (!email) {
+          feedback.className = 'mt-2 text-sm hidden';
+          input.classList.remove('border-green-500', 'border-red-500');
+          return false;
+        }
+        
+        if (emailRegex.test(email)) {
+          feedback.className = 'mt-2 text-sm text-green-600 flex items-center';
+          feedback.innerHTML = '<i class="fas fa-check mr-2"></i>Valid email address';
+          input.classList.remove('border-red-500');
+          input.classList.add('border-green-500');
+          return true;
+        } else {
+          feedback.className = 'mt-2 text-sm text-red-600 flex items-center';
+          feedback.innerHTML = '<i class="fas fa-times mr-2"></i>Please enter a valid email address';
+          input.classList.remove('border-green-500');
+          input.classList.add('border-red-500');
+          return false;
+        }
+      }
+
+      validatePassword(password) {
+        if (!this.isSignupMode) return true;
+        
+        const requirements = {
+          length: password.length >= 8,
+          upper: /[A-Z]/.test(password),
+          lower: /[a-z]/.test(password),
+          number: /\d/.test(password),
+          special: /[@$!%*?&#]/.test(password)
+        };
+        
+        // Update requirement indicators
+        Object.keys(requirements).forEach(req => {
+          const element = document.getElementById(`req-${req}`);
+          const icon = element.querySelector('i');
+          if (requirements[req]) {
+            icon.className = 'fas fa-check text-green-500 mr-2 w-3';
+            element.classList.add('text-green-600');
+            element.classList.remove('text-gray-600');
+          } else {
+            icon.className = 'fas fa-times text-red-500 mr-2 w-3';
+            element.classList.remove('text-green-600');
+            element.classList.add('text-gray-600');
+          }
+        });
+        
+        // Update strength meter
+        const strength = Object.values(requirements).filter(Boolean).length;
+        const strengthBars = document.querySelectorAll('[id^="strength-"]');
+        const strengthText = document.getElementById('strength-text');
+        
+        strengthBars.forEach((bar, index) => {
+          bar.className = 'h-1 rounded flex-1 smooth-transition';
+          if (index < strength) {
+            if (strength <= 2) bar.classList.add('bg-red-500');
+            else if (strength <= 3) bar.classList.add('bg-yellow-500');
+            else if (strength <= 4) bar.classList.add('bg-blue-500');
+            else bar.classList.add('bg-green-500');
+          } else {
+            bar.classList.add('bg-gray-200');
+          }
+        });
+        
+        const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong'];
+        const strengthColors = ['text-red-600', 'text-red-500', 'text-yellow-500', 'text-blue-500', 'text-green-500'];
+        strengthText.textContent = strengthLabels[Math.max(0, strength - 1)] || '';
+        strengthText.className = `text-xs ${strengthColors[Math.max(0, strength - 1)] || 'text-gray-600'}`;
+        
+        return strength === 5;
+      }
+
+      validateConfirmPassword(confirmPassword) {
+        const password = document.getElementById('password').value;
+        const feedback = document.getElementById('confirm-password-feedback');
+        const input = document.getElementById('confirm-password');
+        
+        if (!confirmPassword) {
+          feedback.className = 'mt-2 text-sm hidden';
+          input.classList.remove('border-green-500', 'border-red-500');
+          return false;
+        }
+        
+        if (password === confirmPassword) {
+          feedback.className = 'mt-2 text-sm text-green-600 flex items-center';
+          feedback.innerHTML = '<i class="fas fa-check mr-2"></i>Passwords match';
+          input.classList.remove('border-red-500');
+          input.classList.add('border-green-500');
+          return true;
+        } else {
+          feedback.className = 'mt-2 text-sm text-red-600 flex items-center';
+          feedback.innerHTML = '<i class="fas fa-times mr-2"></i>Passwords do not match';
+          input.classList.remove('border-green-500');
+          input.classList.add('border-red-500');
+          return false;
+        }
+      }
+
+      togglePasswordVisibility() {
+        const passwordInput = document.getElementById('password');
+        const toggleButton = document.getElementById('toggle-password');
+        const icon = toggleButton.querySelector('i');
+        
+        if (passwordInput.type === 'password') {
+          passwordInput.type = 'text';
+          icon.className = 'fas fa-eye-slash';
+        } else {
+          passwordInput.type = 'password';
+          icon.className = 'fas fa-eye';
+        }
+      }
+
+      toggleForm() {
+        this.isSignupMode = !this.isSignupMode;
+        this.otpSent = false;
+        
+        const elements = {
+          title: document.getElementById('form-title'),
+          subtitle: document.getElementById('form-subtitle'),
+          confirmSection: document.getElementById('confirm-password-section'),
+          otpSection: document.getElementById('otp-section'),
+          passwordSection: document.getElementById('password-section'),
+          passwordRequirements: document.getElementById('password-requirements'),
+          passwordStrength: document.getElementById('password-strength'),
+          submitBtn: document.getElementById('submit-text'),
+          submitIcon: document.getElementById('submit-icon'),
+          toggleQuestion: document.getElementById('toggle-question'),
+          toggleButton: document.getElementById('form-toggle'),
+          stepIndicator: document.getElementById('step-indicator')
+        };
+        
+        if (this.isSignupMode) {
+          elements.title.textContent = 'Create Account';
+          elements.subtitle.textContent = 'Join Thinklee and unlock AI-powered insights';
+          elements.confirmSection.classList.remove('hidden');
+          elements.passwordRequirements.classList.remove('hidden');
+          elements.passwordStrength.classList.remove('hidden');
+          elements.submitBtn.textContent = 'Create Account';
+          elements.submitIcon.className = 'fas fa-user-plus ml-2';
+          elements.toggleQuestion.textContent = 'Already have an account?';
+          elements.toggleButton.textContent = 'Sign In';
+          elements.stepIndicator.classList.remove("hidden");
+        } else {
+          elements.title.textContent = 'Sign In';
+          elements.subtitle.textContent = 'Access your Thinklee dashboard';
+          elements.confirmSection.classList.add('hidden');
+          elements.otpSection.classList.add('hidden');
+          elements.passwordSection.classList.remove('hidden');
+          elements.passwordRequirements.classList.add('hidden');
+          elements.passwordStrength.classList.add('hidden');
+          elements.submitBtn.textContent = 'Sign In';
+          elements.submitIcon.className = 'fas fa-arrow-right ml-2';
+          elements.toggleQuestion.textContent = "Don't have an account?";
+          elements.toggleButton.textContent = 'Create Account';
+          elements.stepIndicator.classList.add("hidden");
+        }
+        
+        this.updateStepIndicator(1);
+        this.clearForm();
+      }
+
+      clearForm() {
+        document.getElementById('auth-form').reset();
+        document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+        document.querySelectorAll('input').forEach(input => {
+          input.classList.remove('border-green-500', 'border-red-500');
+        });
+        document.querySelectorAll('[id$="-feedback"]').forEach(el => {
+          el.classList.add('hidden');
+        });
+      }
+
+      getOTPValue() {
+        return Array.from(document.querySelectorAll('.otp-input'))
+          .map(input => input.value)
+          .join('');
+      }
+
+      startResendTimer() {
+        this.resendCountdown = 60;
+        const resendBtn = document.getElementById('resend-otp');
+        const timerSpan = document.getElementById('resend-timer');
+        
+        resendBtn.disabled = true;
+        resendBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        
+        this.otpTimer = setInterval(() => {
+          timerSpan.textContent = `(${this.resendCountdown}s)`;
+          this.resendCountdown--;
+          
+          if (this.resendCountdown < 0) {
+            clearInterval(this.otpTimer);
+            resendBtn.disabled = false;
+            resendBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            timerSpan.textContent = '';
+          }
+        }, 1000);
+      }
+
+      async resendOTP() {
+        const email = document.getElementById('email').value;
+        
+        try {
+          this.showLoader('Sending new code...');
+          const response = await fetch('/api/auth/send-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          
+          const data = await response.json();
+          this.hideLoader();
+          
+          if (response.ok && data.success) {
+            this.showToast('New verification code sent to your email', 'success');
+            this.startResendTimer();
+            document.querySelectorAll('.otp-input').forEach(input => input.value = '');
+            document.querySelectorAll('.otp-input')[0].focus();
+          } else {
+            this.showToast(data.message || 'Failed to send verification code', 'error');
+          }
+        } catch (error) {
+          this.hideLoader();
+          this.showToast('Network error. Please try again.', 'error');
+        }
+      }
+
+      async handleSubmit(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const confirmPassword = document.getElementById('confirm-password').value.trim();
+        const otpValue = this.getOTPValue();
+        
+        // Validation
+        if (!this.validateEmail(email)) {
+          this.showToast('Please enter a valid email address', 'error');
+          return;
+        }
+        
+        if (this.isSignupMode && !this.otpSent) {
+          if (!this.validatePassword(password)) {
+            this.showToast('Please ensure your password meets all requirements', 'error');
+            return;
+          }
+          
+          if (!this.validateConfirmPassword(confirmPassword)) {
+            this.showToast('Please confirm your password correctly', 'error');
+            return;
+          }
+        }
+        
+        if (this.otpSent && otpValue.length !== 6) {
+          this.showToast('Please enter the complete 6-digit verification code', 'error');
+          return;
+        }
+        
+        // Determine API endpoint and payload
+        let endpoint, body, loadingText;
+        
+        if (this.isSignupMode) {
+          if (!this.otpSent) {
+            endpoint = '/api/auth/send-otp';
+            body = { email };
+            loadingText = 'Sending verification code...';
+          } else {
+            endpoint = '/api/auth/register';
+            body = { email, password, otp: otpValue };
+            loadingText = 'Creating your account...';
+          }
+        } else {
+          endpoint = '/api/auth/login';
+          body = { email, password };
+          loadingText = 'Signing you in...';
+        }
+        
+        try {
+          this.showLoader(loadingText);
+          this.updateProgress(30);
+          
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          
+          this.updateProgress(70);
+          const data = await response.json();
+          this.updateProgress(100);
+          
+          setTimeout(() => {
+            this.hideLoader();
+            
+            if (response.ok && data.success) {
+              if (this.isSignupMode && !this.otpSent) {
+                // OTP sent successfully
+                this.otpSent = true;
+                document.getElementById('otp-email').textContent = email;
+                document.getElementById('password-section').classList.add('hidden');
+                document.getElementById('confirm-password-section').classList.add('hidden');
+                document.getElementById('otp-section').classList.remove('hidden');
+                document.getElementById('otp-section').classList.add('fade-in');
+                document.getElementById('submit-text').textContent = 'Verify & Create Account';
+                document.getElementById('submit-icon').className = 'fas fa-shield-alt ml-2';
+                
+                this.updateStepIndicator(2);
+                this.showToast('Verification code sent to your email', 'success');
+                this.startResendTimer();
+                
+                // Focus first OTP input
+                setTimeout(() => {
+                  document.querySelectorAll('.otp-input')[0].focus();
+                }, 300);
+                
+              } else if (this.isSignupMode && this.otpSent) {
+                // Account created successfully
+                this.showToast('Account created successfully! You can now sign in.', 'success');
+                setTimeout(() => {
+                  this.toggleForm();
+                  document.getElementById('email').value = email;
+                }, 2000);
+                
+              } else {
+                // Login successful
+                localStorage.setItem('token', data.access_token);
+                this.showToast('Welcome back! Redirecting to your dashboard...', 'success');
+                setTimeout(() => {
+                   window.location.href =`${data.redirect_url}`
+                  // if (!data.org_setup_completed && data.must_reset_password) {
+                  //   window.location.href ="/org-setup";
+                  // } else if(!data.must_reset_password){
+                  //   window.location.href ="/reset-password";
+                  // } else { 
+                  //   window.location.href = '/home'; 
+                  // }
+                }, 2000);
+              }
+            } else {
+              this.showToast(data.message || 'Authentication failed. Please try again.', 'error');
+            }
+          }, 500);
+          
+        } catch (error) {
+          this.hideLoader();
+          this.updateProgress(0);
+          console.error('Auth error:', error);
+          this.showToast('Network error. Please check your connection and try again.', 'error');
+        }
+        
+        setTimeout(() => this.updateProgress(0), 3000);
+      }
+    }
+
+    // Initialize the authentication system
+    document.addEventListener('DOMContentLoaded', () => {
+      new ThinkleeAuth();
+    });
+  </script>
+</body>
+</html>

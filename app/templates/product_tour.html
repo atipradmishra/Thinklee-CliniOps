@@ -1,0 +1,810 @@
+{# ------------------------------------------------------------------
+   Thinklee / CliniOps — first-login product tour
+
+   Included from base.html on every page. It auto-starts only when the
+   server says this user has never seen it (User.tour_completed_at is
+   NULL) and they are on /home; anywhere else it lies dormant until
+   something calls ThinkleeTour.start().
+
+   Steps whose anchor element is not on the current page are skipped, so
+   the same script works as a replayable tour from any screen.
+------------------------------------------------------------------ #}
+
+<style>
+  /* ==============================================================
+     Scrim + spotlight
+     The cut-out is a giant box-shadow around a positioned "hole",
+     which animates between targets far more smoothly than an SVG mask
+     and needs no re-rasterising.
+     ============================================================== */
+  #tour-root {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: none;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  #tour-root.active { display: block; }
+
+  #tour-spot {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    border-radius: 16px;
+    box-shadow:
+      0 0 0 9999px rgba(6, 14, 28, 0.74),
+      0 0 0 2px rgba(41, 171, 226, 0.9),
+      0 0 28px 4px rgba(41, 171, 226, 0.45);
+    transition: top .42s cubic-bezier(.22,.61,.36,1),
+                left .42s cubic-bezier(.22,.61,.36,1),
+                width .42s cubic-bezier(.22,.61,.36,1),
+                height .42s cubic-bezier(.22,.61,.36,1),
+                border-radius .42s ease;
+    pointer-events: none;
+  }
+
+  /* Centred steps (welcome / finish) have no anchor: collapse the hole
+     to nothing in the middle of the screen so the scrim covers all. */
+  #tour-root.no-anchor #tour-spot {
+    box-shadow: 0 0 0 9999px rgba(6, 14, 28, 0.82);
+    border-radius: 0;
+  }
+
+  #tour-blocker {
+    position: fixed;
+    inset: 0;
+    cursor: default;
+  }
+
+  /* Soft pulse to draw the eye to the highlighted control */
+  #tour-pulse {
+    position: fixed;
+    border-radius: 18px;
+    border: 2px solid rgba(41, 171, 226, 0.55);
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  #tour-root.anchored #tour-pulse { animation: tour-pulse 2.1s ease-out infinite; }
+
+  @keyframes tour-pulse {
+    0%   { opacity: .75; transform: scale(1); }
+    70%  { opacity: 0;   transform: scale(1.14); }
+    100% { opacity: 0;   transform: scale(1.14); }
+  }
+
+  /* ==============================================================
+     Card
+     ============================================================== */
+  #tour-card {
+    position: fixed;
+    width: min(380px, calc(100vw - 32px));
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 24px 60px -12px rgba(6, 14, 28, .45), 0 0 0 1px rgba(255,255,255,.6);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(8px) scale(.98);
+    transition: opacity .28s ease, transform .28s cubic-bezier(.22,.61,.36,1),
+                top .42s cubic-bezier(.22,.61,.36,1), left .42s cubic-bezier(.22,.61,.36,1);
+  }
+
+  #tour-card.shown { opacity: 1; transform: translateY(0) scale(1); }
+
+  /* Accent rail echoing the CliniOps mark (cyan) into the app's indigo */
+  .tour-accent {
+    height: 4px;
+    background: linear-gradient(90deg, #29abe2, #6366f1, #8b5cf6);
+  }
+
+  .tour-body { padding: 22px 24px 18px; }
+
+  .tour-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .tour-badge {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    color: #fff;
+    font-size: 14px;
+    background: linear-gradient(135deg, #29abe2, #6366f1);
+    box-shadow: 0 4px 12px rgba(41, 171, 226, .35);
+  }
+
+  .tour-step-count {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: #94a3b8;
+  }
+
+  #tour-title {
+    margin: 0 0 8px;
+    font-size: 19px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -.02em;
+    color: #0f172a;
+  }
+
+  #tour-text {
+    margin: 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #52627a;
+  }
+
+  #tour-hint {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f1f7fd;
+    border: 1px solid #dbeafe;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: #1e5b8a;
+  }
+
+  #tour-hint[hidden] { display: none; }
+
+  /* ==============================================================
+     Footer: progress dots + controls
+     ============================================================== */
+  .tour-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 24px 20px;
+  }
+
+  .tour-dots { display: flex; align-items: center; gap: 6px; }
+
+  .tour-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #dbe3ec;
+    transition: all .3s ease;
+  }
+
+  .tour-dot.done { background: #a5b4fc; }
+
+  .tour-dot.current {
+    width: 22px;
+    background: linear-gradient(90deg, #29abe2, #6366f1);
+  }
+
+  .tour-actions { display: flex; align-items: center; gap: 8px; }
+
+  .tour-btn {
+    border: 0;
+    border-radius: 11px;
+    padding: 9px 16px;
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s ease;
+    white-space: nowrap;
+  }
+
+  .tour-btn:focus-visible { outline: 2px solid #29abe2; outline-offset: 2px; }
+
+  .tour-btn-primary {
+    color: #fff;
+    background: linear-gradient(135deg, #29abe2, #6366f1);
+    box-shadow: 0 6px 16px rgba(41, 171, 226, .32);
+  }
+
+  .tour-btn-primary:hover { filter: brightness(1.07); transform: translateY(-1px); }
+
+  .tour-btn-ghost { color: #64748b; background: transparent; }
+  .tour-btn-ghost:hover { color: #0f172a; background: #f1f5f9; }
+  .tour-btn-ghost[hidden] { display: none; }
+
+  #tour-skip {
+    position: absolute;
+    top: 14px;
+    right: 12px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  #tour-skip:hover { color: #0f172a; background: #f1f5f9; }
+
+  /* Arrow pointing at the highlighted element */
+  #tour-arrow {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    transform: rotate(45deg);
+  }
+
+  #tour-arrow[hidden] { display: none; }
+
+  /* ==============================================================
+     Centred (anchorless) layout for welcome / finish
+     ============================================================== */
+  #tour-root.no-anchor #tour-card {
+    width: min(440px, calc(100vw - 32px));
+    text-align: center;
+  }
+
+  #tour-root.no-anchor .tour-eyebrow { justify-content: center; }
+  #tour-root.no-anchor .tour-foot { justify-content: center; flex-direction: column; gap: 16px; }
+  #tour-root.no-anchor .tour-body { padding: 30px 30px 8px; }
+  #tour-root.no-anchor #tour-title { font-size: 23px; }
+  #tour-root.no-anchor .tour-badge { width: 46px; height: 46px; font-size: 19px; border-radius: 15px; }
+
+  /* ==============================================================
+     Small screens: dock the card to the bottom
+     ============================================================== */
+  @media (max-width: 640px) {
+    #tour-card {
+      left: 16px !important;
+      right: 16px;
+      top: auto !important;
+      bottom: 16px;
+      width: auto;
+    }
+    #tour-arrow { display: none !important; }
+    .tour-foot { flex-wrap: wrap; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #tour-spot, #tour-card, #tour-pulse {
+      transition-duration: .01ms !important;
+      animation: none !important;
+    }
+  }
+
+  /* ==============================================================
+     Launcher pill — lets a user restart the tour later
+     ============================================================== */
+  .tour-launch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border: 0;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(135deg, #29abe2, #6366f1);
+    box-shadow: 0 6px 18px rgba(41, 171, 226, .3);
+    transition: all .2s ease;
+  }
+
+  .tour-launch:hover { filter: brightness(1.07); transform: translateY(-1px); }
+</style>
+
+<div id="tour-root"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="tour-title"
+     data-autostart="{{ 'yes' if show_tour else 'no' }}">
+  <div id="tour-blocker"></div>
+  <div id="tour-spot"></div>
+  <div id="tour-pulse"></div>
+
+  <div id="tour-card">
+    <div id="tour-arrow" hidden></div>
+    <div class="tour-accent"></div>
+    <button type="button" id="tour-skip">Skip tour</button>
+
+    <div class="tour-body">
+      <div class="tour-eyebrow">
+        <span class="tour-badge" id="tour-icon" aria-hidden="true"><i class="fas fa-rocket"></i></span>
+        <span class="tour-step-count" id="tour-count">Step 1 of 8</span>
+      </div>
+      <h2 id="tour-title">Welcome</h2>
+      <p id="tour-text"></p>
+      <div id="tour-hint" hidden></div>
+    </div>
+
+    <div class="tour-foot">
+      <div class="tour-dots" id="tour-dots" aria-hidden="true"></div>
+      <div class="tour-actions">
+        <button type="button" class="tour-btn tour-btn-ghost" id="tour-back">Back</button>
+        <button type="button" class="tour-btn tour-btn-primary" id="tour-next">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var root = document.getElementById("tour-root");
+  if (!root) return;
+
+  var card    = document.getElementById("tour-card");
+  var spot    = document.getElementById("tour-spot");
+  var pulse   = document.getElementById("tour-pulse");
+  var arrow   = document.getElementById("tour-arrow");
+  var titleEl = document.getElementById("tour-title");
+  var textEl  = document.getElementById("tour-text");
+  var hintEl  = document.getElementById("tour-hint");
+  var countEl = document.getElementById("tour-count");
+  var iconEl  = document.getElementById("tour-icon");
+  var dotsEl  = document.getElementById("tour-dots");
+  var backBtn = document.getElementById("tour-back");
+  var nextBtn = document.getElementById("tour-next");
+  var skipBtn = document.getElementById("tour-skip");
+
+  var PAD = 8;          // breathing room around the spotlight
+  var GAP = 16;         // distance from target to card
+  var LS_KEY = "tour:done";
+
+  // ----------------------------------------------------------------
+  // Steps
+  //
+  // `target` is a CSS selector; a step whose target is absent on the
+  // current page is skipped, so this same list works as a replayable
+  // tour from any screen.
+  // ----------------------------------------------------------------
+  var STEPS = [
+    {
+      icon: "fa-hand-sparkles",
+      title: "Welcome to CliniOps",
+      text: "This quick tour shows how to go from raw data to answers in four steps. It takes about a minute.",
+      hint: "You can leave at any time and pick it up again from Help &amp; Setup."
+    },
+    {
+      target: 'a[href="/data-management"].nav-item',
+      icon: "fa-database",
+      title: "1. Connect your data",
+      text: "Start here. Link a database — PostgreSQL, MySQL, SQL Server, Snowflake, AWS RDS or Azure SQL — or upload CSV, Excel and document files.",
+      hint: "Amazon S3 buckets can be browsed here too, and their files imported into tables."
+    },
+    {
+      target: 'a[href="/agent-management"].nav-item',
+      icon: "fa-robot",
+      title: "2. Create an AI agent",
+      text: "An agent is pointed at specific tables or documents and given instructions on how to answer. You can run several, each with its own scope.",
+      hint: "Add a business glossary so the agent uses your organisation's wording."
+    },
+    {
+      target: 'a[href="/copilot-page"].nav-item',
+      icon: "fa-comments",
+      title: "3. Ask in plain language",
+      text: "Co-Pilot turns your question into a query, runs it, and explains the result. No SQL needed.",
+      hint: "Rate an answer and your feedback steers future ones."
+    },
+    {
+      target: 'a[href="/graph-query"].nav-item',
+      icon: "fa-chart-column",
+      title: "See it as a chart",
+      text: "Graph Query answers the same kind of question, but returns a visual you can drill into."
+    },
+    {
+      target: "#sbAccBtn",
+      icon: "fa-table-columns",
+      title: "4. Build a dashboard",
+      text: "Save your most useful questions as widgets and arrange them into a dashboard your team can return to.",
+      hint: "Dashboards you create appear in this list for quick access."
+    },
+    {
+      target: ".quick-actions",
+      icon: "fa-bolt",
+      title: "Shortcuts on your home page",
+      text: "These cards jump straight to the task you need, and the counters above track what your organisation has set up so far."
+    },
+    {
+      target: 'a[href="/steps"].nav-item',
+      icon: "fa-circle-question",
+      title: "Your setup checklist",
+      text: "Help &amp; Setup tracks your progress through these steps — and it is where you can replay this tour."
+    },
+    {
+      icon: "fa-flag-checkered",
+      title: "You're all set",
+      text: "Connect a data source to get started. Everything else builds on top of it.",
+      cta: { label: "Connect data", href: "/data-management" }
+    }
+  ];
+
+  // ----------------------------------------------------------------
+  // State
+  // ----------------------------------------------------------------
+  var steps = [];       // steps applicable to this page
+  var index = 0;
+  var open = false;
+  var lastFocus = null;
+
+  function token() {
+    try { return localStorage.getItem("token"); } catch (e) { return null; }
+  }
+
+  function markSeen() {
+    // Remember locally first so a failed request can't loop the tour.
+    try { localStorage.setItem(LS_KEY, "1"); } catch (e) {}
+
+    var jwt = token();
+    if (!jwt) return;
+
+    fetch("/api/profile/tour/complete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + jwt },
+      credentials: "same-origin"
+    }).catch(function () { /* local flag already set */ });
+  }
+
+  function applicable() {
+    return STEPS.filter(function (step) {
+      return !step.target || document.querySelector(step.target);
+    });
+  }
+
+  // ----------------------------------------------------------------
+  // The sidebar has two states that can hide a tour target: collapsed
+  // to a rail on desktop, and off-canvas on mobile. Reveal it first.
+  // ----------------------------------------------------------------
+  function revealSidebar(step) {
+    if (!step.target) return Promise.resolve();
+
+    var el = document.querySelector(step.target);
+    var sidebar = document.getElementById("sidebar");
+    if (!el || !sidebar || !sidebar.contains(el)) return Promise.resolve();
+
+    var changed = false;
+
+    if (window.matchMedia("(min-width: 1024px)").matches) {
+      if (sidebar.classList.contains("rail")) {
+        var rail = document.getElementById("sbRail");
+        if (rail) { rail.click(); changed = true; }
+      }
+    } else if (!sidebar.classList.contains("open")) {
+      var toggle = document.getElementById("sbToggle");
+      if (toggle) { toggle.click(); changed = true; }
+    }
+
+    // Let the sidebar's own transition settle before measuring.
+    return changed ? new Promise(function (r) { setTimeout(r, 320); }) : Promise.resolve();
+  }
+
+  function inView(el) {
+    var r = el.getBoundingClientRect();
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+
+    if (r.top < 0) return false;
+    if (r.bottom <= vh) return true;
+
+    // Taller than the viewport: acceptable only when its top edge is already
+    // near the top of the screen. Without the second clause a tall block far
+    // below the fold counts as visible and never gets scrolled to.
+    return r.height > vh * 0.8 && r.top < vh * 0.35;
+  }
+
+  function scrollIntoViewIfNeeded(el) {
+    if (inView(el)) return Promise.resolve();
+
+    // Centre normal targets; for ones taller than the viewport, line up the top.
+    var vh = window.innerHeight || document.documentElement.clientHeight;
+    var block = el.getBoundingClientRect().height > vh * 0.8 ? "start" : "center";
+
+    try {
+      el.scrollIntoView({ behavior: "smooth", block: block });
+    } catch (e) {
+      el.scrollIntoView();
+    }
+
+    // A smooth scroll has no completion event. Wait, then fall back to an
+    // instant jump if it did not land — otherwise the spotlight would sit
+    // off-screen with nothing to look at.
+    return new Promise(function (done) {
+      setTimeout(function () {
+        if (!inView(el)) {
+          try { el.scrollIntoView({ block: block }); } catch (e) {}
+          setTimeout(done, 60);
+        } else {
+          done();
+        }
+      }, 340);
+    });
+  }
+
+  // ----------------------------------------------------------------
+  // Positioning
+  // ----------------------------------------------------------------
+  var placeRetry;
+
+  function place() {
+    var step = steps[index];
+    if (!step) return;
+
+    // A viewport can momentarily report zero (tab restore, pane resize,
+    // orientation change). Positioning against it pins the card to the
+    // corner with no way back, so wait for a real measurement instead.
+    if (window.innerWidth < 200 || window.innerHeight < 200) {
+      clearTimeout(placeRetry);
+      placeRetry = setTimeout(place, 150);
+      return;
+    }
+
+    var el = step.target ? document.querySelector(step.target) : null;
+
+    if (!el) {
+      root.classList.add("no-anchor");
+      root.classList.remove("anchored");
+      arrow.hidden = true;
+
+      spot.style.top = "50%";
+      spot.style.left = "50%";
+      spot.style.width = "0px";
+      spot.style.height = "0px";
+      pulse.style.opacity = "0";
+
+      card.style.top = Math.max(16, (window.innerHeight - card.offsetHeight) / 2) + "px";
+      card.style.left = Math.max(16, (window.innerWidth - card.offsetWidth) / 2) + "px";
+      return;
+    }
+
+    root.classList.remove("no-anchor");
+    root.classList.add("anchored");
+
+    var r = el.getBoundingClientRect();
+    var top = r.top - PAD, left = r.left - PAD;
+    var width = r.width + PAD * 2, height = r.height + PAD * 2;
+
+    spot.style.top = top + "px";
+    spot.style.left = left + "px";
+    spot.style.width = width + "px";
+    spot.style.height = height + "px";
+
+    pulse.style.top = top + "px";
+    pulse.style.left = left + "px";
+    pulse.style.width = width + "px";
+    pulse.style.height = height + "px";
+    pulse.style.opacity = "1";
+
+    // Choose the side with the most room: right, then left, then below/above.
+    var cw = card.offsetWidth, ch = card.offsetHeight;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var cardTop, cardLeft, side;
+
+    if (r.right + GAP + cw <= vw - 12) {
+      side = "left";                       // arrow sits on the card's left edge
+      cardLeft = r.right + GAP;
+      cardTop = r.top + r.height / 2 - ch / 2;
+    } else if (r.left - GAP - cw >= 12) {
+      side = "right";
+      cardLeft = r.left - GAP - cw;
+      cardTop = r.top + r.height / 2 - ch / 2;
+    } else if (r.bottom + GAP + ch <= vh - 12) {
+      side = "top";
+      cardTop = r.bottom + GAP;
+      cardLeft = r.left + r.width / 2 - cw / 2;
+    } else {
+      side = "bottom";
+      cardTop = r.top - GAP - ch;
+      cardLeft = r.left + r.width / 2 - cw / 2;
+    }
+
+    cardTop = Math.min(Math.max(12, cardTop), Math.max(12, vh - ch - 12));
+    cardLeft = Math.min(Math.max(12, cardLeft), Math.max(12, vw - cw - 12));
+
+    card.style.top = cardTop + "px";
+    card.style.left = cardLeft + "px";
+
+    // Point the arrow back at the target.
+    if (window.innerWidth > 640) {
+      arrow.hidden = false;
+      if (side === "left") {
+        arrow.style.left = "-7px";
+        arrow.style.top = Math.min(Math.max(14, r.top + r.height / 2 - cardTop - 7), ch - 28) + "px";
+      } else if (side === "right") {
+        arrow.style.left = (cw - 7) + "px";
+        arrow.style.top = Math.min(Math.max(14, r.top + r.height / 2 - cardTop - 7), ch - 28) + "px";
+      } else if (side === "top") {
+        arrow.style.top = "-7px";
+        arrow.style.left = Math.min(Math.max(14, r.left + r.width / 2 - cardLeft - 7), cw - 28) + "px";
+      } else {
+        arrow.style.top = (ch - 7) + "px";
+        arrow.style.left = Math.min(Math.max(14, r.left + r.width / 2 - cardLeft - 7), cw - 28) + "px";
+      }
+    } else {
+      arrow.hidden = true;
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Rendering
+  // ----------------------------------------------------------------
+  function renderDots() {
+    dotsEl.innerHTML = "";
+    steps.forEach(function (_, i) {
+      var dot = document.createElement("span");
+      dot.className = "tour-dot" + (i === index ? " current" : (i < index ? " done" : ""));
+      dotsEl.appendChild(dot);
+    });
+  }
+
+  function render() {
+    var step = steps[index];
+    if (!step) return;
+
+    iconEl.innerHTML = '<i class="fas ' + step.icon + '"></i>';
+    countEl.textContent = "Step " + (index + 1) + " of " + steps.length;
+    titleEl.innerHTML = step.title;
+    textEl.innerHTML = step.text;
+
+    if (step.hint) {
+      hintEl.innerHTML = '<i class="fas fa-lightbulb mr-1"></i> ' + step.hint;
+      hintEl.hidden = false;
+    } else {
+      hintEl.hidden = true;
+    }
+
+    backBtn.hidden = index === 0;
+
+    var last = index === steps.length - 1;
+    nextBtn.textContent = last ? (step.cta ? step.cta.label : "Finish") : "Next";
+    skipBtn.hidden = last;
+
+    renderDots();
+  }
+
+  function go(to) {
+    if (to < 0 || to >= steps.length) return;
+    index = to;
+    card.classList.remove("shown");
+
+    var step = steps[index];
+
+    revealSidebar(step)
+      .then(function () {
+        var el = step.target ? document.querySelector(step.target) : null;
+        return el ? scrollIntoViewIfNeeded(el) : Promise.resolve();
+      })
+      .then(function () {
+        render();
+        place();
+        // Measure once more after the card's own size settles.
+        requestAnimationFrame(function () {
+          place();
+          card.classList.add("shown");
+        });
+      });
+  }
+
+  // ----------------------------------------------------------------
+  // Open / close
+  // ----------------------------------------------------------------
+  function start(from) {
+    steps = applicable();
+    if (!steps.length) return;
+
+    open = true;
+    lastFocus = document.activeElement;
+    root.classList.add("active");
+    document.body.style.overflow = "hidden";
+    if (observer) { try { observer.observe(document.body); } catch (e) {} }
+    go(typeof from === "number" ? from : 0);
+    setTimeout(function () { nextBtn.focus(); }, 60);
+  }
+
+  function finish(followCta) {
+    if (!open) return;
+    open = false;
+
+    var step = steps[index];
+    root.classList.remove("active");
+    document.body.style.overflow = "";
+    card.classList.remove("shown");
+    if (observer) { try { observer.disconnect(); } catch (e) {} }
+
+    markSeen();
+
+    if (lastFocus && lastFocus.focus) {
+      try { lastFocus.focus(); } catch (e) {}
+    }
+
+    if (followCta && step && step.cta && step.cta.href) {
+      window.location.href = step.cta.href;
+    }
+  }
+
+  // ----------------------------------------------------------------
+  // Events
+  // ----------------------------------------------------------------
+  nextBtn.addEventListener("click", function () {
+    if (index >= steps.length - 1) finish(true);
+    else go(index + 1);
+  });
+
+  backBtn.addEventListener("click", function () { go(index - 1); });
+  skipBtn.addEventListener("click", function () { finish(false); });
+
+  document.addEventListener("keydown", function (e) {
+    if (!open) return;
+    if (e.key === "Escape") { e.preventDefault(); finish(false); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); if (index < steps.length - 1) go(index + 1); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); go(index - 1); }
+  });
+
+  // Keep focus inside the card while the tour is open.
+  document.addEventListener("focusin", function (e) {
+    if (open && !card.contains(e.target)) nextBtn.focus();
+  });
+
+  var reflow;
+  function scheduleReflow() {
+    if (!open) return;
+    clearTimeout(reflow);
+    reflow = setTimeout(place, 90);
+  }
+  window.addEventListener("resize", scheduleReflow);
+  window.addEventListener("scroll", scheduleReflow, true);
+
+  // Pages here populate their content after first paint (stats, activity
+  // feeds, dashboard lists), which moves targets out from under an already
+  // positioned spotlight. Watch the document and re-place when it reflows.
+  var observer = null;
+  var correcting = false;
+
+  if (typeof ResizeObserver !== "undefined") {
+    observer = new ResizeObserver(function () {
+      if (!open) return;
+      scheduleReflow();
+
+      // If the growth pushed the target off-screen, chase it once. The
+      // `correcting` latch keeps the scroll from re-triggering itself.
+      var step = steps[index];
+      if (!step || !step.target || correcting) return;
+
+      var el = document.querySelector(step.target);
+      if (!el || inView(el)) return;
+
+      correcting = true;
+      scrollIntoViewIfNeeded(el)
+        .then(place)
+        .then(function () {
+          setTimeout(function () { correcting = false; }, 250);
+        });
+    });
+  }
+
+  // ----------------------------------------------------------------
+  // Public API + autostart
+  // ----------------------------------------------------------------
+  window.ThinkleeTour = {
+    start: function () { start(0); },
+    stop: function () { finish(false); },
+    isOpen: function () { return open; }
+  };
+
+  function seenLocally() {
+    try { return localStorage.getItem(LS_KEY) === "1"; } catch (e) { return false; }
+  }
+
+  if (root.dataset.autostart === "yes" && !seenLocally()) {
+    // Wait for the page's own scripts to finish painting their content.
+    if (document.readyState === "complete") setTimeout(function () { start(0); }, 550);
+    else window.addEventListener("load", function () { setTimeout(function () { start(0); }, 550); });
+  }
+})();
+</script>

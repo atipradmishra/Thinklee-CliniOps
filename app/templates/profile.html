@@ -1,0 +1,1232 @@
+{% extends 'base.html' %}
+{% block title %}My Profile - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  /* Base Theme Styles */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  /* Profile Avatar */
+  .profile-avatar-container {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    margin: 0 auto 24px;
+  }
+
+  .profile-avatar {
+    width: 160px;
+    height: 160px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 6px solid white;
+    box-shadow: 0 12px 40px rgba(102, 126, 234, 0.25);
+  }
+
+  .avatar-upload-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: 4px solid white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  .avatar-upload-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+
+  /* Tabs */
+  .tab-nav {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid rgba(229, 231, 235, 0.5);
+    margin-bottom: 32px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-btn {
+    padding: 14px 24px;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+
+  .tab-btn:hover {
+    color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px 8px 0 0;
+  }
+
+  .tab-btn.active {
+    color: #667eea;
+  }
+
+  .tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 3px 3px 0 0;
+  }
+
+  .tab-content {
+    display: none;
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Form Styles */
+  .form-group {
+    margin-bottom: 24px;
+  }
+
+  .form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #374151;
+    font-size: 14px;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 14px 16px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(229, 231, 235, 0.8);
+    border-radius: 12px;
+    font-size: 15px;
+    color: #374151;
+    transition: all 0.3s ease;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    outline: none;
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 100px;
+  }
+
+  /* Buttons */
+  .btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 28px;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+  }
+
+  .btn-primary:disabled {
+    background: #d1d5db;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.9);
+    color: #374151;
+    border: 2px solid rgba(229, 231, 235, 0.8);
+    border-radius: 12px;
+    padding: 12px 24px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn-secondary:hover {
+    border-color: #667eea;
+    color: #667eea;
+  }
+
+  .btn-danger {
+    background: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 14px 28px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .btn-danger:hover {
+    background: #dc2626;
+    transform: translateY(-2px);
+  }
+
+  /* Info Cards */
+  .info-card {
+    background: rgba(102, 126, 234, 0.05);
+    border: 1px solid rgba(102, 126, 234, 0.1);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
+  }
+
+  .info-card-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: white;
+    margin-bottom: 16px;
+  }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 32px;
+  }
+
+  .stat-card {
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(229, 231, 235, 0.3);
+    border-radius: 16px;
+    padding: 24px;
+    text-align: center;
+    transition: all 0.3s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.12);
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 8px;
+  }
+
+  .stat-label {
+    font-size: 14px;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  /* Activity Timeline */
+  .activity-timeline {
+    position: relative;
+    padding-left: 40px;
+  }
+
+  .activity-timeline::before {
+    content: '';
+    position: absolute;
+    left: 16px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, #667eea, transparent);
+  }
+
+  .activity-item {
+    position: relative;
+    margin-bottom: 32px;
+    padding-left: 16px;
+  }
+
+  .activity-dot {
+    position: absolute;
+    left: -28px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  }
+
+  .activity-time {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-bottom: 4px;
+  }
+
+  .activity-title {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+  }
+
+  .activity-description {
+    font-size: 14px;
+    color: #6b7280;
+  }
+
+  /* Toggle Switch */
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+  }
+
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #d1d5db;
+    transition: 0.3s;
+    border-radius: 28px;
+  }
+
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.3s;
+    border-radius: 50%;
+  }
+
+  input:checked + .toggle-slider {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+  }
+
+  input:checked + .toggle-slider:before {
+    transform: translateX(24px);
+  }
+
+  /* Security Badge */
+  .security-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .security-badge.enabled {
+    background: rgba(16, 185, 129, 0.1);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  .security-badge.disabled {
+    background: rgba(239, 68, 68, 0.1);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .profile-avatar-container {
+      width: 120px;
+      height: 120px;
+    }
+
+    .profile-avatar {
+      width: 120px;
+      height: 120px;
+    }
+
+    .tab-nav {
+      gap: 4px;
+    }
+
+    .tab-btn {
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen relative" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="content-loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Processing...</p>
+    </div>
+  </div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fas fa-user-circle"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">My Profile</h1>
+          <p class="text-gray-600 mt-1">Manage your account settings and preferences</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-3">
+        <button id="saveAllBtn" class="btn-primary">
+          <i class="fas fa-save"></i>
+          <span>Save Changes</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="mx-6 mt-6 pb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      
+      <!-- Left Column - Profile Card -->
+      <div class="lg:col-span-1">
+        <div class="glass-card rounded-2xl p-8 slide-in" style="animation-delay: 0.1s">
+          
+          <!-- Profile Avatar -->
+          <div class="profile-avatar-container">
+            <img id="profileAvatar" src="https://ui-avatars.com/api/?name={{ user.first_name }}+{{ user.last_name }}&size=160&background=667eea&color=fff&bold=true" alt="Profile" class="profile-avatar" />
+            <label for="avatarInput" class="avatar-upload-btn">
+              <i class="fas fa-camera"></i>
+            </label>
+            <input type="file" id="avatarInput" accept="image/*" class="hidden" />
+          </div>
+
+          <!-- User Info -->
+          <div class="text-center mb-6">
+            <h2 class="text-2xl font-bold text-gray-900 mb-2" id="displayName">{{ user.first_name }} {{ user.last_name }}</h2>
+            <p class="text-gray-600 mb-4" id="displayEmail">{{ user.email }}</p>
+            <div class="flex items-center justify-center gap-2">
+              <span class="security-badge enabled">
+                <i class="fas fa-check-circle"></i>
+                Email Verified
+              </span>
+            </div>
+          </div>
+
+          <!-- Quick Stats -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value" id="dashboardCount">12</div>
+              <div class="stat-label">Dashboards</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value" id="loginCount">234</div>
+              <div class="stat-label">Total Logins</div>
+            </div>
+          </div>
+
+          <!-- Account Info -->
+          <div class="space-y-4">
+            <div class="flex justify-between items-center py-3 border-b border-gray-200">
+              <span class="text-sm text-gray-600">Member since</span>
+              <span class="text-sm font-semibold text-gray-900" id="memberSince"></span>
+            </div>
+            <div class="flex justify-between items-center py-3 border-b border-gray-200">
+              <span class="text-sm text-gray-600">Last login</span>
+              <span class="text-sm font-semibold text-gray-900" id="lastLogin">Just now</span>
+            </div>
+            <div class="flex justify-between items-center py-3">
+              <span class="text-sm text-gray-600">Account status</span>
+              <span class="security-badge enabled">
+                <i class="fas fa-circle"></i>
+                Active
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column - Settings Tabs -->
+      <div class="lg:col-span-2">
+        <div class="glass-card rounded-2xl p-8 slide-in" style="animation-delay: 0.2s">
+          
+          <!-- Tabs Navigation -->
+          <div class="tab-nav">
+            <button class="tab-btn active" data-tab="profile">
+              <i class="fas fa-user mr-2"></i>Profile
+            </button>
+            <button class="tab-btn" data-tab="security">
+              <i class="fas fa-shield-alt mr-2"></i>Security
+            </button>
+            <button class="tab-btn" data-tab="preferences">
+              <i class="fas fa-cog mr-2"></i>Preferences
+            </button>
+            <button class="tab-btn" data-tab="activity">
+              <i class="fas fa-history mr-2"></i>Activity
+            </button>
+          </div>
+
+          <!-- Tab: Profile -->
+          <div id="tab-profile" class="tab-content active">
+            <h3 class="text-xl font-bold text-gray-900 mb-6">Personal Information</h3>
+            
+            <form id="profileForm">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-group">
+                  <label class="form-label">
+                    <i class="fas fa-user text-purple-600 mr-2"></i>
+                    First Name
+                  </label>
+                  <input type="text" id="firstName" class="form-input" placeholder="Enter first name" />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">
+                    <i class="fas fa-user text-blue-600 mr-2"></i>
+                    Last Name
+                  </label>
+                  <input type="text" id="lastName" class="form-input" placeholder="Enter last name" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-envelope text-green-600 mr-2"></i>
+                  Email Address
+                </label>
+                <input type="email" id="email" class="form-input" placeholder="Enter email" />
+                <p class="text-xs text-gray-500 mt-2">Changing email requires verification</p>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-phone text-orange-600 mr-2"></i>
+                  Phone Number
+                </label>
+                <input type="tel" id="phone" class="form-input" placeholder="+91 9876543210" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-briefcase text-indigo-600 mr-2"></i>
+                  Job Title
+                </label>
+                <input type="text" id="jobTitle" class="form-input" placeholder="e.g., Data Analyst" />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">
+                  <i class="fas fa-building text-pink-600 mr-2"></i>
+                  Company
+                </label>
+                <input type="text" id="company" class="form-input" placeholder="Company name" />
+              </div>
+
+              <div class="flex gap-3">
+                <button type="submit" class="btn-primary">
+                  <i class="fas fa-save"></i>
+                  Save Profile
+                </button>
+                <button type="button" class="btn-secondary">
+                  <i class="fas fa-undo"></i>
+                  Reset
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Tab: Security -->
+          <div id="tab-security" class="tab-content">
+            <h3 class="text-xl font-bold text-gray-900 mb-6">Security Settings</h3>
+
+            <!-- Password Section -->
+            <div class="info-card">
+              <div class="info-card-icon" style="background: linear-gradient(135deg, #3b82f6, #1e40af);">
+                <i class="fas fa-lock"></i>
+              </div>
+              <h4 class="font-bold text-gray-900 mb-2">Change Password</h4>
+              <p class="text-sm text-gray-600 mb-4">Update your password regularly to keep your account secure</p>
+              
+              <form id="passwordForm">
+                <div class="form-group">
+                  <label class="form-label">Current Password</label>
+                  <input type="password" id="currentPassword" class="form-input" placeholder="Enter current password" />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">New Password</label>
+                  <input type="password" id="newPassword" class="form-input" placeholder="Enter new password" />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Confirm New Password</label>
+                  <input type="password" id="confirmPassword" class="form-input" placeholder="Confirm new password" />
+                </div>
+
+                <button type="submit" class="btn-primary">
+                  <i class="fas fa-key"></i>
+                  Update Password
+                </button>
+              </form>
+            </div>
+
+            <!-- Two-Factor Authentication -->
+            <div class="info-card mt-6">
+              <div class="info-card-icon" style="background: linear-gradient(135deg, #10b981, #047857);">
+                <i class="fas fa-mobile-alt"></i>
+              </div>
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <h4 class="font-bold text-gray-900 mb-2">Two-Factor Authentication</h4>
+                  <p class="text-sm text-gray-600">Add an extra layer of security to your account</p>
+                  <div class="mt-3">
+                    <span class="security-badge disabled">
+                      <i class="fas fa-times-circle"></i>
+                      Not Enabled
+                    </span>
+                  </div>
+                </div>
+                <button class="btn-primary">
+                  <i class="fas fa-shield-alt"></i>
+                  Enable 2FA
+                </button>
+              </div>
+            </div>
+
+            <!-- Sessions -->
+            <div class="info-card mt-6">
+              <div class="info-card-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706);">
+                <i class="fas fa-laptop"></i>
+              </div>
+              <h4 class="font-bold text-gray-900 mb-2">Active Sessions</h4>
+              <p class="text-sm text-gray-600 mb-4">Manage your active sessions across devices</p>
+              
+              <div class="space-y-3">
+                <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                  <div class="flex items-center gap-3">
+                    <i class="fas fa-desktop text-blue-600 text-xl"></i>
+                    <div>
+                      <div class="font-semibold text-sm">Windows - Chrome</div>
+                      <div class="text-xs text-gray-500">Current session • Narnaund, Haryana</div>
+                    </div>
+                  </div>
+                  <span class="text-xs text-green-600 font-semibold">Active Now</span>
+                </div>
+              </div>
+
+              <button class="btn-danger mt-4">
+                <i class="fas fa-sign-out-alt"></i>
+                Sign Out All Devices
+              </button>
+            </div>
+          </div>
+
+          <!-- Tab: Preferences -->
+          <div id="tab-preferences" class="tab-content">
+            <h3 class="text-xl font-bold text-gray-900 mb-6">Preferences</h3>
+
+            <!-- Appearance -->
+            <div class="info-card">
+              <div class="info-card-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                <i class="fas fa-palette"></i>
+              </div>
+              <h4 class="font-bold text-gray-900 mb-4">Appearance</h4>
+              
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold text-sm">Theme</div>
+                    <div class="text-xs text-gray-500">Choose your preferred theme</div>
+                  </div>
+                  <select class="form-input" style="width: 200px;">
+                    <option>Light</option>
+                    <option>Dark</option>
+                    <option selected>System Default</option>
+                  </select>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold text-sm">Compact Mode</div>
+                    <div class="text-xs text-gray-500">Show more content on screen</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notifications -->
+            <div class="info-card mt-6">
+              <div class="info-card-icon" style="background: linear-gradient(135deg, #ec4899, #db2777);">
+                <i class="fas fa-bell"></i>
+              </div>
+              <h4 class="font-bold text-gray-900 mb-4">Notifications</h4>
+              
+              <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold text-sm">Email Notifications</div>
+                    <div class="text-xs text-gray-500">Receive updates via email</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" checked />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold text-sm">Push Notifications</div>
+                    <div class="text-xs text-gray-500">Browser notifications for updates</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" checked />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold text-sm">Dashboard Alerts</div>
+                    <div class="text-xs text-gray-500">Alerts for dashboard changes</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-semibold text-sm">Weekly Reports</div>
+                    <div class="text-xs text-gray-500">Receive weekly summary reports</div>
+                  </div>
+                  <label class="toggle-switch">
+                    <input type="checkbox" checked />
+                    <span class="toggle-slider"></span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timezone & Language -->
+            <div class="info-card mt-6">
+              <div class="info-card-icon" style="background: linear-gradient(135deg, #06b6d4, #0891b2);">
+                <i class="fas fa-globe"></i>
+              </div>
+              <h4 class="font-bold text-gray-900 mb-4">Regional Settings</h4>
+              
+              <div class="space-y-4">
+                <div class="form-group">
+                  <label class="form-label">Time Zone</label>
+                  <select class="form-input">
+                    <option selected>Asia/Kolkata (IST)</option>
+                    <option>UTC</option>
+                    <option>America/New_York</option>
+                    <option>Europe/London</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Language</label>
+                  <select class="form-input">
+                    <option selected>English (US)</option>
+                    <option>English (UK)</option>
+                    <option>Hindi</option>
+                    <option>Spanish</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">Date Format</label>
+                  <select class="form-input">
+                    <option>MM/DD/YYYY</option>
+                    <option selected>DD/MM/YYYY</option>
+                    <option>YYYY-MM-DD</option>
+                  </select>
+                </div>
+              </div>
+
+              <button class="btn-primary mt-4">
+                <i class="fas fa-save"></i>
+                Save Preferences
+              </button>
+            </div>
+          </div>
+
+          <!-- Tab: Activity -->
+          <div id="tab-activity" class="tab-content">
+            <h3 class="text-xl font-bold text-gray-900 mb-6">Recent Activity</h3>
+
+            <div class="activity-timeline">
+              <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-time">2 hours ago</div>
+                <div class="activity-title">Updated profile information</div>
+                <div class="activity-description">Changed phone number and job title</div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-time">5 hours ago</div>
+                <div class="activity-title">Created new dashboard</div>
+                <div class="activity-description">Sales Performance Dashboard with 12 widgets</div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-time">1 day ago</div>
+                <div class="activity-title">Connected data source</div>
+                <div class="activity-description">PostgreSQL database connection established</div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-time">2 days ago</div>
+                <div class="activity-title">Password changed</div>
+                <div class="activity-description">Successfully updated account password</div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-time">3 days ago</div>
+                <div class="activity-title">Logged in from new device</div>
+                <div class="activity-description">Windows - Chrome from Narnaund, Haryana</div>
+              </div>
+
+              <div class="activity-item">
+                <div class="activity-dot"></div>
+                <div class="activity-time">5 days ago</div>
+                <div class="activity-title">Exported data</div>
+                <div class="activity-description">Downloaded CSV report from Marketing Dashboard</div>
+              </div>
+            </div>
+
+            <div class="text-center mt-8">
+              <button class="btn-secondary">
+                <i class="fas fa-history"></i>
+                Load More Activity
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+class ProfileManager {
+  constructor() {
+    this.initializePage();
+  }
+
+  initializePage() {
+    this.setupEventListeners();
+    this.loadUserData();
+  }
+
+  setupEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => this.switchTab(e.target.dataset.tab));
+    });
+
+    // Avatar upload
+    document.getElementById('avatarInput').addEventListener('change', (e) => this.handleAvatarUpload(e));
+
+    // Profile form
+    document.getElementById('profileForm').addEventListener('submit', (e) => this.handleProfileSubmit(e));
+
+    // Password form
+    document.getElementById('passwordForm').addEventListener('submit', (e) => this.handlePasswordSubmit(e));
+
+    // Save all button
+    document.getElementById('saveAllBtn').addEventListener('click', () => this.saveAllChanges());
+  }
+
+  switchTab(tabId) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+  }
+
+  async handleAvatarUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      this.showToast('Please select an image file', 'error');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      this.showToast('Image size should be less than 5MB', 'error');
+      return;
+    }
+
+    try {
+      this.showLoader('Uploading avatar...');
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        document.getElementById('profileAvatar').src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await fetch('/api/profile/user/avatar', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData
+      });
+
+      if (response.ok) {
+        this.showToast('Avatar updated successfully!');
+      } else {
+        throw new Error('Failed to upload avatar');
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      this.showToast('Failed to upload avatar', 'error');
+    } finally {
+      this.hideLoader();
+    }
+  }
+
+  async handleProfileSubmit(e) {
+    e.preventDefault();
+
+    try {
+      this.showLoader('Saving profile...');
+
+      const profileData = {
+        first_name: document.getElementById('firstName').value,
+        last_name: document.getElementById('lastName').value,
+        email: document.getElementById('email').value,
+        phone: document.getElementById('phone').value,
+        job_title: document.getElementById('jobTitle').value,
+        company: document.getElementById('company').value
+      };
+
+      const response = await fetch('/api/profile/user', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify(profileData)
+      });
+
+      if (response.ok) {
+        // Update display name
+        document.getElementById('displayName').textContent = 
+          `${profileData.first_name} ${profileData.last_name}`;
+        document.getElementById('displayEmail').textContent = profileData.email;
+
+        this.showToast('Profile updated successfully!');
+      } else {
+        throw new Error('Failed to update profile');
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      this.showToast('Failed to update profile', 'error');
+    } finally {
+      this.hideLoader();
+    }
+  }
+
+  async handlePasswordSubmit(e) {
+    e.preventDefault();
+
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      this.showToast('Please fill all password fields', 'warning');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      this.showToast('New passwords do not match', 'error');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      this.showToast('Password must be at least 8 characters', 'error');
+      return;
+    }
+
+    try {
+      this.showLoader('Updating password...');
+
+      const response = await fetch('/api/user/password', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({
+          current_password: currentPassword,
+          new_password: newPassword
+        })
+      });
+
+      if (response.ok) {
+        document.getElementById('passwordForm').reset();
+        this.showToast('Password updated successfully!');
+      } else {
+        const data = await response.json();
+        throw new Error(data.message || 'Failed to update password');
+      }
+    } catch (error) {
+      console.error('Error updating password:', error);
+      this.showToast(error.message || 'Failed to update password', 'error');
+    } finally {
+      this.hideLoader();
+    }
+  }
+
+  async saveAllChanges() {
+    this.showToast('Saving all changes...', 'info');
+    await this.handleProfileSubmit(new Event('submit'));
+  }
+
+    async loadUserData() {
+    try {
+        this.showLoader('Loading profile...');
+
+        const response = await fetch('/api/profile/me', {
+        headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch profile');
+
+        const data = await response.json();
+        const { user, organization } = data;
+
+        /* =====================
+        Header card
+        ===================== */
+        const fullName = `${user.first_name || ''} ${user.last_name || ''}`.trim();
+
+        document.getElementById('displayName').textContent =
+        fullName || user.username;
+
+        document.getElementById('displayEmail').textContent = user.email;
+
+        /* =====================
+        Avatar
+        ===================== */
+        document.getElementById('profileAvatar').src =
+        user.profile_pic_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=160`;
+
+        /* =====================
+        Stats
+        ===================== */
+        document.getElementById('dashboardCount').textContent =
+        user.dashboard_count ?? 0;
+
+        document.getElementById('loginCount').textContent =
+        user.last_login ? 1 : 0; // or remove if you don’t track login count
+
+        /* =====================
+        Meta
+        ===================== */
+        document.getElementById('memberSince').textContent =
+        new Date(user.created_at).toLocaleDateString('en-US', {
+            month: 'long',
+            year: 'numeric'
+        });
+        console.log(user.last_login)
+        document.getElementById('lastLogin').textContent =
+        user.last_login
+            ? new Date(user.last_login).toLocaleString()
+            : '—';
+
+        /* =====================
+        Form fields
+        ===================== */
+        document.getElementById('firstName').value = user.first_name || '';
+        document.getElementById('lastName').value = user.last_name || '';
+        document.getElementById('email').value = user.email || '';
+        document.getElementById('phone').value = user.contact_number || '';
+
+        /* =====================
+        Org-specific fields
+        ===================== */
+        document.getElementById('jobTitle').value =
+        organization?.job_title || '';
+
+        document.getElementById('company').value =
+        organization?.name || '';
+
+    } catch (error) {
+        console.error(error);
+        this.showToast('Failed to load profile', 'error');
+    } finally {
+        this.hideLoader();
+    }
+    }
+
+
+  showLoader(text = 'Processing...') {
+    document.getElementById('loader-text').textContent = text;
+    document.getElementById('content-loader').classList.remove('hidden');
+  }
+
+  hideLoader() {
+    document.getElementById('content-loader').classList.add('hidden');
+  }
+
+  showToast(message, type = 'success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    
+    const icons = {
+      success: 'fas fa-check-circle',
+      error: 'fas fa-exclamation-circle',
+      info: 'fas fa-info-circle',
+      warning: 'fas fa-exclamation-triangle'
+    };
+    
+    const colors = {
+      success: 'bg-green-500',
+      error: 'bg-red-500',
+      info: 'bg-blue-500',
+      warning: 'bg-yellow-500'
+    };
+    
+    toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+    toast.innerHTML = `
+      <i class="${icons[type]}"></i>
+      <span class="font-medium">${message}</span>
+      <button onclick="this.parentElement.remove()" class="ml-auto">
+        <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+      </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 5000);
+  }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.profileManager = new ProfileManager();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,845 @@
+{% extends "base.html" %}
+{% block title %}{{ dashboard.title if dashboard else 'Dashboard View' }}{% endblock %}
+
+{% block content %}
+<div class="relative px-4 lg:px-8 md:ml-64 py-6 min-h-screen bg-gradient-to-br from-slate-50 to-blue-50/30 transition-colors">
+  
+  <!-- Header Section -->
+  <header class="bg-white/80 backdrop-blur-lg border-b border-gray-200/50 sticky top-0 z-30">
+    <div class="px-6 py-4">
+      <div class="flex items-center justify-between">
+        <!-- Dashboard Info -->
+        <div class="flex items-center gap-4">
+          <button onclick="history.back()" 
+                  class="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition-colors">
+            <svg class="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+          </button>
+          
+          <div>
+            <h1 id="dashboardTitle" class="text-2xl font-bold text-gray-900">Loading Dashboard...</h1>
+            <p id="dashboardDescription" class="text-gray-600 text-sm mt-1"></p>
+          </div>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-3">
+          <!-- Refresh Button -->
+          <button onclick="refreshAllWidgets()" 
+                  class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            Refresh
+          </button>
+          
+          <!-- Fullscreen Toggle -->
+          <button onclick="toggleFullscreen()" 
+                  class="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+            </svg>
+            Fullscreen
+          </button>
+          
+          <!-- Edit Button -->
+          <a href="/dashboard/builder?edit={{ dashboard_id }}" 
+             class="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+            </svg>
+            Edit
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="px-6 py-6">
+    
+    <!-- Dashboard Stats Bar -->
+    <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-600">Total Widgets</p>
+            <p id="totalWidgets" class="text-xl font-bold text-gray-900">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-600">Active</p>
+            <p id="activeWidgets" class="text-xl font-bold text-gray-900">0</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-600">Last Updated</p>
+            <p id="lastUpdated" class="text-xl font-bold text-gray-900">--</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm text-gray-600">Performance</p>
+            <p id="performanceScore" class="text-xl font-bold text-gray-900">100%</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Grid Container -->
+    <div class="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+      <div id="dashboardContainer" class="grid-stack min-h-[600px] relative">
+        <!-- Loading State -->
+        <div id="loadingState" class="absolute inset-0 flex flex-col items-center justify-center">
+          <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mb-4"></div>
+          <p class="text-gray-600 text-lg font-medium">Loading your dashboard...</p>
+          <p class="text-gray-400 text-sm mt-2">Please wait while we fetch your data</p>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 hidden">
+          <svg class="w-24 h-24 mb-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          <h3 class="text-xl font-semibold mb-2">No widgets found</h3>
+          <p class="text-center max-w-md mb-6">This dashboard doesn't have any widgets yet. Add some widgets to get started.</p>
+          <a href="/dashboard/builder?edit={{ dashboard_id }}" 
+             class="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg">
+            Add Widgets
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Widget Modal for Detailed View -->
+  <div id="widgetModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+      <div class="flex items-center justify-between p-6 border-b border-gray-200">
+        <h3 id="modalTitle" class="text-xl font-bold text-gray-900">Widget Details</h3>
+        <button onclick="closeModal()" class="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <div id="modalContent" class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+        <!-- Modal content will be injected here -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-4 right-4 px-6 py-4 rounded-xl shadow-2xl bg-green-600 text-white opacity-0 transition-all duration-500 z-50 border border-green-400" role="alert">
+  </div>
+
+</div>
+
+<!-- External Libraries -->
+<link href="https://cdn.jsdelivr.net/npm/gridstack@12.2.2/dist/gridstack.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/gridstack@12.2.2/dist/gridstack-all.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+  /* Custom Grid Stack Styles for View Mode */
+  .grid-stack-item-content {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+  }
+
+  .grid-stack-item-content:hover {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: translateY(-2px);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  .widget-header {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: white;
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .widget-content {
+    padding: 20px;
+    height: calc(100% - 64px);
+    overflow: auto;
+  }
+
+  .widget-chart {
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
+  }
+
+  .widget-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+
+  .widget-table th,
+  .widget-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .widget-table th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .widget-summary {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    text-align: center;
+  }
+
+  .widget-summary .summary-value {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 8px;
+  }
+
+  .widget-summary .summary-label {
+    font-size: 1.1rem;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
+  .widget-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #ef4444;
+    text-align: center;
+  }
+
+  .widget-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #6b7280;
+  }
+
+  /* Fullscreen mode */
+  .fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
+    background: #f8fafc;
+  }
+
+  .fullscreen .grid-stack {
+    height: 100vh;
+    padding: 20px;
+  }
+
+  /* Loading animation */
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .loading-pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Custom scrollbar */
+  .widget-content::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .widget-content::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+  }
+
+  .widget-content::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+
+  .widget-content::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+</style>
+
+<script>
+  let dashboard = null;
+  let widgets = [];
+  let chartInstances = {};
+  let grid = null;
+  const dashboardId = {{dashboard_id}};
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize GridStack in view-only mode
+    grid = GridStack.init({
+      staticGrid: true, // Make it non-interactive
+      column: 12,
+      cellHeight: 80,
+      margin: 12,
+      animate: true,
+      disableOneColumnMode: true
+    });
+
+    // Load dashboard data
+    await loadDashboard();
+  });
+
+  // Load dashboard and widgets
+  async function loadDashboard() {
+    try {
+      showLoading();
+      
+      const response = await fetch(`/api/dashboard/${dashboardId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      dashboard = data.dashboard;
+      widgets = dashboard.widgets || [];
+
+      updateDashboardInfo();
+      updateStats();
+      
+      if (widgets.length === 0) {
+        showEmptyState();
+      } else {
+        await renderWidgets();
+      }
+      
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+      showError('Failed to load dashboard. Please try again.');
+    } finally {
+      hideLoading();
+    }
+  }
+
+  // Update dashboard header information
+  function updateDashboardInfo() {
+    document.getElementById('dashboardTitle').textContent = dashboard.title;
+    document.getElementById('dashboardDescription').textContent = dashboard.description || '';
+  }
+
+  // Update dashboard statistics
+  function updateStats() {
+    const totalWidgets = widgets.length;
+    const activeWidgets = widgets.filter(w => w.is_active !== false).length;
+    const lastUpdated = dashboard.updated_at ? formatDate(dashboard.updated_at) : 'Never';
+    
+    document.getElementById('totalWidgets').textContent = totalWidgets;
+    document.getElementById('activeWidgets').textContent = activeWidgets;
+    document.getElementById('lastUpdated').textContent = lastUpdated;
+    
+    // Calculate performance score based on successful widget loads
+    const performanceScore = totalWidgets > 0 ? Math.round((activeWidgets / totalWidgets) * 100) : 100;
+    document.getElementById('performanceScore').textContent = `${performanceScore}%`;
+  }
+
+  // Render all widgets
+  async function renderWidgets() {
+    const container = document.getElementById('dashboardContainer');
+    
+    // Sort widgets by order_index or creation date
+    const sortedWidgets = [...widgets].sort((a, b) => {
+      return (a.order_index || 0) - (b.order_index || 0);
+    });
+
+    for (const widget of sortedWidgets) {
+      await renderWidget(widget);
+    }
+  }
+
+  // Render individual widget
+  async function renderWidget(widget) {
+    const widgetElement = document.createElement('div');
+    widgetElement.setAttribute('gs-id', widget.widget_id);
+    widgetElement.setAttribute('gs-x', widget.position?.x || 0);
+    widgetElement.setAttribute('gs-y', widget.position?.y || 0);
+    widgetElement.setAttribute('gs-w', widget.position?.w || 4);
+    widgetElement.setAttribute('gs-h', widget.position?.h || 8);
+    widgetElement.classList.add('grid-stack-item');
+
+    const widgetContent = `
+      <div class="grid-stack-item-content" onclick="openWidgetModal('${widget.widget_id}')">
+        <div class="widget-header">
+          <div class="flex items-center gap-2">
+            ${getChartIcon(widget.chart_type)}
+            <span>${widget.widget_name || 'Untitled Widget'}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            ${getRefreshBadge(widget.refresh_rate)}
+            <button onclick="event.stopPropagation(); refreshWidget('${widget.widget_id}')" 
+                    class="p-1 hover:bg-white/20 rounded transition-colors">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="widget-content">
+          <div id="widget-${widget.widget_id}" class="widget-body">
+            <div class="widget-loading">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
+              <p>Loading data...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    widgetElement.innerHTML = widgetContent;
+    grid.makeWidget(widgetElement)
+
+    // Load widget data
+    await loadWidgetData(widget);
+  }
+
+  // Load data for a specific widget
+  async function loadWidgetData(widget) {
+    const widgetContainer = document.getElementById(`widget-${widget.widget_id}`);
+    
+    try {
+      // If widget has cached data, use it first
+      if (widget.chart_data) {
+        renderWidgetContent(widget, widget.chart_data);
+        return;
+      }
+
+      // Otherwise, fetch fresh data
+      const response = await fetch(`/api/dashboard/widget/${widget.id}/data`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load widget data: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      renderWidgetContent(widget, data);
+      
+    } catch (error) {
+      console.error(`Error loading widget ${widget.widget_id}:`, error);
+      widgetContainer.innerHTML = `
+        <div class="widget-error">
+          <svg class="w-12 h-12 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <p class="font-medium">Failed to load data</p>
+          <p class="text-sm mt-1">${error.message}</p>
+          <button onclick="refreshWidget('${widget.widget_id}')" 
+                  class="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors">
+            Retry
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  // Render widget content based on type
+  function renderWidgetContent(widget, data) {
+    const widgetContainer = document.getElementById(`widget-${widget.widget_id}`);
+    
+    switch (widget.chart_type) {
+      case 'bar':
+      case 'line':
+      case 'pie':
+      case 'area':
+        renderChart(widgetContainer, widget, data);
+        break;
+      case 'table':
+        renderTable(widgetContainer, data);
+        break;
+      case 'summary':
+        renderSummary(widgetContainer, data);
+        break;
+      default:
+        renderChart(widgetContainer, widget, data);
+    }
+  }
+
+  // Render chart widgets
+  function renderChart(container, widget, data) {
+    container.innerHTML = '<canvas class="widget-chart"></canvas>';
+    const canvas = container.querySelector('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Destroy existing chart if any
+    if (chartInstances[widget.widget_id]) {
+      chartInstances[widget.widget_id].destroy();
+    }
+
+    // Create new chart
+  chartInstances[widget.widget_id] = new Chart(ctx, {
+    type: widget.chart_type || 'bar',
+    data: {
+      labels: data.labels || [],
+      datasets: data.datasets || []
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            padding: 20,
+            usePointStyle: true
+          }
+        },
+        title: {
+          display: false
+        }
+      },
+      scales: widget.chart_type !== 'pie' && widget.chart_type !== 'doughnut' ? {
+        y: {
+          beginAtZero: true,
+          grid: {
+            color: 'rgba(0, 0, 0, 0.1)'
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      } : {}
+    }
+  });
+  }
+
+  // Render table widgets
+  function renderTable(container, data) {
+    if (!data.rows || data.rows.length === 0) {
+      container.innerHTML = '<div class="widget-error"><p>No data available</p></div>';
+      return;
+    }
+
+    const headers = data.headers || Object.keys(data.rows[0]);
+    let tableHTML = '<table class="widget-table"><thead><tr>';
+    
+    headers.forEach(header => {
+      tableHTML += `<th>${header}</th>`;
+    });
+    
+    tableHTML += '</tr></thead><tbody>';
+    
+    data.rows.slice(0, 10).forEach(row => { // Limit to 10 rows for display
+      tableHTML += '<tr>';
+      headers.forEach(header => {
+        tableHTML += `<td>${row[header] || ''}</td>`;
+      });
+      tableHTML += '</tr>';
+    });
+    
+    tableHTML += '</tbody></table>';
+    
+    if (data.rows.length > 10) {
+      tableHTML += `<p class="text-sm text-gray-500 mt-2 text-center">Showing 10 of ${data.rows.length} rows</p>`;
+    }
+    
+    container.innerHTML = tableHTML;
+  }
+
+  // Render summary widgets
+  function renderSummary(container, data) {
+    const value = data.summary_value || data.value || 'N/A';
+    const label = data.summary_label || data.label || 'Summary';
+    
+    container.innerHTML = `
+      <div class="widget-summary">
+        <div class="summary-value">${value}</div>
+        <div class="summary-label">${label}</div>
+      </div>
+    `;
+  }
+
+  // Utility functions
+  function getChartIcon(chartType) {
+    const icons = {
+      bar: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>',
+      line: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>',
+      pie: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/></svg>',
+      table: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0V4a1 1 0 011-1h16a1 1 0 011 1v16a1 1 0 01-1 1H5a1 1 0 01-1-1z"/></svg>',
+      summary: '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>'
+    };
+    return icons[chartType] || icons.bar;
+  }
+
+  function getRefreshBadge(refreshRate) {
+    const colors = {
+      manual: 'bg-gray-100 text-gray-700',
+      daily: 'bg-blue-100 text-blue-700',
+      weekly: 'bg-green-100 text-green-700',
+      monthly: 'bg-purple-100 text-purple-700'
+    };
+    
+    return `<span class="px-2 py-1 text-xs rounded-full ${colors[refreshRate] || colors.manual}">${refreshRate || 'manual'}</span>`;
+  }
+
+  function generateColors(count) {
+    const colors = [
+      '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444',
+      '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1'
+    ];
+    return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
+  }
+
+  function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  // Modal functions
+  function openWidgetModal(widgetId) {
+    const widget = widgets.find(w => w.widget_id === widgetId);
+    if (!widget) return;
+
+    const modal = document.getElementById('widgetModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalContent = document.getElementById('modalContent');
+
+    modalTitle.textContent = widget.widget_name || 'Widget Details';
+    
+    modalContent.innerHTML = `
+      <div class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Widget Information</h4>
+            <div class="space-y-2 text-sm">
+              <p><span class="font-medium">Type:</span> ${widget.chart_type}</p>
+              <p><span class="font-medium">Refresh Rate:</span> ${widget.refresh_rate || 'manual'}</p>
+              <p><span class="font-medium">Created:</span> ${formatDate(widget.created_at)}</p>
+              <p><span class="font-medium">Updated:</span> ${formatDate(widget.updated_at)}</p>
+            </div>
+          </div>
+          <div>
+            <h4 class="font-semibold text-gray-900 mb-2">Query</h4>
+            <div class="bg-gray-50 rounded-lg p-3">
+              <p class="text-sm text-gray-600 mb-2"><strong>Natural Language:</strong></p>
+              <p class="text-sm">${widget.nl_query || 'No natural language query'}</p>
+              <p class="text-sm text-gray-600 mb-2 mt-3"><strong>SQL Query:</strong></p>
+              <pre class="text-xs bg-gray-100 p-2 rounded overflow-x-auto"><code>${widget.sql_query || 'No SQL query'}</code></pre>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-semibold text-gray-900 mb-3">Widget Preview</h4>
+          <div class="border rounded-lg p-4 bg-gray-50 min-h-[300px]">
+            <div id="modal-widget-${widgetId}" class="h-full">
+              <!-- Widget content will be rendered here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Render widget in modal
+    setTimeout(() => {
+      const modalWidgetContainer = document.getElementById(`modal-widget-${widgetId}`);
+      if (widget.chart_data) {
+        renderWidgetContent({...widget, widget_id: `modal-${widgetId}`}, widget.chart_data);
+      }
+    }, 100);
+
+    modal.classList.remove('hidden');
+  }
+
+  function closeModal() {
+    document.getElementById('widgetModal').classList.add('hidden');
+  }
+
+  // Refresh functions
+  async function refreshWidget(widgetId) {
+    const widget = widgets.find(w => w.widget_id === widgetId);
+    if (!widget) return;
+
+    showToast('Refreshing widget...', false);
+    await loadWidgetData(widget);
+    showToast('Widget refreshed successfully!', false);
+  }
+
+  async function refreshAllWidgets() {
+    showToast('Refreshing all widgets...', false);
+    
+    for (const widget of widgets) {
+      await loadWidgetData(widget);
+    }
+    
+    showToast('All widgets refreshed successfully!', false);
+  }
+
+  // Fullscreen toggle
+  function toggleFullscreen() {
+    const container = document.querySelector('.min-h-screen');
+    
+    if (!document.fullscreenElement) {
+      container.requestFullscreen().then(() => {
+        container.classList.add('fullscreen');
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        container.classList.remove('fullscreen');
+      });
+    }
+  }
+
+  // State management functions
+  function showLoading() {
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+  }
+
+  function hideLoading() {
+    document.getElementById('loadingState').classList.add('hidden');
+  }
+
+  function showEmptyState() {
+    document.getElementById('emptyState').classList.remove('hidden');
+    document.getElementById('loadingState').classList.add('hidden');
+  }
+
+  function showError(message) {
+    showToast(message, true);
+    hideLoading();
+  }
+
+  function showToast(message, isError = false) {
+    const toast = document.getElementById('toast');
+    toast.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="flex-shrink-0">
+          ${isError ? 
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"/></svg>' :
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>'
+          }
+        </div>
+        <span class="font-medium">${message}</span>
+      </div>
+    `;
+    
+    toast.classList.remove('opacity-0', 'bg-green-600', 'bg-red-600');
+    toast.classList.add(
+      isError ? 'bg-red-500' : 'bg-green-500',
+      'opacity-100'
+    );
+    
+    setTimeout(() => {
+      toast.classList.add('opacity-0');
+    }, 4000);
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeModal();
+    }
+    if (e.key === 'F11') {
+      e.preventDefault();
+      toggleFullscreen();
+    }
+    if (e.ctrlKey && e.key === 'r') {
+      e.preventDefault();
+      refreshAllWidgets();
+    }
+  });
+
+  // Auto-refresh functionality
+  let autoRefreshInterval = null;
+
+  function startAutoRefresh(intervalMinutes = 5) {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+    
+    autoRefreshInterval = setInterval(() => {
+      refreshAllWidgets();
+    }, intervalMinutes * 60 * 1000);
+  }
+
+  // Start auto-refresh on page load
+  // startAutoRefresh(5); // Refresh every 5 minutes
+
+  // Clean up on page unload
+  window.addEventListener('beforeunload', () => {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval);
+    }
+    
+    // Clean up chart instances
+    Object.values(chartInstances).forEach(chart => {
+      if (chart) chart.destroy();
+    });
+  });
+</script>
+{% endblock %}

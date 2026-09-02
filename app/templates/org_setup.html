@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome to Thinklee</title>
+  <link rel="icon" type="image/x-icon" href="/static/logo.ico">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    .smooth-transition { transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); }
+    .slide-in { animation: slideInUp 0.5s ease-out; }
+    @keyframes slideInUp { from { transform: translateY(18px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+    .form-input {
+      background: rgba(255, 255, 255, 0.9);
+      border: 2px solid rgba(229, 231, 235, 0.85);
+      border-radius: 16px;
+      padding: 16px 18px;
+      font-size: 15px;
+      color: #374151;
+      transition: all 0.25s ease;
+    }
+    .form-input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 16px 22px;
+      font-weight: 700;
+      font-size: 16px;
+      transition: all 0.25s ease;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 10px 26px rgba(102, 126, 234, 0.28);
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 34px rgba(102, 126, 234, 0.35);
+    }
+    .btn-primary:disabled { background: #d1d5db; cursor: not-allowed; box-shadow: none; }
+
+    .error-message { color: #dc2626; font-size: 13px; margin-top: 8px; }
+
+    .setup-icon {
+      width: 78px; height: 78px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 22px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 26px;
+      box-shadow: 0 12px 32px rgba(102, 126, 234, 0.3);
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+
+  <!-- Progress bar -->
+  <div class="fixed top-0 left-0 right-0 bg-white shadow-sm z-40">
+    <div class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 100%"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loader -->
+  <div id="content-loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+      <p class="mt-4 text-gray-700 font-medium" id="loader-text">Saving organization...</p>
+    </div>
+  </div>
+
+  <!-- Form card -->
+  <div class="flex items-center justify-center py-10">
+    <div class="glass-card max-w-2xl w-full mx-6 p-10 rounded-3xl shadow-2xl slide-in" style="animation-delay: 0.15s;">
+      <div class="setup-icon">
+        <i class="fa-solid fa-building-user text-3xl text-white"></i>
+      </div>
+
+      <div class="text-center mb-10">
+        <h2 class="text-4xl font-bold text-gray-900 mb-3">Set up your organization</h2>
+        <p class="text-gray-600 text-lg">Add the essentials now. You can update the rest later in settings.</p>
+      </div>
+
+      <form id="orgSetupForm" class="space-y-7" enctype="multipart/form-data" novalidate>
+        <!-- Org name -->
+        <div>
+          <label class="block text-base font-bold text-gray-700 mb-3">
+            <i class="fa-solid fa-building-circle-check text-purple-600 mr-2"></i>
+            Organization name <span class="text-red-600">*</span>
+          </label>
+          <input id="org_name" name="org_name" type="text" class="form-input w-full"
+                 placeholder="e.g., Acme Analytics Pvt Ltd" required />
+          <p id="err-org-name" class="error-message hidden">
+            <i class="fas fa-exclamation-circle mr-1"></i>Organization name is required.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-base font-bold text-gray-700 mb-3">
+              <i class="fa-solid fa-user-tie text-teal-600 mr-2"></i>
+              Role Name <span class="text-red-600">*</span>
+            </label>
+            <input id="role_name" name="role_name" type="text" class="form-input w-full"
+                 placeholder="e.g., Senior Data Engineer" />
+            <p id="err-org-name" class="error-message hidden">
+              <i class="fas fa-exclamation-circle mr-1"></i>Role name is required.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-base font-bold text-gray-700 mb-3">
+              <i class="fa-solid fa-user-shield text-emerald-600 mr-2"></i>
+              Role Type <span class="text-red-600">*</span>
+            </label>
+            <select id="role" name="role" class="form-input w-full cursor-pointer">
+              <option value="org_admin">Admin</option>
+              <option value="org_user">User</option>
+            </select>
+          </div>
+        </div>
+        <!-- Workspace slug / domain 
+        <div>
+          <label class="block text-base font-bold text-gray-700 mb-3">
+            <i class="fas fa-link text-blue-600 mr-2"></i>
+            Workspace URL (slug) <span class="text-red-600">*</span>
+          </label>
+          <div class="flex items-center gap-2">
+            <input id="slug" name="slug" type="text" class="form-input w-full"
+                   placeholder="e.g., acme" required />
+            <div class="text-sm text-gray-500 whitespace-nowrap">.thinklee.app</div>
+          </div>
+          <p class="text-xs text-gray-500 mt-2">Lowercase letters, numbers, hyphen. This will be used in links.</p>
+          <p id="err-slug" class="error-message hidden">
+            <i class="fas fa-exclamation-circle mr-1"></i>Enter a valid workspace slug.
+          </p>
+        </div>
+        -->
+        <!-- Timezone -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-base font-bold text-gray-700 mb-3">
+              <i class="fas fa-clock text-green-600 mr-2"></i>
+              Time zone <span class="text-red-600">*</span>
+            </label>
+            <select id="timezone" name="timezone" class="form-input w-full cursor-pointer" required>
+              <option value="" disabled selected>Select your time zone...</option>
+              <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+              <option value="UTC">UTC</option>
+              <option value="America/New_York">America/New_York</option>
+              <option value="Europe/London">Europe/London</option>
+              <option value="Asia/Dubai">Asia/Dubai</option>
+              <option value="Asia/Singapore">Asia/Singapore</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-2">This affects timestamps across dashboards and audit logs.</p>
+            <p id="err-timezone" class="error-message hidden">
+              <i class="fas fa-exclamation-circle mr-1"></i>Please select a time zone.
+            </p>
+          </div>
+
+          <div>
+            <label class="block text-base font-bold text-gray-700 mb-3">
+              <i class="fas fa-id-badge text-purple-600 mr-2"></i>
+              Employee ID <span class="text-sm font-normal text-gray-500">(Optional)</span>
+            </label>
+            <input id="emp_id" name="emp_id" type="text" class="form-input w-full"
+                  placeholder="e.g., I28BB798" />
+          </div>
+        </div>
+
+        <!-- Industry + team size (optional) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-base font-bold text-gray-700 mb-3">
+              <i class="fas fa-industry text-orange-600 mr-2"></i>
+              Industry <span class="text-sm font-normal text-gray-500">(Optional)</span>
+            </label>
+            <select id="industry" name="industry" class="form-input w-full cursor-pointer">
+              <option value="" selected>Choose...</option>
+              <option value="saas">SaaS</option>
+              <option value="ecommerce">E-commerce</option>
+              <option value="finance">Finance</option>
+              <option value="healthcare">Healthcare</option>
+              <option value="manufacturing">Manufacturing</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-base font-bold text-gray-700 mb-3">
+              <i class="fas fa-users text-indigo-600 mr-2"></i>
+              Team size <span class="text-sm font-normal text-gray-500">(Optional)</span>
+            </label>
+            <select id="team_size" name="team_size" class="form-input w-full cursor-pointer">
+              <option value="" selected>Choose...</option>
+              <option value="1-5">1–5</option>
+              <option value="6-20">6–20</option>
+              <option value="21-100">21–100</option>
+              <option value="101-500">101–500</option>
+              <option value="500+">500+</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Logo (optional) 
+        <div>
+          <label class="block text-base font-bold text-gray-700 mb-3">
+            <i class="fas fa-image text-pink-600 mr-2"></i>
+            Organization logo <span class="text-sm font-normal text-gray-500">(Optional)</span>
+          </label>
+          <input id="logo" name="logo" type="file" accept="image/*" class="form-input w-full" />
+          <p class="text-xs text-gray-500 mt-2">PNG/JPG preferred. This will appear in the sidebar and exports.</p>
+        </div>
+        -->
+        <!-- CTA -->
+        <div class="pt-3">
+          <button type="submit" id="btnSubmit" class="btn-primary w-full" disabled>
+            <i class="fas fa-check"></i>
+            <span>Save & Continue</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+          <p class="text-xs text-gray-500 text-center mt-3">
+            By continuing, you confirm you have permission to create or join this organization.
+          </p>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+
+<script>
+    (function () {
+    const form = document.getElementById('orgSetupForm');
+    const btn = document.getElementById('btnSubmit');
+
+    const orgName = document.getElementById('org_name');
+    const slug = document.getElementById('slug');
+    const timezone = document.getElementById('timezone');
+
+    const errOrgName = document.getElementById('err-org-name');
+    const errSlug = document.getElementById('err-slug');
+    const errTz = document.getElementById('err-timezone');
+
+    const loader = document.getElementById('content-loader');
+    const loaderText = document.getElementById('loader-text');
+
+    function slugValid(v) {
+        return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(v);
+    }
+
+    function validate() {
+        const okName = orgName.value.trim().length > 0;
+        // const okSlug = slugValid(slug.value.trim());
+        const okTz = !!timezone.value;
+
+        errOrgName.classList.toggle('hidden', okName);
+        // errSlug.classList.toggle('hidden', okSlug || slug.value.trim().length === 0);
+        errTz.classList.toggle('hidden', okTz || timezone.value === '');
+
+        btn.disabled = !(okName && okTz);
+    }
+
+    function toast(message, type = 'success') {
+        const container = document.getElementById('toast-container');
+        const el = document.createElement('div');
+
+        const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500', warning: 'bg-yellow-500' };
+        const icons =  { success: 'fa-check-circle', error: 'fa-exclamation-circle', info: 'fa-info-circle', warning: 'fa-exclamation-triangle' };
+
+        el.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+        el.innerHTML = `
+        <i class="fas ${icons[type]}"></i>
+        <span class="font-medium">${message}</span>
+        <button class="ml-auto" aria-label="Close">
+            <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+        </button>
+        `;
+        el.querySelector('button').onclick = () => el.remove();
+        container.appendChild(el);
+
+        setTimeout(() => {
+        el.style.transform = 'translateX(100%)';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 280);
+        }, 4500);
+    }
+
+    async function submit(e) {
+        e.preventDefault();
+        validate();
+        if (btn.disabled) return;
+
+        try {
+        loaderText.textContent = 'Saving organization...';
+        loader.classList.remove('hidden');
+        btn.disabled = true;
+
+        const fd = new FormData(form);
+
+        const res = await fetch('/api/org/setup', {
+            method: 'POST',
+            headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: fd
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok) {
+            throw new Error(data.message || 'Failed to save organization details');
+        }
+
+        toast('Organization created successfully!', 'success');
+
+        setTimeout(() => {
+            // send user to home after setup
+            window.location.href = '/home';
+        }, 900);
+
+        } catch (err) {
+        console.error(err);
+        toast(err.message || 'Something went wrong', 'error');
+        btn.disabled = false;
+        } finally {
+        loader.classList.add('hidden');
+        validate();
+        }
+    }
+
+    // Auto-suggest slug from org name
+    // orgName.addEventListener('input', () => {
+    //if (slug.value.trim().length === 0) {
+    //  const s = orgName.value.trim()
+    //    .toLowerCase()
+    //    .replace(/[^a-z0-9\s-]/g, '')
+    //    .replace(/\s+/g, '-')
+    //    .replace(/-+/g, '-')
+    //    .replace(/^-|-$/g, '');
+    //  slug.value = s.slice(0, 30);
+    //}
+    //validate();
+    // });
+    // 
+    // slug.addEventListener('input', () => {
+    //   slug.value = slug.value.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    //   validate();
+    // });
+
+    timezone.addEventListener('change', validate);
+    orgName.addEventListener('input', validate);
+
+    form.addEventListener('submit', submit);
+    validate();
+    })();
+</script>
+
+</html>

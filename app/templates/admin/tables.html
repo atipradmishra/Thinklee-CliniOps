@@ -1,0 +1,110 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Manage User Tables{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">User Tables Management</h1>
+</div>
+
+<!-- Search + Date Range Filter -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search tables...">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="start_date" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="end_date" class="form-control">
+            </div>
+            <div class="col-md-3 d-flex">
+                <button class="btn btn-outline-primary me-2 flex-grow-1" onclick="filterTables()">
+                    <i class="fas fa-search"></i> Filter
+                </button>
+                <button class="btn btn-outline-secondary flex-grow-1" onclick="resetFilters()">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tables List -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped" id="tablesTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Table Name</th>
+                        <th>Owner</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tablesBody">
+                    {% for table in tables %}
+                    <tr data-date="{{ table.created_at.strftime('%Y-%m-%d') }}" 
+                        data-name="{{ table.name | lower }}" 
+                        data-owner="{{ table.user_id.username | lower }}">
+                        <td>{{ table.id }}</td>
+                        <td>{{ table.table_name }}</td>
+                        <td>{{ table.user.username }}</td>
+                        <td>{{ table.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('admin_frontend.table_detail', table_id=table.id) }}" 
+                                   class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+    function filterTables() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const start = document.getElementById('start_date').value;
+        const end = document.getElementById('end_date').value;
+
+        document.querySelectorAll('#tablesBody tr').forEach(row => {
+            const rowDate = row.getAttribute('data-date');
+            const rowName = row.getAttribute('data-name');
+            const rowOwner = row.getAttribute('data-owner');
+
+            let visible = true;
+
+            // Search filter
+            if (search && !(rowName.includes(search) || rowOwner.includes(search))) {
+                visible = false;
+            }
+
+            // Date filter
+            if (start && rowDate < start) visible = false;
+            if (end && rowDate > end) visible = false;
+
+            row.style.display = visible ? "" : "none";
+        });
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = "";
+        document.getElementById('start_date').value = "";
+        document.getElementById('end_date').value = "";
+        document.querySelectorAll('#tablesBody tr').forEach(row => row.style.display = "");
+    }
+</script>
+{% endblock %}

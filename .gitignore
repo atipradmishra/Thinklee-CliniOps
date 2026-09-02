@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.env
+.env.example
+*.sqlite
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+instance/
+.git/info/exclude ".vs/"/
+.git/info/exclude "*.suo"/
+.claude

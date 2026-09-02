@@ -1,0 +1,2346 @@
+{% extends 'base.html' %}
+{% block title %}Data Management - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    scrollbar-width: thin;
+    scrollbar-color: #8b5cf6 transparent;
+  }
+
+  .glass-card::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .glass-card::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+  }
+
+  .glass-card::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #8b5cf6, #3b82f6);
+    border-radius: 10px;
+  }
+
+  .glass-card::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #7c3aed, #2563eb);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .connection-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+  }
+  
+  .upload-zone {
+    border: 2px dashed #d1d5db;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+  }
+  
+  .upload-zone.dragover {
+    border-color: #667eea;
+    background-color: rgba(102, 126, 234, 0.05);
+  }
+  
+  .step-indicator {
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: bold;
+  }
+  .db-card {
+    transition: all 0.3s ease;
+  }
+
+  .db-card-selected {
+    border-color: #7c3aed !important;
+    background-color: #f3e8ff !important;
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
+  }
+  #loader {
+    z-index: 80 !important;
+  }
+
+  .action-btn {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(229, 231, 235, 0.8);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-weight: 500;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .action-btn:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+    color: #667eea;
+  }
+
+  .action-btn.primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border-color: transparent;
+  }
+
+  .action-btn.primary:hover {
+    background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    transform: translateY(-1px);
+  }
+
+  .action-btn.danger {
+    color: #dc2626;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  .action-btn.danger:hover {
+    background: rgba(239, 68, 68, 0.05);
+    border-color: #dc2626;
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+      </div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Processing...</p>
+    </div>
+  </div>
+
+  <!-- Header Section -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fas fa-database"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">Data Management Hub</h1>
+          <p class="text-gray-600 mt-1">Connect, upload, and manage your data sources</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+          <i class="fas fa-user-circle text-purple-600"></i>
+          <span class="font-medium">{{ session.username }}</span>
+          <span class="text-gray-400">•</span>
+          <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">{{ session.role }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Stats -->
+  <div class="mx-6 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="glass-card rounded-2xl p-6 slide-in">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Data Sources</p>
+            <p id="sources-count" class="text-2xl font-bold text-purple-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-plug text-purple-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.1s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Uploaded Files</p>
+            <p id="files-count" class="text-2xl font-bold text-blue-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-file-upload text-blue-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.2s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Active Connections</p>
+            <p id="active-count" class="text-2xl font-bold text-green-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-check-circle text-green-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.3s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Total Tables</p>
+            <p id="tables-count" class="text-2xl font-bold text-orange-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-table text-orange-600"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Getting Started Guide -->
+  <div id="getting-started" class="mx-6 mt-6 glass-card rounded-2xl p-8 slide-in border-l-4 border-purple-500">
+    <div class="flex items-start space-x-4">
+      <div class="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+        <i class="fas fa-lightbulb text-purple-600"></i>
+      </div>
+      <div class="flex-1">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">Getting Started with Data Management</h3>
+        <p class="text-gray-600 mb-4">Follow these steps to set up your data sources and start leveraging AI insights:</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+            <div class="step-indicator">1</div>
+            <span class="text-sm font-medium text-gray-700">Connect your database or cloud storage</span>
+          </div>
+          <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+            <div class="step-indicator">2</div>
+            <span class="text-sm font-medium text-gray-700">Upload CSV/Excel files for analysis</span>
+          </div>
+          <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+            <div class="step-indicator">3</div>
+            <span class="text-sm font-medium text-gray-700">Test connections and validate data</span>
+          </div>
+          <div class="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
+            <div class="step-indicator">4</div>
+            <span class="text-sm font-medium text-gray-700">Configure AI agents for insights</span>
+          </div>
+        </div>
+      </div>
+      <button onclick="hideGettingStarted()" class="text-gray-400 hover:text-gray-600">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Data Sources Section -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-plug text-purple-600"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-gray-800">Connected Data Sources</h3>
+            <p class="text-sm text-gray-600">Manage your database connections and cloud storage</p>
+          </div>
+        </div>
+        <div class="flex space-x-3">
+          <button onclick="openModal()" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition shadow-lg">
+            <i class="fas fa-plus"></i>
+            <span>Add Data Source</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-hidden rounded-xl border border-gray-200">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Source Details</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Type</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Last Tested</th>
+              <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="data-sources-body" class="bg-white divide-y divide-gray-200">
+            <tr>
+              <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                <div class="flex flex-col items-center">
+                  <i class="fas fa-database text-4xl text-gray-300 mb-3"></i>
+                  <p class="font-medium">Loading data sources...</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="p-6 border-t border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+              <span id="sources-pageInfo">Showing 1-10 of 25 users</span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <button id="sources-prevPage" class="action-btn">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <div class="flex items-center space-x-1" id="sources-pageNumbers">
+                <button class="action-btn primary">1</button>
+                <button class="action-btn">2</button>
+                <button class="action-btn">3</button>
+              </div>
+              <button id="sources-nextPage" class="action-btn">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Uploaded Files Section -->
+  <div class="mx-6 mt-6 pb-8">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-file-upload text-blue-600"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-gray-800">Uploaded Files</h3>
+            <p class="text-sm text-gray-600">Manage your CSV, Excel, and JSON data files</p>
+          </div>
+        </div>
+        <div class="flex space-x-3">
+          <button onclick="openUploadModal()" class="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 smooth-transition shadow-lg">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <span>Upload File</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-hidden rounded-xl border border-gray-200">
+        <table class="w-full">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">File Details</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Table Name</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">File Size</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Uploaded Date</th>
+              <th class="px-6 py-4 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="uploaded-files-body" class="bg-white divide-y divide-gray-200">
+            <tr>
+              <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                <div class="flex flex-col items-center">
+                  <i class="fas fa-file-upload text-4xl text-gray-300 mb-3"></i>
+                  <p class="font-medium">Loading uploaded files...</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="p-6 border-t border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-600">
+              <span id="files-pageInfo">Showing 1-10 of 25 users</span>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <button id="files-prevPage" class="action-btn">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <div class="flex items-center space-x-1" id="files-pageNumbers">
+                <button class="action-btn primary">1</button>
+                <button class="action-btn">2</button>
+                <button class="action-btn">3</button>
+              </div>
+              <button id="files-nextPage" class="action-btn">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions FAB -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <div class="relative">
+      <button id="fab-main" onclick="toggleFAB()" class="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+      </button>
+      
+      <div id="fab-menu" class="absolute bottom-20 right-0 space-y-3 transform scale-0 origin-bottom-right smooth-transition">
+        <button onclick="openModal(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-plug text-purple-600"></i>
+          <span class="font-medium">Add Data Source</span>
+        </button>
+        <button onclick="openUploadModal(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-cloud-upload-alt text-blue-600"></i>
+          <span class="font-medium">Upload File</span>
+        </button>
+        <button onclick="testAllConnections(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-vial text-green-600"></i>
+          <span class="font-medium">Test All</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Data Source Modal -->
+<div id="connModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+  <div class="glass-card w-full max-w-3xl rounded-2xl p-8 relative shadow-2xl overflow-y-auto max-h-[90vh] mx-4" style='max-height:90vh;'>
+    <button onclick="closeModal()" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 text-2xl smooth-transition">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <div class="mb-8">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Add New Data Source</h2>
+      <p class="text-gray-600">Connect to your database or cloud storage platform</p>
+    </div>
+
+    <form id="connForm" class="space-y-6" onsubmit="submitConnectionForm(event)">
+      <!-- Data Source Type Selection -->
+      <div class="space-y-4">
+        <label class="block text-sm font-semibold text-gray-700">Choose Your Data Source</label>
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div class="relative">
+            <input type="radio" id="mysql" name="source_type" value="mysql" class="peer sr-only">
+            <label for="mysql" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 smooth-transition">
+              <i class="fas fa-database text-2xl text-orange-500 mb-2"></i>
+              <span class="font-medium text-gray-800">MySQL</span>
+            </label>
+          </div>
+          
+          <div class="relative">
+            <input type="radio" id="postgresql" name="source_type" value="postgresql" class="peer sr-only">
+            <label for="postgresql" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+              <i class='bxl  bx-postgresql text-3xl text-blue-500 mb-2'  ></i> 
+              <span class="font-medium text-gray-800">PostgreSQL</span>
+            </label>
+          </div>
+          
+          <div class="relative">
+            <input type="radio" id="snowflake" name="source_type" value="snowflake" class="peer sr-only">
+            <label for="snowflake" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+              <i class="fas fa-snowflake text-2xl text-blue-400 mb-2"></i>
+              <span class="font-medium text-gray-800">Snowflake</span>
+            </label>
+          </div>
+          
+          <div class="relative">
+            <input type="radio" id="s3" name="source_type" value="s3" class="peer sr-only">
+            <label for="s3" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+              <i class="fab fa-aws text-2xl text-orange-400 mb-2"></i>
+              <span class="font-medium text-gray-800">Amazon S3</span>
+            </label>
+          </div>
+          
+          <div class="relative">
+            <input type="radio" id="mssql" name="source_type" value="mssql" class="peer sr-only">
+            <label for="mssql" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+              <i class="fab fa-microsoft text-2xl text-blue-600 mb-2"></i>
+              <span class="font-medium text-gray-800">SQL Server</span>
+            </label>
+          </div>
+          
+          <div class="relative">
+            <input type="radio" id="rds" name="source_type" value="rds" class="peer sr-only">
+            <label for="rds" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+              <i class="fab fa-aws text-2xl text-yellow-500 mb-2"></i>
+              <span class="font-medium text-gray-800">AWS RDS</span>
+            </label>
+          </div>
+
+          <div class="relative">
+            <input type="radio" id="azure_sql" name="source_type" value="azure_sql" class="peer sr-only">
+            <label for="azure_sql" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+              <i class="fab fa-microsoft text-2xl text-sky-500 mb-2"></i>
+              <span class="font-medium text-gray-800">Azure SQL</span>
+            </label>
+          </div>
+
+          <div class="relative">
+            <input type="radio" id="sqlite" name="source_type" value="sqlite" class="peer sr-only">
+            <label for="sqlite" class="db-card flex flex-col items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+              <i class="fas fa-database text-2xl text-gray-500 mb-2"></i>
+              <span class="font-medium text-gray-800">SQLite</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Connection Name -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-700 mb-2">Connection Name</label>
+        <input type="text" name="source_name" placeholder="Give your connection a memorable name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+      </div>
+
+      <!-- Dynamic Configuration Fields -->
+      <div id="config-fields" class="space-y-4"></div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+        <button type="button" onclick="closeModal()" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+          Cancel
+        </button>
+        <button type="button" id="testConnBtn" class="px-6 py-3 bg-yellow-500 text-white rounded-xl hover:bg-yellow-600 smooth-transition font-medium">
+          <i class="fas fa-vial mr-2"></i>Test Connection
+        </button>
+        <button type="submit" class="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition font-medium">
+          <i class="fas fa-save mr-2"></i>Save Connection
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Upload Modal -->
+<div id="upload-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card w-full max-w-2xl rounded-2xl p-8 relative shadow-2xl overflow-y-auto max-h-[90vh] mx-4" style='max-height:90vh;'>
+    <button onclick="closeUploadModal()" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 text-2xl smooth-transition">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Upload Data File</h2>
+      <p class="text-gray-600">Upload CSV, Excel, or JSON files to create or populate tables</p>
+    </div>
+
+    <form id="upload-form" method="POST" enctype="multipart/form-data" class="space-y-6">
+
+      <div class="space-y-4 mb-4">
+        <label class="block text-sm font-semibold text-gray-700">File Category</label>
+        <div class="grid grid-cols-2 gap-4">
+              <div class="relative">
+                <input type="radio" id="structured" name="file_category" value="structured" checked class="peer sr-only">
+                <label for="structured" onclick="toggleCategory()" class="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-lime-300 peer-checked:border-lime-500 peer-checked:bg-lime-50 smooth-transition">
+                  <i class="fas fa-table text-lime-600"></i>
+                  <div>
+                    <div class="font-medium text-gray-800">Structured</div>
+                    <div class="text-sm text-gray-600">(CSV, Excel, JSON)</div>
+                  </div>
+                </label>
+              </div>
+              
+              <div class="relative">
+                <input type="radio" id="unstructured" name="file_category" value="unstructured" class="peer sr-only">
+                <label for="unstructured" onclick="toggleCategory()" class="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-pink-300 peer-checked:border-pink-500 peer-checked:bg-pink-50 smooth-transition">
+                  <i class="fas fa-file-alt text-pink-600"></i>
+                  <div>
+                    <div class="font-medium text-gray-800">Unstructured</div>
+                    <div class="text-sm text-gray-600">(PDF, DOCX, TXT, PPT, HTML)</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+      </div>
+
+      <div id="structured-section">
+        <!-- Upload Strategy -->
+        <div class="space-y-4">
+          <label class="block text-sm font-semibold text-gray-700">Upload Strategy</label>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="relative">
+              <input type="radio" id="existing" name="upload_type" value="existing" checked class="peer sr-only">
+              <label for="existing" onclick="toggleTableSelection()" class="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-purple-300 peer-checked:border-purple-500 peer-checked:bg-purple-50 smooth-transition">
+                <i class="fas fa-table text-purple-600"></i>
+                <div>
+                  <div class="font-medium text-gray-800">Existing Table</div>
+                  <div class="text-sm text-gray-600">Add to existing table</div>
+                </div>
+              </label>
+            </div>
+            
+            <div class="relative">
+              <input type="radio" id="new" name="upload_type" value="new" class="peer sr-only">
+              <label for="new" onclick="toggleTableSelection()" class="flex items-center space-x-3 p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-blue-300 peer-checked:border-blue-500 peer-checked:bg-blue-50 smooth-transition">
+                <i class="fas fa-plus-circle text-blue-600"></i>
+                <div>
+                  <div class="font-medium text-gray-800">New Table</div>
+                  <div class="text-sm text-gray-600">Create new table</div>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Existing Table Selection -->
+        <div id="existing-table-section">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Select Existing Table</label>
+          <select id="tableDropdown" name="existing_table" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+            <option value="">Loading tables...</option>
+          </select>
+        </div>
+
+        <!-- New Table Configuration -->
+        <div id="new-table-section" class="hidden space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">New Table Name</label>
+            <input type="text" name="new_table_name" placeholder="Enter a descriptive table name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+          </div>
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">Table Metadata File</label>
+            <div class="flex space-x-2">
+              <input type="file" name="meta_file" accept=".json,.csv,.xlsx" class="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+              <a href="/download-template" class="flex items-center space-x-2 px-4 py-3 bg-gray-200 text-gray-700 rounded-xl hover:bg-gray-400 smooth-transition whitespace-nowrap">
+                <i class="fas fa-download"></i>
+                <span>Template</span>
+              </a>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">Define table structure with column names, data types, and descriptions</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="unstructured-section" class="hidden">
+          <p class="text-sm text-gray-600 mb-4">
+            Upload PDFs, Word docs, PPTs, or text files for knowledge ingestion.
+          </p>
+      </div>
+
+      <!-- File Upload Zone -->
+      <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-2">Data Files</label>
+          <div class="upload-zone p-8 text-center" id="upload-zone">
+            <input type="file" name="files" multiple accept=".csv,.json,.xlsx,.zip" required class="hidden" id="file-input">
+            <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-4"></i>
+            <p class="text-lg font-medium text-gray-700 mb-2">Drop your file here or click to browse</p>
+            <p class="text-sm text-gray-500">Supports multiple CSV, Excel, JSON, or ZIP files up to 100MB</p>
+            <button type="button" onclick="document.getElementById('file-input')" class="mt-4 px-6 py-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 smooth-transition">
+              Choose File
+            </button>
+          </div>
+          <div id="file-preview" class="hidden mt-4 p-4 bg-gray-50 rounded-xl">
+            <div class="flex items-center space-x-3">
+              <i class="fas fa-file text-purple-600"></i>
+              <div class="flex-1">
+                <p class="font-medium text-gray-800" id="file-name"></p>
+                <p class="text-sm text-gray-600" id="file-size"></p>
+              </div>
+              <button type="button" onclick="clearFile()" class="text-red-500 hover:text-red-700">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+          </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex justify-end space-x-4 pt-6 border-t border-gray-200">
+          <button type="button" onclick="closeUploadModal()" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+            Cancel
+          </button>
+          <button type="submit" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 smooth-transition font-medium">
+            <i class="fas fa-upload mr-2"></i>Upload & Save
+          </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- S3 Browser Modal -->
+<div id="s3-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl">
+
+    <div class="flex items-start justify-between p-6 border-b border-gray-100">
+      <div class="min-w-0">
+        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+          <i class="fab fa-aws text-orange-400 mr-3"></i>Browse S3
+        </h2>
+        <p id="s3-subtitle" class="text-gray-500 text-sm mt-1 truncate">&nbsp;</p>
+      </div>
+      <button onclick="dataManager.closeS3Browser()" class="text-gray-400 hover:text-gray-600 p-2 rounded-lg hover:bg-gray-100 smooth-transition" aria-label="Close">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+
+    <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 flex flex-col sm:flex-row gap-3">
+      <div class="flex-1">
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Prefix</label>
+        <input type="text" id="s3-prefix" placeholder="exports/daily/"
+               class="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition">
+      </div>
+      <div class="sm:w-56">
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Import into table</label>
+        <select id="s3-table"
+                class="w-full px-3 py-2 text-sm border-2 border-gray-200 rounded-lg focus:outline-none focus:border-purple-500 smooth-transition bg-white">
+          <option value="">Select a table…</option>
+        </select>
+      </div>
+      <div class="flex items-end">
+        <button onclick="dataManager.loadS3Objects()"
+                class="px-4 py-2 bg-gray-800 text-white text-sm rounded-lg hover:bg-gray-900 smooth-transition font-medium whitespace-nowrap">
+          <i class="fas fa-rotate mr-2"></i>Refresh
+        </button>
+      </div>
+    </div>
+
+    <div id="s3-objects" class="flex-1 overflow-y-auto p-6 min-h-[220px]"></div>
+
+    <div class="flex items-center justify-between gap-4 p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+      <p id="s3-selection-info" class="text-sm text-gray-500">No files selected</p>
+      <div class="flex gap-3">
+        <button onclick="dataManager.closeS3Browser()"
+                class="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+          Cancel
+        </button>
+        <button id="s3-import-btn" onclick="dataManager.importS3Objects()" disabled
+                class="px-6 py-3 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl hover:from-orange-600 hover:to-amber-600 smooth-transition font-medium disabled:opacity-40 disabled:cursor-not-allowed">
+          <i class="fas fa-file-import mr-2"></i>Import selected
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for metadata -->
+<form>
+  <input type="file" id="metadatafileInput" style="display: none;">
+</form>
+
+<link href='https://cdn.boxicons.com/fonts/brands/boxicons-brands.min.css' rel='stylesheet'>
+<script>
+    class DataManagement {
+      constructor() {
+        this.fabOpen = false;
+        // S3 browser state
+        this.s3ConnectionId = null;
+        this.s3Objects = [];
+        this.s3Selected = new Set();
+        this.initializeEventListeners();
+        this.loadInitialData();
+        this.setupSourceTypeSelection();
+        this.tables = {
+          sources: {
+            data: [],
+            currentPage: 1,
+            perPage: 5,
+            render: () => this.renderSourcesPage()
+          },
+          files: {
+            data: [],
+            currentPage: 1,
+            perPage: 5,
+            render: () => this.renderFilesPage()
+          }
+        };
+      }
+
+      initializeEventListeners() {
+        document.getElementById('connForm').addEventListener('submit', (e) => this.submitConnectionForm(e));
+        document.getElementById('upload-form').addEventListener('submit', (e) => this.handleFileUpload(e));
+        document.querySelectorAll('input[name="source_type"]').forEach(input => {
+          input.addEventListener('change', () => this.updateConfigFields());
+        });
+        document.querySelectorAll('input[name="upload_type"]').forEach(input => {
+          input.addEventListener('change', () => this.toggleTableSelection());
+        });
+        document.querySelectorAll('input[name="file_category"]').forEach(input => {
+          input.addEventListener('change', () => toggleCategory());
+        });
+        document.getElementById('file-input').addEventListener('change', (e) => this.handleFileSelect(e));
+        document.getElementById('testConnBtn').addEventListener('click', () => this.testConnection());
+        this.setupDragAndDrop();
+
+        document.getElementById("sources-prevPage").onclick = () => {
+          if (this.tables.sources.currentPage > 1) {
+            this.tables.sources.currentPage--;
+            this.renderSourcesPage();
+          }
+        };
+
+        document.getElementById("sources-nextPage").onclick = () => {
+          const totalPages = Math.max(1, Math.ceil((this.tables.sources.data?.length || 0) / this.tables.sources.perPage));
+          if (this.tables.sources.currentPage < totalPages) {
+            this.tables.sources.currentPage++;
+            this.renderSourcesPage();
+          }
+        };
+      }
+
+      setupSourceTypeSelection() {
+        document.querySelectorAll("input[name='source_type']").forEach(input => {
+          input.addEventListener("change", () => {
+            // Remove selection from all labels
+            document.querySelectorAll(".db-card").forEach(lbl =>
+              lbl.classList.remove("db-card-selected")
+            );
+
+            // Highlight selected one
+            const lbl = document.querySelector(`label[for='${input.id}']`);
+            if (lbl) lbl.classList.add("db-card-selected");
+          });
+        });
+      }
+
+
+      async loadInitialData() {
+        this.updateProgress(20);
+        await Promise.all([
+          this.loadDataSources(),
+          this.loadFiles(),
+          this.loadStats()
+        ]);
+        this.updateProgress(100);
+        setTimeout(() => this.updateProgress(0), 1000);
+      }
+
+      updateProgress(percentage) {
+        document.getElementById('progress-bar').style.width = `${percentage}%`;
+      }
+
+      showToast(message, type = 'success', duration = 5000) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        const icons = {
+          success: 'fas fa-check-circle',
+          error: 'fas fa-exclamation-circle',
+          info: 'fas fa-info-circle',
+          warning: 'fas fa-exclamation-triangle'
+        };
+        
+        const colors = {
+          success: 'bg-green-500',
+          error: 'bg-red-500',
+          info: 'bg-blue-500',
+          warning: 'bg-yellow-500'
+        };
+        
+        toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+        toast.innerHTML = `
+          <i class="${icons[type]}"></i>
+          <span class="font-medium">${message}</span>
+          <button onclick="this.parentElement.remove()" class="ml-auto">
+            <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+          </button>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.style.transform = 'translateX(100%)';
+          toast.style.opacity = '0';
+          setTimeout(() => toast.remove(), 300);
+        }, duration);
+      }
+
+      showLoader(text = 'Processing...') {
+        document.getElementById('loader-text').textContent = text;
+        document.getElementById('loader').classList.remove('hidden');
+      }
+
+      hideLoader() {
+        document.getElementById('loader').classList.add('hidden');
+      }
+
+      updateConfigFields() {
+        const selectedType = document.querySelector('input[name="source_type"]:checked')?.value;
+        const container = document.getElementById('config-fields');
+        
+        if (!selectedType) {
+          container.innerHTML = '';
+          return;
+        }
+
+        const configs = {
+          mysql: this.getRelationalFields(3306),
+          postgresql: this.getRelationalFields(5432),
+          mssql: this.getRelationalFields(1433),
+          snowflake: this.getSnowflakeFields(),
+          s3: this.getS3Fields(),
+          rds: this.getRDSFields(),
+          azure_sql: this.getAzureSQLFields(),
+          sqlite: this.getSQLiteFields()
+        };
+
+        container.innerHTML = configs[selectedType] || '';
+
+        // RDS ports differ per engine; keep the placeholder honest.
+        const engineSelect = document.getElementById('rds-engine-select');
+        if (engineSelect) {
+          engineSelect.addEventListener('change', () => {
+            const port = document.getElementById('rds-port');
+            if (!port) return;
+            port.placeholder = ({
+              postgresql: '5432', mysql: '3306', mariadb: '3306', mssql: '1433'
+            })[engineSelect.value] || '';
+          });
+        }
+      }
+
+      getRelationalFields(defaultPort = 3306) {
+        return `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Host</label>
+              <input type="text" name="host" placeholder="localhost" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Port</label>
+              <input type="number" name="port" placeholder="${defaultPort}" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+              <input type="text" name="uid" placeholder="Database username" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <input type="password" name="pwd" placeholder="Database password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Database Name</label>
+              <input type="text" name="database" placeholder="Database name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+          </div>
+        `;
+      }
+
+      getSnowflakeFields() {
+        return `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Account</label>
+              <input type="text" name="sf_account" placeholder="account.region" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+              <input type="text" name="username" placeholder="Snowflake username" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <input type="password" name="password" placeholder="Snowflake password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Warehouse</label>
+              <input type="text" name="warehouse" placeholder="Warehouse name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Database</label>
+              <input type="text" name="sf_database" placeholder="Database name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Schema</label>
+              <input type="text" name="schema" placeholder="Schema name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+          </div>
+        `;
+      }
+
+      getS3Fields() {
+        return `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Access Key ID</label>
+              <input type="text" name="s3_access_key" placeholder="AWS Access Key ID" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Secret Access Key</label>
+              <input type="password" name="s3_secret_key" placeholder="AWS Secret Access Key" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Region</label>
+              <input type="text" name="s3_region" placeholder="us-east-1" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Bucket Name</label>
+              <input type="text" name="s3_bucket" placeholder="S3 bucket name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Prefix <span class="font-normal text-gray-400">(optional)</span></label>
+              <input type="text" name="s3_prefix" placeholder="exports/daily/" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+              <p class="text-xs text-gray-500 mt-2">Limits browsing to a folder inside the bucket.</p>
+            </div>
+            <div class="md:col-span-2 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p class="text-xs text-amber-800">
+                <i class="fas fa-circle-info mr-1"></i>
+                S3 stores files rather than tables. After connecting, use <strong>Browse</strong> on the
+                connection to import CSV or Excel objects into a table, then point an agent at that table.
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      getRDSFields() {
+        return `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Database Engine</label>
+              <select name="rds_engine" id="rds-engine-select" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white" required>
+                <option value="">Select the engine this instance runs</option>
+                <option value="postgresql">PostgreSQL</option>
+                <option value="mysql">MySQL</option>
+                <option value="mariadb">MariaDB</option>
+                <option value="mssql">SQL Server</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Endpoint</label>
+              <input type="text" name="host" placeholder="mydb.abc123.us-east-1.rds.amazonaws.com" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+              <p class="text-xs text-gray-500 mt-2">Copy the endpoint from the RDS console (without the port).</p>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Port</label>
+              <input type="number" name="port" id="rds-port" placeholder="5432" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Database Name</label>
+              <input type="text" name="database" placeholder="Database name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Master Username</label>
+              <input type="text" name="uid" placeholder="admin" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <input type="password" name="pwd" placeholder="Master password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div class="md:col-span-2 bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p class="text-xs text-blue-800">
+                <i class="fas fa-circle-info mr-1"></i>
+                The instance must be publicly accessible, or reachable from this server's VPC, and its
+                security group must allow inbound traffic on the port above.
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      getAzureSQLFields() {
+        return `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Server Name</label>
+              <input type="text" name="host" placeholder="myserver.database.windows.net" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Port</label>
+              <input type="number" name="port" placeholder="1433" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Database Name</label>
+              <input type="text" name="database" placeholder="Database name" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Username</label>
+              <input type="text" name="uid" placeholder="user@myserver" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div>
+              <label class="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+              <input type="password" name="pwd" placeholder="Password" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            </div>
+            <div class="md:col-span-2 bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <p class="text-xs text-blue-800">
+                <i class="fas fa-circle-info mr-1"></i>
+                Connections are always encrypted. Add this server's public IP to the Azure SQL firewall
+                rules, or enable "Allow Azure services to access this server".
+              </p>
+            </div>
+          </div>
+        `;
+      }
+
+      getSQLiteFields() {
+        return `
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-2">SQLite File Path</label>
+            <input type="text" name="sqlite_path" placeholder="/path/to/database.db" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition" required>
+            <p class="text-xs text-gray-500 mt-2">Absolute path to your SQLite database file</p>
+          </div>
+        `;
+      }
+
+      async loadDataSources() {
+        try {
+          const tbody = document.getElementById('data-sources-body');
+          
+          const response = await fetch('/api/data/get-data-sources', {
+            method: 'GET',
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+          
+          const sources = await response.json();
+          tbody.innerHTML = '';
+          
+          if (!response.ok || sources.status === 'error') {
+            tbody.innerHTML = this.getEmptyState('database', 'No data sources found', 'Start by connecting your first data source');
+            return;
+          }
+          
+          if (sources.data_sources.length === 0) {
+            tbody.innerHTML = this.getEmptyState('database', 'No data sources connected yet', 'Add your first data source to get started');
+            return;
+          }
+
+          this.tables.sources.data = sources.data_sources;
+          this.tables.sources.currentPage = 1;
+          this.renderSourcesPage();
+
+
+        } catch (error) {
+          console.error('Error loading data sources:', error);
+          document.getElementById('data-sources-body').innerHTML = this.getEmptyState('exclamation-triangle', 'Error loading data sources', 'Please refresh the page to try again');
+        }
+      }
+
+      renderSourcesPage() {
+        const tbody = document.getElementById('data-sources-body');
+        tbody.innerHTML = '';
+
+        const table = this.tables.sources;
+        const start = (table.currentPage - 1) * table.perPage;
+        const end = start + table.perPage;
+        const pageData = table.data.slice(start, end);
+
+        pageData.forEach(source => {
+          const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50 smooth-transition';
+            
+            const statusColor = source.connection_status === 'Connected' ? 'bg-green-500' : 'bg-red-500';
+            const typeIcons = {
+              mysql: 'fas fa-database text-orange-500',
+              postgresql: 'bxl  bx-postgresql text-blue-500',
+              snowflake: 'fas fa-snowflake text-cyan-500',
+              s3: 'fab fa-aws text-orange-400',
+              mssql: 'fab fa-microsoft text-blue-600',
+              rds: 'fab fa-aws text-yellow-500',
+              azure_sql: 'fab fa-microsoft text-sky-500',
+              sqlite: 'fas fa-database text-gray-500'
+            };
+            const typeLabels = {
+              mysql: 'MySQL',
+              postgresql: 'PostgreSQL',
+              snowflake: 'Snowflake',
+              s3: 'Amazon S3',
+              mssql: 'SQL Server',
+              rds: source.rds_engine ? `AWS RDS · ${this.engineLabel(source.rds_engine)}` : 'AWS RDS',
+              azure_sql: 'Azure SQL',
+              sqlite: 'SQLite'
+            };
+
+          row.innerHTML = `
+              <td class="px-6 py-4">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                    <i class="${typeIcons[source.source_type] || 'fas fa-database'}"></i>
+                  </div>
+                  <div>
+                    <div class="font-medium text-gray-800">${source.source_name}</div>
+                    <div class="text-sm text-gray-500">ID: ${source.id || 'N/A'}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  ${typeLabels[source.source_type] || source.source_type.toUpperCase()}
+                </span>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center space-x-2">
+                  <span class="connection-status-dot ${statusColor}"></span>
+                  <span class="text-sm font-medium ${source.connection_status === 'Connected' ? 'text-green-600' : 'text-red-600'}">
+                    ${source.connection_status}
+                  </span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-sm text-gray-500">
+                ${source.last_tested || 'Never'}
+              </td>
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end space-x-2">
+                  ${source.source_type === 's3' ? `
+                  <button onclick="dataManager.openS3Browser('${source.id}', '${(source.source_name || '').replace(/'/g, "\\'")}')" class="text-orange-600 hover:text-orange-800 p-2 rounded-lg hover:bg-orange-50 smooth-transition" title="Browse bucket &amp; import files">
+                    <i class="fas fa-folder-open"></i>
+                  </button>` : ''}
+                  <button onclick="dataManager.testSingleConnection('${source.id}')" class="text-yellow-600 hover:text-yellow-800 p-2 rounded-lg hover:bg-yellow-50 smooth-transition" title="Test Connection">
+                    <i class="fas fa-vial"></i>
+                  </button>
+                  <button onclick="dataManager.editConnection('${source.id}')" class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 smooth-transition" title="Edit">
+                    <i class="fas fa-edit"></i>
+                  </button>
+                  <button onclick="dataManager.removeConnection('${source.id}')" class="text-red-600 hover:text-red-800 p-2 rounded-lg hover:bg-red-50 smooth-transition" title="Remove">
+                    <i class="fas fa-trash"></i>
+                  </button>
+                </div>
+              </td>
+          `;
+
+          tbody.appendChild(row);
+          this.updatePagination('sources');
+        });
+      }
+
+      async loadFiles() {
+        try {
+          const tbody = document.getElementById('uploaded-files-body');
+
+          const response = await fetch('/api/data/get-uploaded-files', {
+            method: 'GET',
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          const result = await response.json();
+          tbody.innerHTML = '';
+
+          if (!response.ok || result.status === 'error') {
+            tbody.innerHTML = this.getEmptyState('file-upload', 'No files found', 'Upload your first data file to get started');
+            return;
+          }
+
+          if (!result.uploaded_files || result.uploaded_files.length === 0) {
+            tbody.innerHTML = this.getEmptyState('file-upload', 'No files uploaded yet', 'Upload CSV, Excel, JSON, or documents to begin');
+            return;
+          }
+
+          this.tables.files.data = result.uploaded_files;
+          this.tables.files.currentPage = 1;
+          this.renderFilesPage();
+
+        } catch (error) {
+          console.error('Error loading files:', error);
+          document.getElementById('uploaded-files-body').innerHTML = this.getEmptyState('exclamation-triangle', 'Error loading files', 'Please refresh the page to try again');
+        }
+      }
+
+      renderFilesPage() {
+        const tbody = document.getElementById('uploaded-files-body');
+        tbody.innerHTML = '';
+
+        const table = this.tables.files;
+        const start = (table.currentPage - 1) * table.perPage;
+        const end = start + table.perPage;
+        const pageFiles = table.data.slice(start, end);
+
+        pageFiles.forEach(file => {
+          const row = document.createElement('tr');
+          row.className = 'hover:bg-gray-50 smooth-transition';
+
+          const date = file.uploaded_at ? new Date(file.uploaded_at) : null;
+          const fileSize = this.formatFileSize(file.file_size || 0);
+          const ext = file.original_filename.split('.').pop().toLowerCase();
+
+          const icons = {
+            csv: 'fas fa-file-csv text-green-500',
+            json: 'fas fa-file-code text-blue-500',
+            xlsx: 'fas fa-file-excel text-green-600',
+            xls: 'fas fa-file-excel text-green-600',
+            pdf: 'fas fa-file-pdf text-red-500',
+            docx: 'fas fa-file-word text-blue-600',
+            txt: 'fas fa-file-alt text-gray-600',
+            ppt: 'fas fa-file-powerpoint text-orange-500',
+            pptx: 'fas fa-file-powerpoint text-orange-500',
+            html: 'fas fa-code text-purple-500',
+            htm: 'fas fa-code text-purple-500'
+          };
+
+          row.innerHTML = `
+            <td class="px-6 py-4">
+              <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+                  <i class="${icons[ext] || 'fas fa-file'}"></i>
+                </div>
+                <div>
+                  <div class="font-medium text-gray-800">${file.original_filename}</div>
+                  <div class="text-sm text-gray-500">.${ext.toUpperCase()} file</div>
+                </div>
+              </div>
+            </td>
+            <td class="px-6 py-4">
+              ${
+                file.table_name
+                  ? `<span class="px-3 py-1 text-xs rounded-full bg-purple-100 text-purple-800">${file.table_name}</span>`
+                  : `<span class="px-3 py-1 text-xs rounded-full bg-blue-100 text-blue-800">Unstructured</span>`
+              }
+            </td>
+            <td class="px-6 py-4 text-sm text-gray-600">${fileSize}</td>
+            <td class="px-6 py-4 text-sm text-gray-600">${date ? date.toLocaleDateString() : '-'}</td>
+            <td class="px-6 py-4 text-right">
+              <div class="flex justify-end space-x-2">
+                <button onclick="dataManager.previewFile('${file.id}')" class="text-blue-600 hover:bg-blue-50 p-2 rounded-lg">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button onclick="dataManager.downloadFile('${file.id}')" class="text-green-600 hover:bg-green-50 p-2 rounded-lg">
+                  <i class="fas fa-download"></i>
+                </button>
+                <button onclick="dataManager.removeFile('${file.id}')" class="text-red-600 hover:bg-red-50 p-2 rounded-lg">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          `;
+
+          tbody.appendChild(row);
+        });
+
+        this.updatePagination('files');
+      }
+
+      async loadStats() {
+        try {
+          // This would be replaced with actual API calls
+          const sources = await fetch('/api/data/get-data-sources', {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          }).then(r => r.json());
+          
+          const files = await fetch('/api/data/get-uploaded-files', {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          }).then(r => r.json());
+          
+          const tables = await fetch('/api/data/get-existing-tables', {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          }).then(r => r.json());
+
+          document.getElementById('sources-count').textContent = sources.data_sources?.length || 0;
+          document.getElementById('files-count').textContent = files.uploaded_files?.length || 0;
+          document.getElementById('active-count').textContent = sources.data_sources?.filter(s => s.connection_status === 'Connected').length || 0;
+          document.getElementById('tables-count').textContent = tables.tables?.length || 0;
+        } catch (error) {
+          console.error('Error loading stats:', error);
+        }
+      }
+
+      getEmptyState(icon, title, description) {
+        return `
+          <tr>
+            <td colspan="5" class="px-6 py-12 text-center">
+              <div class="flex flex-col items-center">
+                <i class="fas fa-${icon} text-4xl text-gray-300 mb-4"></i>
+                <h3 class="text-lg font-medium text-gray-800 mb-2">${title}</h3>
+                <p class="text-gray-500">${description}</p>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
+
+      formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+
+      toggleFAB() {
+        this.fabOpen = !this.fabOpen;
+        const menu = document.getElementById('fab-menu');
+        const icon = document.querySelector('#fab-main i');
+        
+        if (this.fabOpen) {
+          menu.style.transform = 'scale(1)';
+          icon.style.transform = 'rotate(45deg)';
+        } else {
+          menu.style.transform = 'scale(0)';
+          icon.style.transform = 'rotate(0deg)';
+        }
+      }
+
+      setupDragAndDrop() {
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+          uploadZone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+          uploadZone.addEventListener(eventName, () => {
+            uploadZone.classList.add('dragover');
+          });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+          uploadZone.addEventListener(eventName, () => {
+            uploadZone.classList.remove('dragover');
+          });
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+          const files = e.dataTransfer.files;
+          if (files.length > 0) {
+            fileInput.files = files;
+            this.handleFileSelect({ target: fileInput });
+          }
+        });
+
+        uploadZone.addEventListener('click', () => {
+          fileInput.click();
+        });
+      }
+
+      handleFileSelect(e) {
+        const files = e.target.files;
+        const preview = document.getElementById('file-preview');
+        preview.innerHTML = ''; // reset
+
+        if (files.length > 0) {
+          preview.classList.remove('hidden');
+
+          Array.from(files).forEach(file => {
+            const fileRow = document.createElement('div');
+            fileRow.className = "flex items-center space-x-3 mb-2";
+
+            fileRow.innerHTML = `
+              <i class="fas fa-file text-purple-600"></i>
+              <div class="flex-1">
+                <p class="font-medium text-gray-800">${file.name}</p>
+                <p class="text-sm text-gray-600">${this.formatFileSize(file.size)}</p>
+              </div>
+              <button type="button" class="text-red-500 hover:text-red-700" onclick="this.parentElement.remove()">
+                <i class="fas fa-times"></i>
+              </button>
+            `;
+
+            preview.appendChild(fileRow);
+          });
+        } else {
+          preview.classList.add('hidden');
+        }
+      }
+
+      clearFile() {
+        document.getElementById('file-input').value = '';
+        document.getElementById('file-preview').classList.add('hidden');
+        document.getElementById('file-preview').innerHTML = '';
+      }
+
+      toggleTableSelection() {
+        const isNew = document.querySelector('input[name="upload_type"]:checked').value === 'new';
+        document.getElementById('existing-table-section').classList.toggle('hidden', isNew);
+        document.getElementById('new-table-section').classList.toggle('hidden', !isNew);
+      }
+
+      async loadExistingTables() {
+        const select = document.getElementById('tableDropdown');
+        select.innerHTML = '<option value="">Loading tables...</option>';
+
+        try {
+          const response = await fetch('/api/data/get-existing-tables', {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          const result = await response.json();
+
+          if (!response.ok || result.tables.length === 0) {
+            select.innerHTML = '<option value="">No tables available</option>';
+          } else {
+            select.innerHTML = '<option value="">Select a table</option>';
+            result.tables.forEach(table => {
+              const option = document.createElement('option');
+              option.value = table.table_name;
+              option.textContent = table.table_name;
+              select.appendChild(option);
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching tables:', error);
+          select.innerHTML = '<option value="">Failed to load tables</option>';
+        }
+      }
+
+      // Modal controls
+      openModal() {
+        document.getElementById('connModal').classList.remove('hidden');
+        this.updateConfigFields();
+      }
+
+      closeModal() {
+        const form = document.getElementById("connForm");
+        document.getElementById("connModal").classList.add("hidden");
+        form.reset();
+        delete form.dataset.editId;
+        document.querySelector("#connModal h2").textContent = "Add New Data Source";
+        document.querySelector("#connForm button[type='submit']").innerHTML =
+          `<i class="fas fa-save mr-2"></i>Save Connection`;
+        document.querySelectorAll(".db-card").forEach(lbl =>
+          lbl.classList.remove("db-card-selected")
+        );
+
+        this.updateConfigFields();
+      }
+
+      openUploadModal() {
+        document.getElementById('upload-modal').classList.remove('hidden');
+        this.loadExistingTables();
+      }
+
+      closeUploadModal() {
+        document.getElementById('upload-modal').classList.add('hidden');
+        document.getElementById('upload-form').reset();
+        this.clearFile();
+        this.toggleTableSelection();
+      }
+
+      // API Methods
+      async submitConnectionForm(e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+
+        if (!data.source_type) {
+          this.showToast("Please select a data source type", "error");
+          return;
+        }
+
+        try {
+          this.showLoader(form.dataset.editId ? "Updating connection..." : "Saving connection...");
+
+          const url = form.dataset.editId
+            ? `/api/data/update-connection/${form.dataset.editId}`
+            : "/api/data/save-connection";
+
+          const method = form.dataset.editId ? "PUT" : "POST";
+
+          const response = await fetch(url, {
+            method,
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify(data),
+          });
+
+          const result = await response.json();
+          this.hideLoader();
+
+          if (response.ok && result.status === "success") {
+            this.showToast(
+              form.dataset.editId ? "Connection updated successfully!" : "Data source connected successfully!",
+              "success"
+            );
+            this.closeModal();
+            this.loadDataSources();
+            this.loadStats();
+          } else {
+            this.showToast(result.message || "Failed to save connection", "error");
+          }
+        } catch (error) {
+          this.hideLoader();
+          console.error("Error saving connection:", error);
+          this.showToast("Network error. Please try again.", "error");
+        }
+      }
+
+      // ---------------------------------------------------------------
+      // Amazon S3 browse + import
+      //
+      // S3 holds files, not tables, so it can't back a SQL agent directly.
+      // Objects are pulled into an existing org table here; agents then query
+      // that table through the normal path.
+      // ---------------------------------------------------------------
+
+      engineLabel(engine) {
+        return ({
+          mysql: 'MySQL',
+          mariadb: 'MariaDB',
+          postgresql: 'PostgreSQL',
+          mssql: 'SQL Server'
+        })[engine] || engine;
+      }
+
+      escapeHtml(value) {
+        return String(value ?? '')
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      }
+
+      async openS3Browser(connectionId, sourceName) {
+        this.s3ConnectionId = connectionId;
+        this.s3Selected = new Set();
+
+        document.getElementById('s3-subtitle').textContent = sourceName || '';
+        document.getElementById('s3-prefix').value = '';
+        document.getElementById('s3-modal').classList.remove('hidden');
+
+        // Reuse whatever the page already knows about existing tables.
+        const select = document.getElementById('s3-table');
+        select.innerHTML = '<option value="">Select a table…</option>';
+        try {
+          const response = await fetch('/api/data/get-existing-tables', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          const result = await response.json();
+          (result.tables || []).forEach(t => {
+            const option = document.createElement('option');
+            option.value = t.table_name;
+            option.textContent = t.table_name;
+            select.appendChild(option);
+          });
+          if (!(result.tables || []).length) {
+            select.innerHTML = '<option value="">No tables yet — create one under Upload Data</option>';
+          }
+        } catch (error) {
+          console.error('Error loading tables:', error);
+        }
+
+        this.updateS3Selection();
+        this.loadS3Objects();
+      }
+
+      closeS3Browser() {
+        document.getElementById('s3-modal').classList.add('hidden');
+        this.s3ConnectionId = null;
+        this.s3Selected = new Set();
+      }
+
+      async loadS3Objects() {
+        const container = document.getElementById('s3-objects');
+        if (!this.s3ConnectionId) return;
+
+        container.innerHTML = `
+          <div class="text-center py-10 text-gray-500">
+            <i class="fas fa-circle-notch fa-spin text-2xl mb-3"></i>
+            <p class="text-sm">Listing bucket contents…</p>
+          </div>`;
+
+        const prefix = document.getElementById('s3-prefix').value.trim();
+        const url = `/api/data/s3/${this.s3ConnectionId}/objects`
+          + (prefix ? `?prefix=${encodeURIComponent(prefix)}` : '');
+
+        try {
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          const result = await response.json();
+
+          if (!response.ok || result.status === 'error') {
+            container.innerHTML = `
+              <div class="text-center py-10">
+                <i class="fas fa-triangle-exclamation text-3xl text-red-400 mb-3"></i>
+                <p class="text-sm text-gray-700 font-medium">Could not list this bucket</p>
+                <p class="text-xs text-gray-500 mt-2 max-w-md mx-auto">${this.escapeHtml(result.message || '')}</p>
+              </div>`;
+            return;
+          }
+
+          this.s3Objects = result.objects || [];
+          this.s3Selected = new Set();
+          this.renderS3Objects(result);
+          this.updateS3Selection();
+        } catch (error) {
+          console.error('Error listing S3 objects:', error);
+          container.innerHTML = `
+            <div class="text-center py-10 text-gray-500">
+              <i class="fas fa-plug-circle-xmark text-3xl text-gray-300 mb-3"></i>
+              <p class="text-sm">Network error while listing the bucket</p>
+            </div>`;
+        }
+      }
+
+      renderS3Objects(result) {
+        const container = document.getElementById('s3-objects');
+
+        if (!this.s3Objects.length) {
+          container.innerHTML = `
+            <div class="text-center py-10 text-gray-500">
+              <i class="fas fa-folder-open text-3xl text-gray-300 mb-3"></i>
+              <p class="text-sm font-medium text-gray-700">No importable files here</p>
+              <p class="text-xs mt-2">Looked in <code>s3://${this.escapeHtml(result.bucket)}/${this.escapeHtml(result.prefix || '')}</code></p>
+              <p class="text-xs mt-1">CSV, Excel and JSON objects are listed; CSV and Excel can be imported.</p>
+            </div>`;
+          return;
+        }
+
+        const rows = this.s3Objects.map((obj, index) => {
+          const disabled = !obj.importable || obj.too_large;
+          const note = obj.too_large ? 'Too large to import'
+            : (!obj.importable ? 'Preview only — not importable' : '');
+          return `
+            <label class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${disabled ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200 hover:border-purple-300 cursor-pointer'} smooth-transition mb-2">
+              <input type="checkbox" data-s3-index="${index}" ${disabled ? 'disabled' : ''}
+                     onchange="dataManager.toggleS3Object(${index}, this.checked)"
+                     class="w-4 h-4 text-purple-600 rounded focus:ring-purple-500">
+              <i class="fas ${obj.extension === 'csv' ? 'fa-file-csv text-green-600' : obj.extension === 'json' ? 'fa-file-code text-yellow-600' : 'fa-file-excel text-emerald-600'}"></i>
+              <span class="flex-1 min-w-0">
+                <span class="block text-sm font-medium text-gray-800 truncate">${this.escapeHtml(obj.name)}</span>
+                <span class="block text-xs text-gray-500 truncate">${this.escapeHtml(obj.key)}</span>
+              </span>
+              <span class="text-xs text-gray-500 whitespace-nowrap text-right">
+                ${this.escapeHtml(obj.size_label)}
+                ${note ? `<span class="block text-amber-600">${this.escapeHtml(note)}</span>` : ''}
+              </span>
+            </label>`;
+        }).join('');
+
+        container.innerHTML = `
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-xs text-gray-500">
+              <code>s3://${this.escapeHtml(result.bucket)}/${this.escapeHtml(result.prefix || '')}</code>
+              — ${this.s3Objects.length} file${this.s3Objects.length === 1 ? '' : 's'}
+              ${result.truncated ? ' (showing the first 500)' : ''}
+            </p>
+            <button onclick="dataManager.toggleAllS3()" class="text-xs font-medium text-purple-600 hover:text-purple-800">
+              Select all importable
+            </button>
+          </div>
+          ${rows}`;
+      }
+
+      toggleS3Object(index, checked) {
+        const obj = this.s3Objects[index];
+        if (!obj) return;
+        if (checked) this.s3Selected.add(obj.key);
+        else this.s3Selected.delete(obj.key);
+        this.updateS3Selection();
+      }
+
+      toggleAllS3() {
+        const importable = this.s3Objects.filter(o => o.importable && !o.too_large);
+        const selectAll = this.s3Selected.size < importable.length;
+
+        this.s3Selected = new Set(selectAll ? importable.map(o => o.key) : []);
+        document.querySelectorAll('#s3-objects input[data-s3-index]').forEach(box => {
+          if (!box.disabled) box.checked = selectAll;
+        });
+        this.updateS3Selection();
+      }
+
+      updateS3Selection() {
+        const count = this.s3Selected ? this.s3Selected.size : 0;
+        document.getElementById('s3-selection-info').textContent =
+          count ? `${count} file${count === 1 ? '' : 's'} selected` : 'No files selected';
+        document.getElementById('s3-import-btn').disabled = count === 0;
+      }
+
+      async importS3Objects() {
+        const tableName = document.getElementById('s3-table').value;
+        if (!tableName) {
+          this.showToast('Choose the table to import into', 'error');
+          return;
+        }
+        if (!this.s3Selected || !this.s3Selected.size) return;
+
+        try {
+          this.showLoader(`Importing ${this.s3Selected.size} file(s)...`);
+
+          const response = await fetch(`/api/data/s3/${this.s3ConnectionId}/import`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ keys: [...this.s3Selected], table_name: tableName })
+          });
+
+          const result = await response.json();
+          this.hideLoader();
+
+          if (!response.ok || result.status === 'error') {
+            this.showToast(result.message || 'Import failed', 'error');
+            return;
+          }
+
+          const failed = (result.results || []).filter(r => !r.success);
+          if (failed.length) {
+            // Schema mismatches are the common case; show the actual reason.
+            this.showToast(
+              `Imported ${result.imported}/${result.total}. ${failed[0].message}`,
+              result.imported ? 'info' : 'error'
+            );
+          } else {
+            this.showToast(`Imported ${result.imported} file(s) into ${result.table_name}`, 'success');
+            this.closeS3Browser();
+          }
+
+          this.loadFiles();
+          this.loadStats();
+        } catch (error) {
+          this.hideLoader();
+          console.error('Error importing from S3:', error);
+          this.showToast('Network error during import', 'error');
+        }
+      }
+
+      async testConnection() {
+        const formData = new FormData(document.getElementById('connForm'));
+        const data = Object.fromEntries(formData.entries());
+        
+        if (!data.source_type) {
+          this.showToast('Please select a data source type first', 'error');
+          return;
+        }
+
+        try {
+          this.showLoader('Testing connection...');
+          
+          const response = await fetch('/api/data/test-connection', {
+            method: 'POST',
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify(data)
+          });
+
+          const result = await response.json();
+          this.hideLoader();
+
+          if (response.ok && result.status === 'success') {
+            this.showToast('Connection test successful!', 'success');
+          } else {
+            this.showToast(result.message || 'Connection test failed', 'error');
+          }
+        } catch (error) {
+          this.hideLoader();
+          console.error('Error testing connection:', error);
+          this.showToast('Network error during connection test', 'error');
+        }
+      }
+
+      async handleFileUpload(e) {
+        e.preventDefault();
+
+        const formData = new FormData(e.target);
+        const uploadType = formData.get('upload_type');
+        const fileCategory = formData.get('file_category');
+
+        // -------- Validation --------
+        if (fileCategory === 'structured') {
+          if (uploadType === 'existing' && !formData.get('existing_table')) {
+            this.showToast('Please select an existing table', 'error');
+            return;
+          }
+
+          if (uploadType === 'new') {
+            if (!formData.get('new_table_name')?.trim()) {
+              this.showToast('Please enter a table name', 'error');
+              return;
+            }
+            if (!formData.get('meta_file') || formData.get('meta_file').size === 0) {
+              this.showToast('Please upload a metadata file for the new table', 'error');
+              return;
+            }
+          }
+        }
+
+        if (!formData.get('files') || formData.get('files').size === 0) {
+          this.showToast('Please select a data file to upload', 'error');
+          return;
+        }
+
+        try {
+          console.log(fileCategory);
+          this.showLoader('Uploading files...');
+
+          const response = await fetch('/api/data/upload-file', {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: formData
+          });
+
+          const result = await response.json();
+          this.hideLoader();
+
+          // -------- Success Case --------
+          if (response.ok && result.status === 'success') {
+            if (result.results && Array.isArray(result.results)) {
+              const failed = result.results.filter(r => !r.success);
+              const succeeded = result.results.filter(r => r.success);
+
+              if (succeeded.length > 0) {
+                this.showToast(`${succeeded.length} file(s) uploaded successfully!`, 'success');
+              }
+              if (failed.length > 0) {
+                const firstErr = failed[0].message;
+                this.showToast(
+                  `${failed.length} file(s) failed. Example: ${firstErr}`,
+                  'warning'
+                );
+              }
+            } else {
+              this.showToast('File uploaded successfully!', 'success');
+            }
+
+            this.closeUploadModal();
+            this.loadFiles();
+            this.loadStats();
+
+          } else {
+            this.showToast(result.message || 'Upload failed', 'error');
+          }
+
+        } catch (error) {
+          this.hideLoader();
+          console.error('Error uploading file:', error);
+          this.showToast('Network error during upload', 'error');
+        }
+      }
+
+      async testSingleConnection(id) {
+        try {
+          this.showLoader("Testing connection...");
+          const response = await fetch(`/api/data/test-saved-connection/${id}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          const result = await response.json();
+          this.hideLoader();
+
+          if (response.ok && result.status === "success") {
+            this.showToast(result.message, "success");
+            this.loadDataSources();
+          } else {
+            this.showToast(result.message || "Connection test failed", "error");
+            this.loadDataSources();
+          }
+        } catch (error) {
+          this.hideLoader();
+          console.error("Error testing saved connection:", error);
+          this.showToast("Network error during connection test", "error");
+        }
+      }
+
+      async editConnection(id) {
+        const fieldMappings = {
+            mysql: {
+              username: "uid",
+              password: "pwd",
+              host: "host",
+              port: "port",
+              database: "database"
+            },
+            postgresql: {
+              username: "uid",
+              password: "pwd",
+              host: "host",
+              port: "port",
+              database: "database"
+            },
+            mssql: {
+              username: "uid",
+              password: "pwd",
+              host: "host",
+              port: "port",
+              database: "database",
+              driver: "driver"
+            },
+            snowflake: {
+              snowflake_account: "sf_account",
+              username: "username",
+              password: "password",
+              snowflake_warehouse: "warehouse",
+              database: "sf_database",
+              snowflake_schema: "schema"
+            },
+            s3: {
+              s3_access_key: "s3_access_key",
+              s3_secret_key: "s3_secret_key",
+              s3_region: "s3_region",
+              s3_bucket: "s3_bucket",
+              s3_prefix: "s3_prefix"
+            },
+            rds: {
+              rds_engine: "rds_engine",
+              username: "uid",
+              password: "pwd",
+              host: "host",
+              port: "port",
+              database: "database"
+            },
+            azure_sql: {
+              username: "uid",
+              password: "pwd",
+              host: "host",
+              port: "port",
+              database: "database"
+            },
+            sqlite: {
+              sqlite_path: "sqlite_path"
+            }
+          };
+
+        try {
+          this.showLoader("Loading connection details...");
+
+          const response = await fetch(`/api/data/get-data-source/${id}`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          });
+
+          const result = await response.json();
+          this.hideLoader();
+
+          if (!response.ok || result.status === "error") {
+            this.showToast(result.message || "Failed to load connection", "error");
+            return;
+          }
+
+          const source = result.data_source;
+
+          // Open modal
+          this.openModal();
+
+          // Update modal title
+          document.querySelector("#connModal h2").textContent = "Edit Data Source";
+
+          // Pre-fill type and generate dynamic fields
+            const typeInput = document.getElementById(source.source_type);
+            if (typeInput) {
+              typeInput.checked = true;
+
+              // Remove old highlights
+              document.querySelectorAll(".db-card").forEach(lbl =>
+                lbl.classList.remove("db-card-selected")
+              );
+
+              // Add highlight to selected one
+              const selectedLabel = document.querySelector(`label[for='${source.source_type}']`);
+              if (selectedLabel) selectedLabel.classList.add("db-card-selected");
+
+              this.updateConfigFields();
+            }
+
+
+          // Pre-fill connection name
+          document.querySelector("input[name='source_name']").value = source.source_name;
+
+          // Get field mapping for this type
+          const mappings = fieldMappings[source.source_type] || {};
+
+          // Pre-fill values
+          for (const [backendKey, frontendName] of Object.entries(mappings)) {
+            if (source[backendKey] !== undefined && source[backendKey] !== null) {
+              const input = document.querySelector(`#config-fields [name='${frontendName}']`);
+              if (input) input.value = source[backendKey];
+            }
+          }
+
+          // Store ID so we know this is edit mode
+          document.getElementById("connForm").dataset.editId = id;
+
+          // Change button text
+          document.querySelector("#connForm button[type='submit']").innerHTML =
+            `<i class="fas fa-save mr-2"></i>Save Changes`;
+
+        } catch (error) {
+          this.hideLoader();
+          console.error("Error editing connection:", error);
+          this.showToast("Error loading connection details", "error");
+        }
+      }
+
+      async removeConnection(id) {
+        if (confirm('Are you sure you want to remove this data source?')) {
+          this.showToast('Removing connection...', 'info');
+          try {
+            
+            const response = await fetch(`/api/data/delete-connection/${id}`, {
+              method: 'DELETE',
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              }
+            });
+
+            const result = await response.json();
+            this.hideLoader();
+
+            if (response.ok && result.status === 'success') {
+              this.loadDataSources();
+              this.showToast('Connection removed successful!', 'success');
+            } else {
+              this.showToast(result.message || 'Deleting connection failed, try after sometime', 'error');
+            }
+          } catch (error) {
+            this.hideLoader();
+            console.error('Error Deleting connection:', error);
+            this.showToast('Network error during connection delete', 'error');
+          }
+        }
+      }
+
+      async previewFile(id) {
+        this.showToast('Preview functionality coming soon', 'info');
+      }
+
+      async downloadFile(id) {
+        this.showToast('Download functionality coming soon', 'info');
+      }
+
+      async removeFile(id) {
+        if (confirm('Are you sure you want to remove this file?')) {
+          this.showToast('Removing file...', 'info');
+          try {
+            
+            const response = await fetch(`/api/data/delete-file/${id}`, {
+              method: 'DELETE',
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              }
+            });
+
+            const result = await response.json();
+            this.hideLoader();
+
+            if (response.ok && result.status === 'success') {
+              this.loadFiles();
+              this.showToast('File removed successful!', 'success');
+            } else {
+              this.showToast(result.message || 'Deleting file failed, try after sometime', 'error');
+            }
+          } catch (error) {
+            this.hideLoader();
+            console.error('Error Deleting file:', error);
+            this.showToast('Network error during file delete', 'error');
+          }
+        }
+      }
+
+      async testAllConnections() {
+        this.showToast('Testing all connections...', 'info');
+      }
+
+      getPageContainerId(type) {
+        return type === "files" ? "files-pageNumbers" : "sources-pageNumbers";
+      }
+
+      clampPage(type) {
+          const table = this.tables[type];
+          const totalPages = Math.max(1, Math.ceil((table.data?.length || 0) / table.perPage));
+          table.currentPage = Math.min(Math.max(1, table.currentPage), totalPages);
+          return totalPages;
+      }
+      
+      updatePagination(type) {
+        const table = this.tables[type];
+        const total = table.data?.length || 0;
+        const totalPages = this.clampPage(type);
+
+        const start = total === 0 ? 0 : (table.currentPage - 1) * table.perPage + 1;
+        const end = total === 0 ? 0 : Math.min(table.currentPage * table.perPage, total);
+
+        if (type === "files") {
+          const el = document.getElementById("files-pageInfo");
+          if (el) el.textContent = `Showing ${start}-${end} of ${total} files`;
+          const prev = document.getElementById("files-prevPage");
+          const next = document.getElementById("files-nextPage");
+          if (prev) prev.disabled = table.currentPage === 1;
+          if (next) next.disabled = table.currentPage === totalPages;
+        } else {
+          const el = document.getElementById("sources-pageInfo");
+          if (el) el.textContent = `Showing ${start}-${end} of ${total} sources`;
+          const prev = document.getElementById("sources-prevPage");
+          const next = document.getElementById("sources-nextPage");
+          if (prev) prev.disabled = table.currentPage === 1;
+          if (next) next.disabled = table.currentPage === totalPages;
+        }
+
+        this.renderPageNumbers(type, totalPages);
+      }
+
+      renderPageNumbers(type, totalPages) {
+        const containerId = type === "files" ? "files-pageNumbers" : "sources-pageNumbers";
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        const current = this.tables[type].currentPage;
+
+        // --- CAP ONLY FILES TO 3 ---
+        if (type === "files") {
+          // window size = 3
+          let start = Math.max(1, current - 1);
+          let end = Math.min(totalPages, start + 2);
+
+          // shift left if we're at the end
+          start = Math.max(1, end - 2);
+
+          for (let i = start; i <= end; i++) {
+            const btn = document.createElement("button");
+            btn.className = `action-btn ${i === current ? "primary" : ""}`;
+            btn.textContent = String(i);
+            btn.onclick = () => {
+              this.tables.files.currentPage = i;
+              this.renderFilesPage();
+            };
+            container.appendChild(btn);
+          }
+          return;
+        }
+
+        // --- DEFAULT (SOURCES): render all ---
+        for (let i = 1; i <= totalPages; i++) {
+          const btn = document.createElement("button");
+          btn.className = `action-btn ${i === current ? "primary" : ""}`;
+          btn.textContent = String(i);
+          btn.onclick = () => {
+            this.tables.sources.currentPage = i;
+            this.renderSourcesPage();
+          };
+          container.appendChild(btn);
+        }
+      }
+
+    }
+
+    // Global functions for compatibility
+    function openModal() { dataManager.openModal(); }
+    function closeModal() { dataManager.closeModal(); }
+    function openUploadModal() { dataManager.openUploadModal(); }
+    function closeUploadModal() { dataManager.closeUploadModal(); }
+    function toggleTableSelection() { dataManager.toggleTableSelection(); }
+    function toggleFAB() { dataManager.toggleFAB(); }
+    function clearFile() { dataManager.clearFile(); }
+    function hideGettingStarted() {
+      document.getElementById('getting-started').style.display = 'none';
+      localStorage.setItem('hideGettingStarted', 'true');
+    }
+
+    function toggleCategory() {
+        const selectedCategory = document.querySelector("input[name='file_category']:checked").value;
+        const fileInput = document.getElementById("file-input");
+        const uploadZone = document.getElementById("upload-zone");
+        const structured = document.getElementById("structured-section");
+        const unstructured = document.getElementById("unstructured-section");
+
+        if (selectedCategory === "structured") {
+          fileInput.setAttribute("accept", ".csv,.json,.xlsx,.zip");
+          uploadZone.querySelector("p.text-sm").textContent = "Supports multiple CSV, Excel, JSON or ZIP files up to 100MB";
+          structured.classList.remove("hidden");
+          unstructured.classList.add("hidden");
+        } else {
+          fileInput.setAttribute("accept", ".pdf,.docx,.pptx,.txt,.html,.csv,.zip");
+          uploadZone.querySelector("p.text-sm").textContent = "Supports multiple unstructured files like PDF, Word, PPT, TXT, HTML or ZIP up to 25MB";
+          structured.classList.add("hidden");
+          unstructured.classList.remove("hidden");
+        }
+
+        // Reset any previously selected file preview
+        fileInput.value = "";
+        document.getElementById("file-preview").classList.add("hidden");
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      window.dataManager = new DataManagement();
+
+      if (localStorage.getItem('hideGettingStarted') === 'true') {
+        document.getElementById('getting-started').style.display = 'none';
+      }
+
+      // Files pagination
+      document.getElementById("files-prevPage").addEventListener("click", () => {
+        if (dataManager.tables.files.currentPage > 1) {
+          dataManager.tables.files.currentPage--;
+          dataManager.renderFilesPage();
+        }
+      });
+
+      document.getElementById("files-nextPage").addEventListener("click", () => {
+        const totalPages = Math.max(
+          1,
+          Math.ceil((dataManager.tables.files.data?.length || 0) / dataManager.tables.files.perPage)
+        );
+        if (dataManager.tables.files.currentPage < totalPages) {
+          dataManager.tables.files.currentPage++;
+          dataManager.renderFilesPage();
+        }
+      });
+
+      // Sources pagination
+      document.getElementById("sources-prevPage").addEventListener("click", () => {
+        if (dataManager.tables.sources.currentPage > 1) {
+          dataManager.tables.sources.currentPage--;
+          dataManager.renderSourcesPage();
+        }
+      });
+
+      document.getElementById("sources-nextPage").addEventListener("click", () => {
+        const totalPages = Math.max(
+          1,
+          Math.ceil((dataManager.tables.sources.data?.length || 0) / dataManager.tables.sources.perPage)
+        );
+        if (dataManager.tables.sources.currentPage < totalPages) {
+          dataManager.tables.sources.currentPage++;
+          dataManager.renderSourcesPage();
+        }
+      });
+    });
+
+
+</script>
+
+{% endblock %}

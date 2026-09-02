@@ -1,0 +1,380 @@
+{% extends "base.html" %}
+{% block title %}Configure Dashboard{% endblock %}
+
+{% block content %}
+<style>
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background-color: #38a169;
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 100;
+    display: none;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .toast.error {
+    background-color: #e53e3e;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .blur-overlay {
+    position: absolute;
+    inset: 0;
+    backdrop-filter: blur(6px);
+    background: rgba(255, 255, 255, 0.3);
+    z-index: 40;
+  }
+
+  .loader {
+    border: 4px solid #e5e7eb;
+    border-top: 4px solid #3b82f6;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: none;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="ml-64 p-6 bg-gray-50 min-h-screen">
+
+  <div id="deleteWidgetModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+      <h2 class="text-lg font-semibold text-gray-800 mb-4">Remove Widget?</h2>
+      <p class="text-gray-600 mb-6">Are you sure you want to remove this widget? This action cannot be undone.</p>
+      <div class="flex justify-end space-x-3">
+        <button onclick="hideDeleteModal()"
+          class="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition">Cancel</button>
+        <button onclick="confirmDeleteWidget()"
+          class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition">Yes, Remove</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="bg-white p-6 rounded-lg shadow-md">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-4">📊 Create & Configure Dashboard</h2>
+    <div id="toast" class="toast"></div>
+    <form id="dashboardForm" class="space-y-4">
+      <div class="loader"></div>
+      <input type="text" id="title" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Dashboard Title" required>
+      <textarea id="description" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Dashboard Description"></textarea>
+
+      <!-- Agent selector -->
+      <select id="agentSelect" class="w-full p-3 border border-gray-300 rounded-lg" required>
+        <option value="" disabled selected>Select Agent</option>
+      </select>
+
+      <h3 class="text-xl font-medium mt-6 mb-2">🧩 Add Widgets</h3>
+      <div id="widgetsContainer" class="space-y-4"></div>
+
+      <div class="flex justify-between items-center mt-4">
+        <button type="button" onclick="addWidget()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+ Add Widget</button>
+        <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">✅ Save Dashboard</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="mt-10">
+    <h3 class="text-xl font-medium mb-4 text-gray-700">🔍 Live Preview</h3>
+    <div id="previewArea" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    </div>
+  </div>
+</div>
+
+<script>
+  let widgetCounter = 0;
+
+  async function fetchAgents() {
+    try {
+      const res = await fetch('/api/agent/get-agents', {
+        method: 'GET',
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      const agents = await res.json();
+      const select = document.getElementById("agentSelect");
+
+      agents.agents.forEach(agent => {
+        const option = document.createElement("option");
+        option.value = agent.id;
+        option.textContent = agent.name;
+        select.appendChild(option);
+      });
+    } catch (err) {
+      console.error("Failed to load agents:", err);
+    }
+  }
+
+  function addWidget() {
+    const container = document.getElementById("widgetsContainer");
+    const preview = document.getElementById("previewArea");
+
+    const widgetHTML = `
+      <div class="widget widget-block bg-white p-6 rounded-2xl shadow-md mb-6 border border-gray-200 space-y-4 relative" data-widget-id="${widgetCounter}">
+        <!-- Remove Button -->
+        <button type="button"
+          class="absolute top-4 right-4 text-red-500 hover:text-red-700 hover:scale-105 transition"
+          onclick="showDeleteModal(this)">
+          ❌ Remove
+        </button>
+
+        <!-- Widget Title -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">📌 Widget Title (optional)</label>
+          <input type="text" name="title" placeholder="e.g., Monthly Sales"
+            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+        </div>
+
+        <!-- NL Query + Generate SQL -->
+        <div class="grid grid-cols-12 gap-4 items-start">
+          <div class="col-span-9">
+            <label class="block text-sm font-semibold text-gray-700 mb-1">🧠 Natural Language Query (Optional)</label>
+            <textarea name="nl_query" rows="2"
+              class="nlq w-full px-4 py-2 border rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder="e.g., Show total sales by month for 2023..."></textarea>
+          </div>
+          <div class="col-span-3 flex items-end">
+            <button type="button" class="generate-sql-btn mb-4 bg-indigo-600 text-white px-3 py-1.5 rounded hover:bg-indigo-700 transition"">
+              <span class="label">🎯 Generate SQL</span>
+              <span class="loader hidden ml-2 w-4 h-4 border-t-2 border-white rounded-full animate-spin"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- SQL Query -->
+        <div>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">📝 SQL Query</label>
+          <textarea name="sql_query" rows="4"
+            class="sql-input w-full px-4 py-2 border rounded-lg font-mono text-sm resize-y focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            placeholder="Generated SQL or write your own..."></textarea>
+        </div>
+
+        <!-- Chart Type, Refresh, Position -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">📊 Chart Type</label>
+            <select name="chart_type"
+              class="chart_type w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="bar">Bar Chart</option>
+              <option value="line">Line Chart</option>
+              <option value="table">Table</option>
+              <option value="summary">Summary</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">🔁 Refresh Rate</label>
+            <select name="refresh_rate"
+              class="refresh w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="manual">Manual</option>
+              <option value="daily">Daily</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">📐 Position (optional)</label>
+            <input type="text" name="position"
+              class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              placeholder='e.g., { "x": 0, "y": 0, "w": 4, "h": 2 }' />
+          </div>
+        </div>
+      </div>
+    `;
+
+    container.insertAdjacentHTML("beforeend", widgetHTML);
+
+    const previewHTML = `
+      <div class="preview bg-white border rounded shadow p-4" data-widget-id="${widgetCounter}">
+        <p class="text-gray-600 text-sm">Widget #${widgetCounter + 1}</p>
+        <div class="text-center text-gray-400 text-lg mt-2">📊 Preview: (Chart will be rendered here)</div>
+      </div>
+    `;
+
+    preview.insertAdjacentHTML("beforeend", previewHTML);
+    widgetCounter++;
+
+    const newWidget = container.lastElementChild;
+    const genBtn = newWidget.querySelector(".generate-sql-btn");
+    genBtn.addEventListener("click", async function () {
+      const widgetBlock = this.closest(".widget-block");
+      const nlqInput = widgetBlock.querySelector("[name='nl_query']");
+      const sqlInput = widgetBlock.querySelector("[name='sql_query']");
+      const agentId = document.getElementById("agentSelect").value;
+
+      const nlQuery = nlqInput.value.trim();
+      if (!nlQuery) {
+        alert("Please enter a natural language query first.");
+        return;
+      }
+
+      this.disabled = true;
+      this.textContent = "⏳ Generating...";
+
+      try {
+        const response = await fetch(`api/query/graph/${agentId}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({ nlq: nlQuery })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.sql) {
+          sqlInput.value = result.sql;
+
+          const widgetId = widgetBlock.getAttribute("data-widget-id");
+
+          renderChartFromResponse(widgetId, result);
+        } else {
+          alert("Failed to generate preview.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Something went wrong.");
+      } finally {
+        this.disabled = false;
+        this.textContent = "🎯 Generate SQL";
+      }
+    });
+
+
+  }
+
+  let currentDashboardId = null;
+
+  document.getElementById("dashboardForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const payload = {
+      title: document.getElementById("title").value,
+      description: document.getElementById("description").value,
+      agent_id: document.getElementById("agentSelect").value,
+    };
+
+    const res = await fetch("/api/dashboards/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      currentDashboardId = data.dashboard_id;
+      // Show widget UI
+      document.getElementById("widgetsContainer").classList.remove("hidden");
+    } else {
+      alert("❌ Failed to create dashboard");
+    }
+  });
+
+  async function saveWidget(widgetData) {
+    if (!currentDashboardId) return;
+
+    const res = await fetch(`/api/dashboards/${currentDashboardId}/widgets`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+      body: JSON.stringify(widgetData),
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      alert("✅ Widget added successfully");
+      // Optionally: render preview
+    } else {
+      alert("❌ Failed to add widget");
+    }
+  }
+
+  let widgetToRemove = null;
+
+  function showDeleteModal(button) {
+    widgetToRemove = button.closest('.widget-block');
+    document.getElementById('deleteWidgetModal').classList.remove('hidden');
+  }
+
+  function hideDeleteModal() {
+    widgetToRemove = null;
+    document.getElementById('deleteWidgetModal').classList.add('hidden');
+  }
+
+  function confirmDeleteWidget() {
+    if (!widgetToRemove) return;
+
+    const widgetId = widgetToRemove.getAttribute('data-widget-id');
+
+    // Remove the widget block
+    widgetToRemove.remove();
+
+    // Remove the corresponding preview block (if exists)
+    const preview = document.querySelector(`.preview[data-widget-id="${widgetId}"]`);
+    if (preview) {
+      preview.remove();
+    }
+
+    // Cleanup
+    widgetToRemove = null;
+    hideDeleteModal();
+  }
+
+  function renderChartFromResponse(widgetId, response) {
+    const previewDiv = document.querySelector(`.preview[data-widget-id="${widgetId}"]`);
+    previewDiv.innerHTML = `<canvas></canvas>`;
+    const ctx = previewDiv.querySelector("canvas").getContext("2d");
+
+    const chartType = response.chart_type || 'bar';
+
+    new Chart(ctx, {
+      type: chartType,
+      data: {
+        labels: response.chart_labels,
+        datasets: [{
+          label: response.value_key,
+          data: response.chart_values,
+          backgroundColor: response.chart_colors || ['#60a5fa'],
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          title: {
+            display: true,
+            text: response.query || 'Generated Chart'
+          },
+          legend: {
+            display: chartType !== 'bar'
+          }
+        }
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', fetchAgents);
+</script>
+
+
+{% endblock %}

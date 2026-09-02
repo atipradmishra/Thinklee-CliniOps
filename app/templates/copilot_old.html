@@ -1,0 +1,1284 @@
+{% extends 'base.html' %}
+{% block title %}Thinklee Co-Pilot{% endblock %}
+
+{% block content %}
+<style>
+    /* Custom gradient for user messages */
+    .user-message-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    /* Enhanced Styles */
+    .message-enter {
+    animation: slideInUp 0.3s ease-out;
+    }
+
+    @keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    }
+
+    .chat-bubble {
+    animation: fadeInScale 0.3s ease-out;
+    }
+
+    @keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+    }
+
+    .agent-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .agent-card.selected {
+    border-color: rgba(255, 255, 255, 0.7) !important;
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+    transform: scale(1.05) translateY(-4px) !important;
+    }
+
+    .feedback-btn {
+    transition: all 0.2s ease;
+    }
+
+    .feedback-btn:hover {
+    transform: scale(1.1);
+    }
+
+    /* Auto-expanding textarea */
+    #user-input {
+    transition: height 0.2s ease;
+    overflow-y: hidden;
+    }
+
+    /* Enhanced scrollbar */
+    #chat-box::-webkit-scrollbar {
+    width: 6px;
+    }
+
+    #chat-box::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 10px;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+    }
+
+    /* Tooltip styling */
+    #agent-tooltip {
+    z-index: 9999;
+    transition: opacity 0.2s ease-in-out;
+    }
+
+    /* Smooth keyboard shortcuts */
+    kbd {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.75rem;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid #d1d5db;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    background: linear-gradient(to bottom, #ffffff, #f8f9fa);
+    }
+
+    /* Bounce animation */
+    @keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-8px);
+    }
+    60% {
+        transform: translateY(-4px);
+    }
+    }
+
+    .animate-bounce {
+    animation: bounce 1s infinite;
+    }
+
+    /* Mobile responsive improvements */
+    @media (max-width: 768px) {
+    .lg\:ml-64 {
+        margin-left: 0;
+    }
+    
+    .max-w-xs {
+        max-width: calc(100vw - 100px);
+    }
+    
+    .lg\:max-w-md {
+        max-width: calc(100vw - 100px);
+    }
+    
+    #chat-box {
+        padding: 1rem;
+    }
+    
+    .h-\[calc\(100vh-180px\)\] {
+        height: calc(100vh - 140px);
+    }
+    
+    .agent-card {
+        transform: none !important;
+    }
+    
+    .agent-card:hover {
+        transform: translateY(-2px) !important;
+    }
+    
+    .agent-card.selected {
+        transform: scale(1.02) !important;
+    }
+
+    /* Adjust grid for mobile */
+    .grid-cols-1 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+    
+    .sm\:grid-cols-2 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+    
+    .lg\:grid-cols-3 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+    
+    .xl\:grid-cols-4 {
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+    }
+
+    @media (max-width: 640px) {
+    .text-xl {
+        font-size: 1.25rem;
+    }
+    
+    .lg\:text-2xl {
+        font-size: 1.5rem;
+    }
+    
+    .p-4 {
+        padding: 0.75rem;
+    }
+    
+    .lg\:p-6 {
+        padding: 1rem;
+    }
+    }
+
+    /* Enhanced focus states */
+    input:focus, textarea:focus, select:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    /* Loading animation improvements */
+    .typing-animation .animate-bounce:nth-child(1) {
+    animation-delay: 0s;
+    }
+
+    .typing-animation .animate-bounce:nth-child(2) {
+    animation-delay: 0.1s;
+    }
+
+    .typing-animation .animate-bounce:nth-child(3) {
+    animation-delay: 0.2s;
+    }
+
+    /* Toast container positioning */
+    #toast-container {
+    pointer-events: none;
+    }
+
+    #toast-container > * {
+    pointer-events: auto;
+    }
+
+    /* Backdrop blur support */
+    @supports (backdrop-filter: blur(10px)) {
+    .backdrop-blur {
+        backdrop-filter: blur(10px);
+    }
+    }
+
+    /* Modal animation */
+    #feedback-modal .bg-white {
+    transform: scale(0.95);
+    transition: transform 0.2s ease-out;
+    }
+
+    /* Custom scrollbar for webkit browsers */
+    ::-webkit-scrollbar {
+    width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+    }
+
+    /* Fixed container styling */
+    .h-\[calc\(100vh-180px\)\] {
+    height: calc(100vh - 180px);
+    }
+
+    /* Agent card responsiveness */
+    @media (min-width: 640px) {
+    .sm\:grid-cols-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    }
+
+    @media (min-width: 1024px) {
+    .lg\:grid-cols-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+    }
+
+    @media (min-width: 1280px) {
+    .xl\:grid-cols-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    }
+</style>
+
+<div class="lg:ml-64 p-4 lg:p-6 bg-gray-50 min-h-screen">
+  <!-- Compact Page Header -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between space-y-2 sm:space-y-0 mb-4">
+    <h2 class="text-xl lg:text-2xl font-semibold text-gray-800 flex items-center space-x-2">
+      <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+      </svg>
+      <span>Thinklee Co-Pilot</span>
+    </h2>
+    <div class="flex items-center space-x-2 bg-white px-3 py-2 rounded-lg shadow-sm text-sm text-gray-600">
+      <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+      <span>{{ session.username }} ({{ session.role }})</span>
+    </div>
+  </div>
+
+  <!-- Fixed Height Chat Container -->
+  <div class="bg-white shadow-lg rounded-2xl overflow-hidden flex flex-col h-[calc(100vh-180px)]">
+    
+    <!-- Compact Chat Header with Agent Selection -->
+    <div class="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 flex-shrink-0">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold flex items-center space-x-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+          </svg>
+          <span>Chat with RAG Agent</span>
+        </h3>
+        
+        <!-- Clear Chat Button -->
+        <button id="clear-chat-btn" 
+                class="flex items-center space-x-2 bg-white/20 hover:bg-white/30 px-3 py-2 rounded-lg transition-all duration-200 text-sm"
+                title="Clear chat history">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+          <span>Clear</span>
+        </button>
+      </div>
+
+      <!-- Enhanced Agent Cards Selection -->
+      <div class="mb-3">
+        <label class="text-sm text-blue-100 font-medium mb-3 block">Select AI Agent:</label>
+        
+        <!-- Agent Cards Grid -->
+        <div id="agent-cards" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-3">
+          <!-- Agent cards will be populated here -->
+        </div>
+        
+        <!-- Fallback for many agents -->
+        <div id="agent-dropdown-container" class="hidden">
+          <select id="agentSelect" 
+                  class="bg-white/10 backdrop-blur border border-white/20 rounded-xl px-4 py-3 text-white w-full focus:outline-none focus:ring-2 focus:ring-white/50 appearance-none cursor-pointer">
+            <option disabled selected>-- Choose Agent --</option>
+          </select>
+        </div>
+        
+        <!-- Agent Status -->
+        <div class="flex items-center space-x-2 mt-2">
+          <div id="agent-status-dot" class="w-3 h-3 bg-white/40 rounded-full"></div>
+          <span class="text-sm text-blue-100">Agent: <strong id="selected-agent-name">None selected</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scrollable Chat Messages Area -->
+    <div id="chat-box" class="flex-1 overflow-y-auto p-4 lg:p-6 bg-gradient-to-b from-gray-50 to-white space-y-4 scroll-smooth">
+      {% for user_msg, bot_msg, timestamp in chat_history %}
+      <!-- User Message -->
+      <div class='flex items-end justify-end space-x-3 mb-4 message-enter'>
+        <div class='user-message-gradient text-white p-4 rounded-2xl rounded-br-md max-w-xs lg:max-w-md shadow-lg chat-bubble'>
+          {{ user_msg }}
+          <div class="text-xs text-white/80 mt-2 text-right">{{ timestamp }}</div>
+        </div>
+        <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Bot Message -->
+      <div class='flex items-end space-x-3 mb-4 message-enter'>
+        <div class="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+        </div>
+        <div class='bg-white text-gray-800 p-4 rounded-2xl rounded-bl-md max-w-xs lg:max-w-md shadow-lg border border-gray-100 chat-bubble'>
+          {{ bot_msg }}
+          <div class="text-xs text-gray-500 mt-2">{{ timestamp }}</div>
+        </div>
+      </div>
+      {% endfor %}
+      
+      <!-- Welcome Message -->
+      <div class="flex items-end space-x-3 mb-4">
+        <div class="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+        </div>
+        <div class="bg-white text-gray-800 p-4 rounded-2xl rounded-bl-md max-w-xs lg:max-w-md shadow-lg border border-gray-100">
+          Hi there! I am your AI Copilot. Choose an agent above and start asking questions.
+          <div class="text-xs text-gray-500 mt-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fixed Chat Input Area -->
+    <div class="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+      <form id="chat-form" class="flex items-center space-x-3">
+        <div class="flex-1 relative">
+          <div class="relative bg-gray-50 rounded-2xl border border-gray-200 focus-within:border-blue-400 focus-within:bg-white transition-all duration-200 focus-within:shadow-lg">
+            <textarea 
+              id="user-input" 
+              name="user_query"
+              placeholder="Select an agent first, then type your question..."
+              rows="1"
+              maxlength="500"
+              class="w-full px-4 py-3 pr-12 bg-transparent border-none rounded-2xl resize-none focus:outline-none text-gray-800 placeholder-gray-500"
+              style="max-height: 120px; min-height: 44px;"
+              disabled></textarea>
+            
+            <!-- Mic Button Inside Textbox -->
+            <button type="button" id="mic-btn" 
+                    class="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="Voice input" disabled>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+              </svg>
+            </button>
+            
+            <!-- Character counter -->
+            <div class="absolute bottom-1 right-14 text-xs text-gray-400">
+              <span id="char-count">0</span>/500
+            </div>
+          </div>
+          
+          <!-- Typing indicator -->
+          <div id="typing-indicator" class="text-xs text-gray-500 mt-1 ml-4 opacity-0 transition-opacity">
+            AI is typing...
+          </div>
+        </div>
+        
+        <!-- Send Button -->
+        <button style='margin-bottom: 20px;' type="submit" id="send-btn"
+                class="w-11 h-11 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                disabled>
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+          </svg>
+        </button>
+      </form>
+      
+      <!-- Keyboard shortcuts help -->
+      <div class="mt-3 text-center">
+        <div class="inline-flex items-center space-x-4 text-xs text-gray-500">
+          <span>Press <kbd class="bg-gray-200 px-2 py-1 rounded text-gray-700">Ctrl+/</kbd> to focus</span>
+          <span><kbd class="bg-gray-200 px-2 py-1 rounded text-gray-700">Enter</kbd> to send</span>
+          <span><kbd class="bg-gray-200 px-2 py-1 rounded text-gray-700">Esc</kbd> to unfocus</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Enhanced Feedback Modal -->
+<div id="feedback-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl transform transition-all">
+    <h3 class="text-lg font-semibold mb-4 text-gray-800">Share Your Feedback</h3>
+    <div id="feedback-content">
+      <!-- Feedback form will be inserted here -->
+    </div>
+  </div>
+</div>
+
+<!-- Agent Description Tooltip -->
+<div id="agent-tooltip" class="fixed z-50 px-3 py-2 text-sm bg-gray-900 text-white rounded-lg shadow-lg pointer-events-none opacity-0 transition-opacity duration-200 max-w-xs">
+  <div id="tooltip-content"></div>
+  <div class="absolute w-2 h-2 bg-gray-900 transform rotate-45 -bottom-1 left-1/2 -translate-x-1/2"></div>
+</div>
+
+<!-- Toast Notifications Container -->
+<div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+<script>
+
+    /* ----------  Local-storage helpers  ---------- */
+    const LS_KEY = 'thinklee_chat_history';
+    const LS_LAST_AGENT_ID = 'thinklee_last_agent';  
+
+    function saveHistory() {
+        localStorage.setItem(LS_KEY, JSON.stringify(chatHistory));
+    }
+
+    function loadHistoryFromStorage() {
+        try {
+            const data = JSON.parse(localStorage.getItem(LS_KEY));
+            if (data && typeof data === 'object') chatHistory = data;
+        } catch (_) {}
+    }
+
+
+    let selectedAgentId = null;
+    let chatHistory = {};
+    let lastQuery = null;
+
+    const form = document.getElementById('chat-form');
+    const input = document.getElementById('user-input');
+    const chatBox = document.getElementById('chat-box');
+    const agentSelect = document.getElementById('agentSelect');
+    const sendBtn = document.getElementById('send-btn');
+    const micBtn = document.getElementById('mic-btn');
+    const charCount = document.getElementById('char-count');
+    const selectedAgentName = document.getElementById('selected-agent-name');
+    const agentStatusDot = document.getElementById('agent-status-dot');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const clearChatBtn = document.getElementById('clear-chat-btn');
+    const tooltip = document.getElementById('agent-tooltip');
+    const tooltipContent = document.getElementById('tooltip-content');
+
+    // Auto-expanding textarea
+    function autoExpandTextarea() {
+    const textarea = document.getElementById('user-input');
+    textarea.style.height = 'auto';
+    textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
+    }
+
+    // Enhanced character counter and auto-expand
+    input.addEventListener('input', function() {
+    autoExpandTextarea();
+    charCount.textContent = this.value.length;
+    
+    if (this.value.length > 450) {
+        charCount.classList.add('text-red-500', 'font-semibold');
+        charCount.classList.remove('text-gray-400');
+    } else {
+        charCount.classList.remove('text-red-500', 'font-semibold');
+        charCount.classList.add('text-gray-400');
+    }
+    });
+
+    // Tooltip functions
+    function showTooltip(element, content) {
+    const rect = element.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    
+    tooltipContent.textContent = content;
+    
+    // Position tooltip above the element
+    tooltip.style.left = `${rect.left + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
+    tooltip.style.top = `${rect.top - tooltip.offsetHeight - 8}px`;
+    
+    // Ensure tooltip stays within viewport
+    const tooltipLeft = parseInt(tooltip.style.left);
+    const tooltipWidth = tooltip.offsetWidth;
+    
+    if (tooltipLeft < 10) {
+        tooltip.style.left = '10px';
+    } else if (tooltipLeft + tooltipWidth > window.innerWidth - 10) {
+        tooltip.style.left = `${window.innerWidth - tooltipWidth - 10}px`;
+    }
+    
+    tooltip.classList.remove('opacity-0');
+    tooltip.classList.add('opacity-100');
+    }
+
+    function hideTooltip() {
+    tooltip.classList.add('opacity-0');
+    tooltip.classList.remove('opacity-100');
+    }
+
+    // Clear chat functionality
+    clearChatBtn.addEventListener('click', () => {
+        if (!selectedAgentId) return;
+        if (!chatHistory[selectedAgentId]?.length) {
+            showError('No chat history to clear.');
+            return;
+        }
+        if (confirm('Clear this conversation?')) {
+            delete chatHistory[selectedAgentId];
+            saveHistory();
+            chatBox.innerHTML = '';
+        }
+    });
+
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === '/') {
+        e.preventDefault();
+        input.focus();
+    }
+    if (e.key === 'Escape') {
+        input.blur();
+    }
+    });
+
+    // Enhanced agent loading with cards
+    async function loadAgents() {
+        try {
+            const res = await fetch('/api/agent/get-agents', {
+            method: 'GET',
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            });
+            
+            if (!res.ok) throw new Error('Failed to load agents');
+            
+            const data = await res.json();
+            const agents = data.agents;
+
+            const agentCards = document.getElementById('agent-cards');
+            const dropdownContainer = document.getElementById('agent-dropdown-container');
+            
+            if (agents.length <= 8) {
+            // Show cards for reasonable number of agents
+            agentCards.classList.remove('hidden');
+            dropdownContainer.classList.add('hidden');
+            
+            agents.forEach(agent => {
+                const card = document.createElement('div');
+                card.className = 'agent-card group relative bg-white/10 backdrop-blur border-2 border-white/20 rounded-xl p-3 cursor-pointer hover:border-white/50 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl';
+                card.dataset.agentId = agent.id;
+                card.dataset.agentName = agent.name;
+                card.dataset.agentDescription = agent.description || 'AI Assistant ready to help you with various tasks';
+                
+                card.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <div class="relative flex-shrink-0">
+                    <div class="w-10 h-10 bg-gradient-to-br from-white/20 to-white/10 backdrop-blur rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg border border-white/30">
+                        ${agent.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div class="absolute -bottom-1 -right-1 w-3 h-3 bg-green-400 border-2 border-white rounded-full shadow-sm"></div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                    <div class="font-semibold text-white group-hover:text-blue-100 transition-colors truncate text-sm">${agent.name}</div>
+                    <div class="text-xs text-blue-100 opacity-75">Click to select</div>
+                    </div>
+                    <div class="flex-shrink-0">
+                    <svg class="w-4 h-4 text-white/60 group-hover:text-white/80 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                    </div>
+                </div>
+                `;
+                
+                // Add hover events for tooltip
+                card.addEventListener('mouseenter', function(e) {
+                const description = this.dataset.agentDescription;
+                showTooltip(this, description);
+                });
+                
+                card.addEventListener('mouseleave', function() {
+                hideTooltip();
+                });
+                
+                // Add click event
+                card.addEventListener('click', () => selectAgent(agent.id, agent.name, card));
+                
+                agentCards.appendChild(card);
+            });
+
+            const savedId = localStorage.getItem(LS_LAST_AGENT_ID);
+            if (savedId) {
+                    const savedCard = document.querySelector(`[data-agent-id="${savedId}"]`);
+                    if (savedCard) {
+                        selectAgent(savedId, savedCard.dataset.agentName, savedCard);
+                    }
+            }
+            } else {
+            // Fallback to dropdown for many agents
+            agentCards.classList.add('hidden');
+            dropdownContainer.classList.remove('hidden');
+            
+            agentSelect.innerHTML = '<option disabled selected>-- Choose Agent --</option>';
+            
+            agents.forEach(agent => {
+                const opt = document.createElement('option');
+                opt.value = agent.id;
+                opt.textContent = `${agent.name} - ${agent.description || 'AI Assistant'}`;
+                agentSelect.appendChild(opt);
+            });
+            
+            agentSelect.addEventListener('change', () => {
+                selectAgent(agentSelect.value, agentSelect.options[agentSelect.selectedIndex].text.split(' - ')[0]);
+            });
+            }
+            
+            if (agents.length === 1) {
+            selectAgent(agents[0].id, agents[0].name);
+            }
+            
+        } catch (error) {
+            console.error('Failed to load agents:', error);
+            showError('Failed to load AI agents. Please refresh the page.');
+        }
+    }
+
+    function selectAgent(agentId, agentName, cardElement = null) {
+        localStorage.setItem(LS_LAST_AGENT_ID, agentId);
+        selectedAgentId = agentId;
+        selectedAgentName.textContent = agentName;
+        
+        // Hide tooltip when selecting
+        hideTooltip();
+        
+        // Update UI with enhanced styling
+        agentStatusDot.className = 'w-3 h-3 bg-green-400 rounded-full shadow-sm';
+        input.disabled = false;
+        micBtn.disabled = false;
+        sendBtn.disabled = false;
+        input.placeholder = `Ask ${agentName} anything...`;
+        
+        // Update card selection with enhanced styling
+        document.querySelectorAll('.agent-card').forEach(card => {
+            card.classList.remove('border-white/70', 'bg-white/30', 'shadow-xl', 'scale-105', 'selected');
+            card.classList.add('border-white/20', 'bg-white/10');
+        });
+        if (cardElement) {
+            cardElement.classList.add('border-white/70', 'bg-white/30', 'shadow-xl', 'scale-105', 'selected');
+            cardElement.classList.remove('border-white/20', 'bg-white/10');
+        }
+        
+        if (!chatHistory[agentId]) {
+            chatHistory[agentId] = [];
+            const welcomeMessage = `
+            <div class="flex items-end space-x-3 mb-4 message-enter">
+                <div class="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                </div>
+                <div class="bg-white text-gray-800 p-4 rounded-2xl rounded-bl-md max-w-xs lg:max-w-md shadow-lg border border-gray-100">
+                Hi! I'm ${agentName}. How can I help you today?
+                <div class="text-xs text-gray-500 mt-2">${getTimestamp()}</div>
+                </div>
+            </div>
+            `;
+            chatBox.innerHTML = welcomeMessage;
+        } else {
+            displayChatHistory(agentId);
+        }
+        
+        input.focus();
+        showSuccess(`Connected to ${agentName}!`);
+        }
+
+        function displayChatHistory(agentId) {
+        const history = chatHistory[agentId] || [];
+        let html = '';
+        
+        history.forEach(msg => {
+            if (msg.type === 'user') {
+            html += `
+                <div class='flex items-end justify-end space-x-3 mb-4 message-enter'>
+                <div class='user-message-gradient text-white p-4 rounded-2xl rounded-br-md max-w-xs lg:max-w-md shadow-lg chat-bubble'>
+                    ${escapeHtml(msg.content)}
+                    <div class="text-xs text-white/80 mt-2 text-right">${msg.timestamp}</div>
+                </div>
+                <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </div>
+                </div>
+            `;
+            } else {
+            html += `
+                <div class='flex items-end space-x-3 mb-4 message-enter'>
+                <div class="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                    </svg>
+                </div>
+                <div class='bg-white text-gray-800 p-4 rounded-2xl rounded-bl-md max-w-xs lg:max-w-md shadow-lg border border-gray-100 chat-bubble relative' data-query-id="${msg.queryId}">
+                    ${escapeHtml(msg.content)}
+                    <div class="text-xs text-gray-500 mt-2">${msg.timestamp}</div>
+                    ${createFeedbackSection(msg.queryId, msg.feedback)}
+                    ${msg.followups ? createFollowupSection(msg.followups) : ''}
+                </div>
+                </div>
+            `;
+            }
+        });
+        
+        chatBox.innerHTML = html;
+        smoothScrollToBottom();
+    }
+
+    // Enhanced feedback section with icons
+    function createFeedbackSection(queryId, existingFeedback = null) {
+    if (existingFeedback) {
+        return `
+        <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+            <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+            <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+            </svg>
+            </div>
+            <span class="text-sm text-green-700 font-medium">Thanks for your feedback!</span>
+        </div>
+        `;
+    }
+    
+    return `
+        <div class="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+        <div class="flex items-center justify-between">
+            <span class="text-xs text-gray-600 font-medium">Was this helpful?</span>
+            <div class="flex space-x-1">
+            <button class="feedback-btn w-8 h-8 rounded-full hover:bg-green-100 flex items-center justify-center transition-all duration-200 hover:scale-110 group" 
+                    onclick="openFeedbackModal('${queryId}', 'positive')" 
+                    title="Helpful">
+                <svg class="w-4 h-4 text-green-600 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
+                </svg>
+            </button>
+            <button class="feedback-btn w-8 h-8 rounded-full hover:bg-red-100 flex items-center justify-center transition-all duration-200 hover:scale-110 group" 
+                    onclick="openFeedbackModal('${queryId}', 'negative')" 
+                    title="Not helpful">
+                <svg class="w-4 h-4 text-red-600 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018c.163 0 .326.02.485.06L17 4m-7 10v2a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/>
+                </svg>
+            </button>
+            </div>
+        </div>
+        </div>
+    `;
+    }
+
+    function createFollowupSection(followups) {
+    if (!followups || followups.length === 0) return '';
+    
+    const list = followups.map(q =>
+        `<li class="cursor-pointer hover:underline text-blue-600 hover:text-blue-800 transition-colors py-1" onclick="askFollowUp('${q.replace(/'/g, "\\'")}')">${q}</li>`
+    ).join("");
+    
+    return `
+        <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <div class="text-xs text-blue-700 mb-2 font-medium flex items-center">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+            You might also ask:
+        </div>
+        <ul class="text-sm space-y-1">${list}</ul>
+        </div>
+    `;
+    }
+
+    // Enhanced voice recognition
+    function startListening() {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        showError('Speech recognition is not supported in this browser.');
+        return;
+    }
+    
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    
+    micBtn.innerHTML = `
+        <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-6.219-8.56"/>
+        </svg>
+    `;
+    micBtn.disabled = true;
+    micBtn.classList.add('animate-pulse', 'bg-red-100');
+    
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        input.value = transcript;
+        charCount.textContent = transcript.length;
+        autoExpandTextarea();
+    };
+    
+    recognition.onerror = function(event) {
+        console.error('Voice input error:', event.error);
+        showError(`Voice input error: ${event.error}`);
+    };
+    
+    recognition.onend = function() {
+        micBtn.innerHTML = `
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+        </svg>
+        `;
+        micBtn.disabled = false;
+        micBtn.classList.remove('animate-pulse', 'bg-red-100');
+    };
+    
+    recognition.start();
+    }
+
+    // Enhanced typing indicator
+    function showTypingIndicator() {
+    typingIndicator.classList.remove('opacity-0');
+    typingIndicator.classList.add('opacity-100');
+    }
+
+    function hideTypingIndicator() {
+    typingIndicator.classList.add('opacity-0');
+    typingIndicator.classList.remove('opacity-100');
+    }
+
+    // Enhanced loading indicator
+    function showLoadingMessage() {
+    const loadingId = "loading-msg-" + Date.now();
+    const loadingHtml = `
+        <div id="${loadingId}" class='flex items-end space-x-3 mb-4 message-enter'>
+        <div class="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+            </svg>
+        </div>
+        <div class='bg-gray-100 text-gray-600 p-4 rounded-2xl rounded-bl-md max-w-xs shadow-lg border border-gray-200'>
+            <div class="flex items-center space-x-2">
+            <div class="typing-animation flex space-x-1">
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                <div class="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+            </div>
+            <span class="text-sm">Thinking...</span>
+            </div>
+        </div>
+        </div>
+    `;
+    chatBox.innerHTML += loadingHtml;
+    smoothScrollToBottom();
+    showTypingIndicator();
+    return loadingId;
+    }
+
+    function getRecentChatTurns(agentId, n = 3) {
+        const history = chatHistory[agentId] || [];
+        const recentTurns = [];
+
+        for (let i = history.length - 1; i >= 1 && recentTurns.length < n; i--) {
+            const current = history[i];
+            const previous = history[i - 1];
+
+            if (previous.type === 'user' && current.type === 'bot' && current.sql) {
+            recentTurns.unshift({
+                user: previous.content,
+                ai: current.sql
+            });
+            }
+
+        }
+
+        return recentTurns;
+    }
+
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const userMessage = input.value.trim();
+        
+        if (!userMessage) return;
+        if (!selectedAgentId) {
+            showError("Please select an AI agent first.");
+            return;
+        }
+        
+        lastQuery = userMessage;
+        
+        // Add user message
+        const userMsgObj = {
+            type: 'user',
+            content: userMessage,
+            timestamp: getTimestamp()
+        };
+        
+        if (!chatHistory[selectedAgentId]) {
+            chatHistory[selectedAgentId] = [];
+        }
+        chatHistory[selectedAgentId].push(userMsgObj);
+        saveHistory(); 
+        
+        // Display user message with custom gradient
+        const userMsgHtml = `
+            <div class='flex items-end justify-end space-x-3 mb-4 message-enter'>
+            <div class='user-message-gradient text-white p-4 rounded-2xl rounded-br-md max-w-xs lg:max-w-md shadow-lg chat-bubble'>
+                ${escapeHtml(userMessage)}
+                <div class="text-xs text-white/80 mt-2 text-right">${getTimestamp()}</div>
+            </div>
+            <div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                </svg>
+            </div>
+            </div>
+        `;
+        chatBox.innerHTML += userMsgHtml;
+        smoothScrollToBottom();
+        
+        // Clear input
+        input.value = "";
+        charCount.textContent = '0';
+        input.style.height = '44px';
+        
+        // Show loading
+        const loadingId = showLoadingMessage();
+        const recentChatTurns = getRecentChatTurns(selectedAgentId);
+        
+        try {
+            const res = await fetch(`/api/query/copilot/${selectedAgentId}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({ 
+                message: userMessage,
+                chat_history: recentChatTurns 
+            })
+            });
+            
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            const ragResponse = data.response;
+            
+            // Remove loading and hide typing indicator
+            document.getElementById(loadingId)?.remove();
+            hideTypingIndicator();
+            
+            // Add bot response
+            const botMsgObj = {
+            type: 'bot',
+            content: ragResponse,
+            sql: data.sql,
+            timestamp: getTimestamp(),
+            queryId: data.query_id,
+            followups: data.followups || []
+            };
+            chatHistory[selectedAgentId].push(botMsgObj);
+
+            saveHistory();  
+            
+            // Display bot response
+            const botMsgHtml = `
+            <div class='flex items-end space-x-3 mb-4 message-enter'>
+                <div class="w-8 h-8 bg-gradient-to-br from-indigo-400 to-indigo-600 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+                </div>
+                <div class='bg-white text-gray-800 p-4 rounded-2xl rounded-bl-md max-w-xs lg:max-w-md shadow-lg border border-gray-100 chat-bubble relative' data-query-id="${data.query_id}">
+                ${escapeHtml(ragResponse)}
+                <div class="text-xs text-gray-500 mt-2">${getTimestamp()}</div>
+                ${createFeedbackSection(data.query_id)}
+                ${data.followups && data.followups.length > 0 ? createFollowupSection(data.followups) : ''}
+                </div>
+            </div>
+            `;
+            
+            chatBox.innerHTML += botMsgHtml;
+            smoothScrollToBottom();
+            
+        } catch (error) {
+            document.getElementById(loadingId)?.remove();
+            hideTypingIndicator();
+            console.error('Query error:', error);
+            
+            const errorHtml = `
+            <div class='flex items-end space-x-3 mb-4'>
+                <div class="w-8 h-8 bg-red-400 rounded-full flex items-center justify-center text-white flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                </svg>
+                </div>
+                <div class='bg-red-50 border border-red-200 text-red-800 p-4 rounded-2xl rounded-bl-md max-w-xs lg:max-w-md shadow-lg'>
+                <div class="flex flex-col space-y-2">
+                    <p class="text-sm flex items-center">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    Something went wrong. Please try again.
+                    </p>
+                    <button class="text-xs text-red-600 hover:text-red-800 underline self-start transition-colors" 
+                            onclick="retryLastQuery()">Retry</button>
+                </div>
+                <div class="text-xs text-red-500 mt-2 opacity-75">${getTimestamp()}</div>
+                </div>
+            </div>
+            `;
+            chatBox.innerHTML += errorHtml;
+            smoothScrollToBottom();
+            showError('Failed to get response. Please try again.');
+        }
+    });
+
+    // Enhanced feedback modal (same as before)
+    function openFeedbackModal(queryId, rating) {
+    const modal = document.getElementById('feedback-modal');
+    const content = document.getElementById('feedback-content');
+    
+    const icon = rating === 'positive' ? 
+        `<svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"/>
+        </svg>` :
+        `<svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018c.163 0 .326.02.485.06L17 4m-7 10v2a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2m5-10h2a2 2 0 012 2v6a2 2 0 01-2 2h-2.5"/>
+        </svg>`;
+    
+    content.innerHTML = `
+        <div class="space-y-4">
+        <div class="flex items-center space-x-3">
+            <div class="w-12 h-12 rounded-full flex items-center justify-center ${rating === 'positive' ? 'bg-green-100' : 'bg-red-100'}">
+            ${icon}
+            </div>
+            <div>
+            <h4 class="font-semibold text-gray-800">${rating === 'positive' ? 'Great! Glad it helped.' : 'Sorry to hear that.'}</h4>
+            <p class="text-sm text-gray-600">${rating === 'positive' ? 'What did you like about this response?' : 'How can we improve this response?'}</p>
+            </div>
+        </div>
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+            Your feedback (optional):
+            </label>
+            <textarea id="feedback-comment" 
+                    class="w-full border border-gray-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all" 
+                    rows="3" 
+                    placeholder="Tell us more..."></textarea>
+        </div>
+        <div class="flex space-x-3">
+            <button onclick="submitDetailedFeedback('${queryId}', '${rating}')" 
+                    class="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 text-sm font-medium transition-colors">
+            Submit Feedback
+            </button>
+            <button onclick="closeFeedbackModal()" 
+                    class="px-4 py-3 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 text-sm font-medium transition-colors">
+            Cancel
+            </button>
+        </div>
+        </div>
+    `;
+    
+    modal.classList.remove('hidden');
+    }
+
+    function closeFeedbackModal() {
+    const modal = document.getElementById('feedback-modal');
+    modal.classList.add('hidden');
+    }
+
+    async function submitDetailedFeedback(queryId, rating) {
+    const comment = document.getElementById('feedback-comment').value.trim();
+    
+    try {
+        const res = await fetch("/api/query/submit-feedback", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+            query_id: queryId,
+            rating: rating,
+            comment: comment
+        })
+        });
+        
+        const data = await res.json();
+        
+        if (data.success) {
+        // Update feedback section
+        const responseDiv = document.querySelector(`[data-query-id="${queryId}"]`);
+        if (responseDiv) {
+            const feedbackSection = responseDiv.querySelector('.bg-gray-50');
+            if (feedbackSection) {
+            feedbackSection.outerHTML = `
+                <div class="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center space-x-2">
+                <div class="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg class="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                    </svg>
+                </div>
+                <span class="text-sm text-green-700 font-medium">Thanks for your feedback!</span>
+                </div>
+            `;
+            }
+        }
+        
+        // Update chat history
+        if (chatHistory[selectedAgentId]) {
+            const msgIndex = chatHistory[selectedAgentId].findIndex(msg => msg.queryId === queryId);
+            if (msgIndex !== -1) {
+            chatHistory[selectedAgentId][msgIndex].feedback = { rating, comment };
+            }
+        }
+        
+        closeFeedbackModal();
+        showSuccess('Thank you for your feedback!');
+        } else {
+        throw new Error(data.error || 'Failed to submit feedback');
+        }
+    } catch (error) {
+        console.error('Feedback error:', error);
+        showError('Failed to submit feedback. Please try again.');
+    }
+    }
+
+    // Utility functions
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;")
+            .replace(/\n/g, "<br>");
+    }
+
+
+    function getTimestamp() {
+    const now = new Date();
+    return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function smoothScrollToBottom() {
+    chatBox.scrollTo({
+        top: chatBox.scrollHeight,
+        behavior: 'smooth'
+    });
+    }
+
+    function askFollowUp(question) {
+    input.value = question;
+    charCount.textContent = question.length;
+    autoExpandTextarea();
+    form.dispatchEvent(new Event("submit"));
+    }
+
+    function retryLastQuery() {
+    if (lastQuery) {
+        input.value = lastQuery;
+        charCount.textContent = lastQuery.length;
+        autoExpandTextarea();
+        form.dispatchEvent(new Event("submit"));
+    }
+    }
+
+    // Enhanced notification functions
+    function showError(message) {
+    showToast(message, 'error');
+    }
+
+    function showSuccess(message) {
+    showToast(message, 'success');
+    }
+
+    function showToast(message, type = 'success') {
+    const toast = document.createElement('div');
+    const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+    const icon = type === 'success' ? 
+        `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+        </svg>` :
+        `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>`;
+    
+    toast.className = `${bgColor} text-white px-4 py-3 rounded-xl shadow-lg transform translate-x-full transition-all duration-300 flex items-center space-x-2 min-w-64`;
+    toast.innerHTML = `${icon}<span class="font-medium">${message}</span>`;
+    
+    const container = document.getElementById('toast-container') || document.body;
+    container.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+        toast.classList.remove('translate-x-full');
+    }, 100);
+    
+    // Animate out and remove
+    setTimeout(() => {
+        toast.classList.add('translate-x-full');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+    }
+
+    // Enhanced keyboard handling
+    input.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        form.dispatchEvent(new Event("submit"));
+    }
+    });
+
+    // Close modal on outside click
+    document.getElementById('feedback-modal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeFeedbackModal();
+    }
+    });
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+    loadHistoryFromStorage();
+    loadAgents();
+    });
+
+</script>
+
+{% endblock %}

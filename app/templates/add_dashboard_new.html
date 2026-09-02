@@ -1,0 +1,1833 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Builder - Thinklee{% endblock %}
+{% block content %}
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .dashboard-canvas {
+    background: 
+      linear-gradient(90deg, rgba(102, 126, 234, 0.05) 1px, transparent 1px),
+      linear-gradient(rgba(102, 126, 234, 0.05) 1px, transparent 1px);
+    background-size: 20px 20px;
+    min-height: 600px;
+    border: 2px dashed #e2e8f0;
+    border-radius: 16px;
+    position: relative;
+  }
+  
+  .widget-placeholder {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    transition: all 0.3s ease;
+  }
+  
+  .widget-placeholder:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+  }
+  
+  .widget-card {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    cursor: move;
+    transition: all 0.2s ease;
+    position: absolute;
+    resize: both;
+    overflow: auto;
+    min-width: 250px;
+    min-height: 200px;
+  }
+  
+  .widget-card:hover {
+    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.15);
+    transform: translateY(-2px);
+  }
+  
+  .widget-card.selected {
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  }
+  
+  .widget-type-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+  }
+  
+  .widget-type-card:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+    transform: translateY(-2px);
+  }
+  
+  .widget-type-card.selected {
+    border-color: #667eea;
+    background: linear-gradient(135deg, #f0f4ff, #e8f2ff);
+    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.2);
+  }
+  
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-weight: bold;
+    transition: all 0.3s ease;
+  }
+  
+  .step-indicator.active {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    transform: scale(1.1);
+  }
+  
+  .step-indicator.completed {
+    background: #10b981;
+    color: white;
+  }
+  
+  .step-indicator.pending {
+    background: #f3f4f6;
+    color: #6b7280;
+    border: 2px solid #e5e7eb;
+  }
+  
+  .progress-line {
+    height: 2px;
+    background: #e5e7eb;
+    flex: 1;
+    margin: 0 16px;
+    border-radius: 1px;
+  }
+  
+  .progress-line.completed {
+    background: linear-gradient(90deg, #667eea, #764ba2);
+  }
+  
+  .toolbar-button {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+  }
+  
+  .toolbar-button:hover {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.05);
+  }
+  
+  .toolbar-button.active {
+    border-color: #667eea;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+  
+  .canvas-empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    pointer-events: none;
+  }
+  
+  .pulse-ring {
+    animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  }
+  
+  @keyframes pulse-ring {
+    0% { transform: scale(0.33); }
+    40%, 50% { opacity: 0; }
+    100% { opacity: 0; transform: scale(1.33); }
+  }
+  
+  .drag-over {
+    border-color: #667eea;
+    background: rgba(102, 126, 234, 0.1);
+  }
+  
+  .sidebar-panel {
+    width: 320px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border-left: 1px solid #e5e7eb;
+    transition: transform 0.3s ease;
+  }
+  
+  .sidebar-panel.collapsed {
+    transform: translateX(100%);
+  }
+
+  .widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f8fafc;
+    border-radius: 16px 16px 0 0;
+  }
+
+  .widget-content {
+    padding: 16px;
+    height: calc(100% - 50px);
+  }
+
+  .chart-container {
+    width: 100%;
+    height: 100%;
+    min-height: 150px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="ml-64 min-h-screen relative" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+        <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-400 rounded-full animate-spin pulse-ring mx-auto"></div>
+      </div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Building your dashboard...</p>
+    </div>
+  </div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fas fa-paint-brush"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">Dashboard Builder</h1>
+          <p class="text-gray-600 mt-1">Create your personalized analytics dashboard</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2">
+          <button id="previewBtn" class="flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-3 rounded-xl hover:bg-gray-200 smooth-transition font-medium">
+            <i class="fas fa-eye"></i>
+            <span>Preview</span>
+          </button>
+          <button id="saveBtn" class="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-xl hover:from-green-700 hover:to-green-800 smooth-transition shadow-lg font-semibold">
+            <i class="fas fa-save"></i>
+            <span>Save Dashboard</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Setup Progress -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.1s">
+      <div class="flex items-center justify-center">
+        <div class="flex items-center space-x-4 max-w-2xl w-full">
+          <!-- Step 1 -->
+          <div class="flex flex-col items-center">
+            <div id="step1" class="step-indicator active">1</div>
+            <span class="text-sm font-medium text-gray-600 mt-2">Setup</span>
+          </div>
+          <div id="progress1" class="progress-line"></div>
+          
+          <!-- Step 2 -->
+          <div class="flex flex-col items-center">
+            <div id="step2" class="step-indicator pending">2</div>
+            <span class="text-sm font-medium text-gray-600 mt-2">Add Widgets</span>
+          </div>
+          <div id="progress2" class="progress-line"></div>
+          
+          <!-- Step 3 -->
+          <div class="flex flex-col items-center">
+            <div id="step3" class="step-indicator pending">3</div>
+            <span class="text-sm font-medium text-gray-600 mt-2">Customize</span>
+          </div>
+          <div id="progress3" class="progress-line"></div>
+          
+          <!-- Step 4 -->
+          <div class="flex flex-col items-center">
+            <div id="step4" class="step-indicator pending">4</div>
+            <span class="text-sm font-medium text-gray-600 mt-2">Publish</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Setup Form -->
+  <div id="setupSection" class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-8 slide-in" style="animation-delay: 0.2s">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+          <i class="fas fa-cog text-blue-600"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-gray-800">Dashboard Configuration</h3>
+          <p class="text-sm text-gray-600">Set up your dashboard name, data source, and description</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div>
+          <label for="dashboardName" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-tag text-purple-600 mr-2"></i>Dashboard Name *
+          </label>
+          <input type="text" id="dashboardName" placeholder="Enter dashboard name..." 
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition">
+        </div>
+        
+        <div>
+          <label for="agentSelect" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-robot text-blue-600 mr-2"></i>Data Source Agent *
+          </label>
+          <select id="agentSelect" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition">
+            <option value="" disabled selected>Choose data source agent</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="dashboardDescription" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-align-left text-green-600 mr-2"></i>Description (Optional)
+          </label>
+          <textarea id="dashboardDescription" rows="3" placeholder="Brief description..." 
+            class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 smooth-transition resize-none"></textarea>
+        </div>
+      </div>
+
+      <div class="flex justify-end mt-6">
+        <button id="continueSetup" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition shadow-lg font-semibold opacity-50 cursor-not-allowed" disabled>
+          <span>Continue to Widgets</span>
+          <i class="fas fa-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Dashboard Builder -->
+  <div id="builderSection" class="hidden">
+    <!-- Toolbar -->
+    <div class="mx-6 mt-6">
+      <div class="glass-card rounded-2xl p-6 slide-in">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+              <i class="fas fa-tools text-green-600"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-gray-800">Dashboard Tools</h3>
+              <p class="text-sm text-gray-600">Add and customize your widgets</p>
+            </div>
+          </div>
+          <button id="toggleSidebar" class="toolbar-button">
+            <i class="fas fa-palette"></i>
+            <span>Widget Gallery</span>
+          </button>
+        </div>
+        
+        <div class="flex items-center space-x-3">
+          <button id="addWidgetBtn" class="toolbar-button active">
+            <i class="fas fa-plus"></i>
+            <span>Add Widget</span>
+          </button>
+          <button id="layoutBtn" class="toolbar-button">
+            <i class="fas fa-th-large"></i>
+            <span>Layout</span>
+          </button>
+          <button id="undoBtn" class="toolbar-button">
+            <i class="fas fa-undo"></i>
+            <span>Undo</span>
+          </button>
+          <button id="redoBtn" class="toolbar-button">
+            <i class="fas fa-redo"></i>
+            <span>Redo</span>
+          </button>
+          <div class="flex-1"></div>
+          <button id="fullscreenBtn" class="toolbar-button">
+            <i class="fas fa-expand"></i>
+            <span>Fullscreen</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Builder Area -->
+    <div class="flex mx-6 mt-6 gap-6 relative">
+      <!-- Dashboard Canvas -->
+      <div class="flex-1">
+        <div class="glass-card rounded-2xl p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 id="canvasTitle" class="text-xl font-bold text-gray-800">My Dashboard</h3>
+              <p class="text-sm text-gray-600">Drag widgets here to build your dashboard</p>
+            </div>
+            <div class="flex items-center space-x-2 text-sm text-gray-500">
+              <i class="fas fa-mouse text-purple-600"></i>
+              <span>Drag & Drop enabled</span>
+            </div>
+          </div>
+          
+          <div id="dashboardCanvas" class="dashboard-canvas">
+            <div class="canvas-empty-state">
+              <div class="w-24 h-24 bg-gradient-to-br from-purple-100 to-blue-100 rounded-2xl flex items-center justify-center mb-6">
+                <i class="fas fa-plus text-4xl text-purple-600"></i>
+              </div>
+              <h4 class="text-xl font-bold text-gray-700 mb-2">Start Building Your Dashboard</h4>
+              <p class="text-gray-500 mb-6 max-w-md">Click "Add Widget" or drag from the widget gallery to get started</p>
+              <button class="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl shadow-lg font-semibold" onclick="openWidgetGallery()">
+                <i class="fas fa-plus mr-2"></i>Add First Widget
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Widget Gallery Sidebar -->
+      <div id="widgetSidebar" class="sidebar-panel">
+        <div class="h-full flex flex-col">
+          <div class="p-6 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+              <h3 class="text-lg font-bold text-gray-800">Widget Gallery</h3>
+              <button id="closeSidebar" class="text-gray-400 hover:text-gray-600">
+                <i class="fas fa-times"></i>
+              </button>
+            </div>
+            <p class="text-sm text-gray-600 mt-1">Choose widgets to add to your dashboard</p>
+          </div>
+          
+          <div class="flex-1 p-6 overflow-y-auto">
+            <div class="space-y-4">
+              <!-- Chart Widgets -->
+              <div class="mb-6">
+                <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
+                  <i class="fas fa-chart-bar text-blue-600 mr-2"></i>Charts
+                </h4>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="widget-type-card" data-widget-type="bar-chart">
+                    <i class="fas fa-chart-bar text-2xl text-blue-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Bar Chart</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="line-chart">
+                    <i class="fas fa-chart-line text-2xl text-green-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Line Chart</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="pie-chart">
+                    <i class="fas fa-chart-pie text-2xl text-purple-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Pie Chart</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="area-chart">
+                    <i class="fas fa-chart-area text-2xl text-orange-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Area Chart</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Metrics Widgets -->
+              <div class="mb-6">
+                <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
+                  <i class="fas fa-tachometer-alt text-green-600 mr-2"></i>Metrics
+                </h4>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="widget-type-card" data-widget-type="kpi">
+                    <i class="fas fa-bullseye text-2xl text-red-600 mb-2"></i>
+                    <div class="text-sm font-semibold">KPI Card</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="gauge">
+                    <i class="fas fa-tachometer-alt text-2xl text-yellow-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Gauge</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="counter">
+                    <i class="fas fa-calculator text-2xl text-indigo-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Counter</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="progress">
+                    <i class="fas fa-tasks text-2xl text-teal-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Progress</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Data Widgets -->
+              <div>
+                <h4 class="font-semibold text-gray-700 mb-3 flex items-center">
+                  <i class="fas fa-table text-purple-600 mr-2"></i>Data
+                </h4>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="widget-type-card" data-widget-type="table">
+                    <i class="fas fa-table text-2xl text-gray-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Data Table</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="list">
+                    <i class="fas fa-list text-2xl text-blue-600 mb-2"></i>
+                    <div class="text-sm font-semibold">List View</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="text">
+                    <i class="fas fa-font text-2xl text-green-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Text Widget</div>
+                  </div>
+                  <div class="widget-type-card" data-widget-type="image">
+                    <i class="fas fa-image text-2xl text-purple-600 mb-2"></i>
+                    <div class="text-sm font-semibold">Image</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions FAB -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <div class="relative">
+      <button id="fab-main" onclick="toggleFAB()" class="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center">
+        <i class="fas fa-magic text-xl"></i>
+      </button>
+      
+      <div id="fab-menu" class="absolute bottom-20 right-0 space-y-3 transform scale-0 origin-bottom-right smooth-transition">
+        <button onclick="autoLayout(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-magic text-purple-600"></i>
+          <span class="font-medium">Auto Layout</span>
+        </button>
+        <button onclick="clearCanvas(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-eraser text-red-600"></i>
+          <span class="font-medium">Clear Canvas</span>
+        </button>
+        <button onclick="loadTemplate(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-layer-group text-blue-600"></i>
+          <span class="font-medium">Load Template</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Widget Configuration Modal -->
+<div id="widgetModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card w-full max-w-4xl rounded-2xl p-8 relative shadow-2xl mx-4 max-h-[90vh] overflow-y-auto" style='max-height:90vh;'>
+    <button onclick="closeWidgetModal()" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 text-2xl smooth-transition">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <div class="mb-6">
+      <h2 id="modalTitle" class="text-2xl font-bold text-gray-800 mb-2">Configure Widget</h2>
+      <p class="text-gray-600">Set up your widget properties and data source</p>
+    </div>
+    <div id="widgetConfig" class="space-y-6">
+      <!-- Configuration form will be populated here -->
+    </div>
+    <div class="flex justify-end space-x-3 mt-8 pt-6 border-t border-gray-200">
+      <button onclick="closeWidgetModal()" class="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 smooth-transition font-medium">
+        Cancel
+      </button>
+      <button id="saveWidget" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition font-semibold">
+        <i class="fas fa-check mr-2"></i>Create Widget
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Global generateSQL function for chart widgets
+async function generateSQL(widgetType) {
+    const nlQuery = document.getElementById('nlQuery').value.trim();
+    const sqlInput = document.getElementById('sqlQuery');
+    const canvas = document.getElementById('previewCanvas');
+    const chartTypeSelect = document.getElementById('chartType');
+    
+    if (!nlQuery) {
+        window.dashboardBuilder.showToast('❌ Please enter a query', 'error');
+        return;
+    }
+    
+    if (!window.dashboardBuilder.agentId) {
+        window.dashboardBuilder.showToast('❌ No data source agent selected', 'error');
+        return;
+    }
+    
+    window.dashboardBuilder.showLoader('Generating chart from your query...');
+    
+    try {
+        const response = await fetch(`/api/query/graph/${window.dashboardBuilder.agentId}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({ nlq: nlQuery })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.sql) {
+            sqlInput.value = data.sql;
+            
+            // Set chart type if returned
+            if (data.chart_type) {
+                chartTypeSelect.value = data.chart_type;
+            }
+            
+            // Create preview chart
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart
+            if (window.previewChart) {
+                window.previewChart.destroy();
+            }
+            
+            window.previewChart = new Chart(ctx, {
+                type: chartTypeSelect.value,
+                data: {
+                    labels: data.chart_labels || ['Sample 1', 'Sample 2', 'Sample 3'],
+                    datasets: [{
+                        label: data.value_key || 'Preview Data',
+                        data: data.chart_values || [10, 20, 30],
+                        backgroundColor: data.chart_colors || ['#667eea'],
+                        borderColor: '#667eea',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: true },
+                        title: { display: true, text: 'Preview: ' + nlQuery }
+                    }
+                }
+            });
+            
+            window.dashboardBuilder.showToast('✅ Chart generated successfully!', 'success');
+        } else {
+            window.dashboardBuilder.showToast('❌ Failed to generate chart', 'error');
+        }
+    } catch (error) {
+        console.error('Error generating chart:', error);
+        window.dashboardBuilder.showToast('❌ Error generating chart', 'error');
+    } finally {
+        window.dashboardBuilder.hideLoader();
+    }
+}
+
+class DashboardBuilder {
+    constructor() {
+        this.widgets = [];
+        this.currentStep = 1;
+        this.dashboardConfig = {
+            name: '',
+            description: ''
+        };
+        this.fabOpen = false;
+        this.sidebarOpen = true;
+        this.draggedWidget = null;
+        this.widgetCounter = 0;
+        this.selectedWidget = null;
+        this.currentWidgetConfig = null;
+        
+        // Enhanced API integration properties
+        this.currentDashboardId = null;
+        this.agentId = null;
+        this.chartInstances = {};
+        
+        this.initializeEventListeners();
+        this.setupDragAndDrop();
+        this.generateSampleData();
+        this.fetchAgents(); // Load agents on startup
+    }
+
+    async fetchAgents() {
+        try {
+            const response = await fetch('/api/agent/get-agents', {
+                method: 'GET',
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+            });
+            const agents = await response.json();
+            const select = document.getElementById('agentSelect');
+            
+            if (!agents.agents || agents.agents.length === 0) {
+                const option = document.createElement("option");
+                option.disabled = true;
+                option.textContent = "No agents available";
+                select.appendChild(option);
+                return;
+            }
+            
+            agents.agents.forEach(agent => {
+                const option = document.createElement("option");
+                option.value = agent.id;
+                option.textContent = agent.name;
+                select.appendChild(option);
+            });
+        } catch (err) {
+            console.error("Failed to load agents:", err);
+            this.showToast('Failed to load data source agents', 'error');
+        }
+    }
+
+    generateSampleData() {
+        // Generate sample data for charts
+        this.sampleData = {
+            sales: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                data: [65, 59, 80, 81, 56, 55]
+            },
+            regions: {
+                labels: ['North', 'South', 'East', 'West'],
+                data: [300, 250, 400, 350]
+            },
+            products: {
+                labels: ['Product A', 'Product B', 'Product C', 'Product D'],
+                data: [120, 190, 300, 250]
+            },
+            performance: {
+                labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                data: [2.5, 3.2, 4.1, 3.8]
+            }
+        };
+    }
+
+    initializeEventListeners() {
+        // Setup form with enhanced validation
+        document.getElementById('dashboardName').addEventListener('input', () => this.validateSetup());
+        document.getElementById('dashboardDescription').addEventListener('input', () => this.validateSetup());
+        document.getElementById('agentSelect').addEventListener('change', () => this.validateSetup());
+        document.getElementById('continueSetup').addEventListener('click', () => this.proceedToBuilder());
+        
+        // Toolbar
+        document.getElementById('addWidgetBtn').addEventListener('click', () => this.openWidgetGallery());
+        document.getElementById('toggleSidebar').addEventListener('click', () => this.toggleSidebar());
+        document.getElementById('closeSidebar').addEventListener('click', () => this.toggleSidebar());
+        document.getElementById('saveBtn').addEventListener('click', () => this.saveDashboard());
+        document.getElementById('previewBtn').addEventListener('click', () => this.previewDashboard());
+        
+        // Widget gallery
+        document.querySelectorAll('.widget-type-card').forEach(card => {
+            card.addEventListener('click', () => this.selectWidgetType(card));
+        });
+
+        // Modal save button
+        document.getElementById('saveWidget').addEventListener('click', () => this.createWidget());
+
+        // Canvas click handler
+        document.getElementById('dashboardCanvas').addEventListener('click', (e) => {
+            if (e.target.id === 'dashboardCanvas') {
+                this.deselectAllWidgets();
+            }
+        });
+    }
+
+    setupDragAndDrop() {
+        const canvas = document.getElementById('dashboardCanvas');
+        
+        canvas.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            canvas.classList.add('drag-over');
+        });
+        
+        canvas.addEventListener('dragleave', (e) => {
+            if (!canvas.contains(e.relatedTarget)) {
+                canvas.classList.remove('drag-over');
+            }
+        });
+        
+        canvas.addEventListener('drop', (e) => {
+            e.preventDefault();
+            canvas.classList.remove('drag-over');
+            
+            if (this.draggedWidget) {
+                const rect = canvas.getBoundingClientRect();
+                const x = e.clientX - rect.left - 125; // Center the widget
+                const y = e.clientY - rect.top - 100;
+                
+                this.openWidgetConfig(this.draggedWidget, { x: Math.max(0, x), y: Math.max(0, y) });
+                this.draggedWidget = null;
+            }
+        });
+        
+        // Make widget cards draggable
+        document.querySelectorAll('.widget-type-card').forEach(card => {
+            card.draggable = true;
+            card.addEventListener('dragstart', (e) => {
+                this.draggedWidget = card.dataset.widgetType;
+                e.dataTransfer.effectAllowed = 'copy';
+            });
+        });
+    }
+
+    validateSetup() {
+        const name = document.getElementById('dashboardName').value.trim();
+        const agent = document.getElementById('agentSelect').value;
+        const continueBtn = document.getElementById('continueSetup');
+        
+        const isValid = name.length >= 3 && agent;
+        continueBtn.disabled = !isValid;
+        continueBtn.classList.toggle('opacity-50', !isValid);
+        continueBtn.classList.toggle('cursor-not-allowed', !isValid);
+    }
+
+    async proceedToBuilder() {
+        const name = document.getElementById('dashboardName').value.trim();
+        const description = document.getElementById('dashboardDescription').value.trim();
+        const agentId = document.getElementById('agentSelect').value;
+        
+        this.dashboardConfig.name = name;
+        this.dashboardConfig.description = description;
+        this.agentId = agentId;
+        
+        this.showLoader('Creating your dashboard...');
+        
+        try {
+            const payload = {
+                title: name,
+                description: description,
+                agent_id: agentId
+            };
+            
+            const response = await fetch("/api/dashboard/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify(payload),
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                this.currentDashboardId = data.dashboard_id;
+                document.getElementById('canvasTitle').textContent = name;
+                
+                // Hide setup, show builder
+                document.getElementById('setupSection').classList.add('hidden');
+                document.getElementById('builderSection').classList.remove('hidden');
+                
+                this.updateProgress(2);
+                this.showToast('✅ Dashboard created successfully!', 'success');
+            } else {
+                this.showToast('❌ Failed to create dashboard', 'error');
+            }
+        } catch (error) {
+            console.error('Error creating dashboard:', error);
+            this.showToast('❌ Error creating dashboard', 'error');
+        } finally {
+            this.hideLoader();
+        }
+    }
+
+    updateProgress(step) {
+        this.currentStep = step;
+        
+        for (let i = 1; i <= 4; i++) {
+            const stepEl = document.getElementById(`step${i}`);
+            const progressEl = document.getElementById(`progress${i}`);
+            
+            if (i < step) {
+                stepEl.classList.remove('active', 'pending');
+                stepEl.classList.add('completed');
+                stepEl.innerHTML = '<i class="fas fa-check"></i>';
+                if (progressEl) progressEl.classList.add('completed');
+            } else if (i === step) {
+                stepEl.classList.remove('completed', 'pending');
+                stepEl.classList.add('active');
+                stepEl.textContent = i;
+                if (progressEl) progressEl.classList.remove('completed');
+            } else {
+                stepEl.classList.remove('active', 'completed');
+                stepEl.classList.add('pending');
+                stepEl.textContent = i;
+                if (progressEl) progressEl.classList.remove('completed');
+            }
+        }
+    }
+
+    selectWidgetType(card) {
+        // Remove previous selection
+        document.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
+        
+        // Select current card
+        card.classList.add('selected');
+        
+        // Open widget configuration
+        const widgetType = card.dataset.widgetType;
+        this.openWidgetConfig(widgetType);
+    }
+
+    openWidgetConfig(widgetType, position = null) {
+        this.currentWidgetConfig = {
+            type: widgetType,
+            position: position || this.getNextWidgetPosition()
+        };
+
+        document.getElementById('modalTitle').textContent = `Configure ${this.getWidgetName(widgetType)}`;
+        document.getElementById('widgetConfig').innerHTML = this.getWidgetConfigForm(widgetType);
+        document.getElementById('widgetModal').classList.remove('hidden');
+        
+        // Remove selection from gallery
+        document.querySelectorAll('.widget-type-card').forEach(c => c.classList.remove('selected'));
+    }
+
+    getNextWidgetPosition() {
+        const existingWidgets = this.widgets.length;
+        const cols = 3;
+        const widgetWidth = 300;
+        const widgetHeight = 250;
+        const padding = 20;
+        
+        const row = Math.floor(existingWidgets / cols);
+        const col = existingWidgets % cols;
+        
+        return {
+            x: col * (widgetWidth + padding) + padding,
+            y: row * (widgetHeight + padding) + padding
+        };
+    }
+
+    getWidgetConfigForm(type) {
+        const chartTypes = ['bar-chart', 'line-chart', 'pie-chart', 'area-chart'];
+        const metricTypes = ['kpi', 'gauge', 'counter', 'progress'];
+
+        if (chartTypes.includes(type)) {
+            return this.getChartConfigForm(type);
+        } else if (metricTypes.includes(type)) {
+            return this.getMetricConfigForm(type);
+        } else {
+            return this.getDataConfigForm(type);
+        }
+    }
+
+    getChartConfigForm(type) {
+        return `
+        <div class="space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-tag text-purple-600 mr-2"></i>Widget Title
+                    </label>
+                    <input type="text" id="widgetTitle" class="form-input" placeholder="Enter widget title..." value="${this.getWidgetName(type)}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-chart-bar text-blue-600 mr-2"></i>Chart Type
+                    </label>
+                    <select id="chartType" class="form-select">
+                        <option value="bar" ${type === 'bar-chart' ? 'selected' : ''}>📊 Bar Chart</option>
+                        <option value="line" ${type === 'line-chart' ? 'selected' : ''}>📈 Line Chart</option>
+                        <option value="pie" ${type === 'pie-chart' ? 'selected' : ''}>🥧 Pie Chart</option>
+                        <option value="area" ${type === 'area-chart' ? 'selected' : ''}>📊 Area Chart</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Natural Language Query Section -->
+            <div class="bg-gradient-to-r from-purple-50 to-blue-50 p-6 rounded-xl border border-purple-200">
+                <div class="form-group mb-4">
+                    <label class="form-label">
+                        <i class="fas fa-comment-dots text-green-600 mr-2"></i>Ask in Plain English
+                    </label>
+                    <textarea id="nlQuery" rows="3" class="form-textarea" 
+                        placeholder="e.g., Show me sales by month for the last 6 months, Compare product performance by region, Display top 10 customers by revenue"></textarea>
+                </div>
+                
+                <button type="button" id="generateSqlBtn" onclick="generateSQL('${type}')" 
+                    class="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4 rounded-lg hover:from-purple-700 hover:to-blue-700 smooth-transition font-semibold mb-4">
+                    <i class="fas fa-magic mr-2"></i>Generate SQL & Preview
+                </button>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-database text-orange-600 mr-2"></i>Generated SQL Query
+                    </label>
+                    <textarea id="sqlQuery" rows="4" class="form-textarea font-mono text-sm" 
+                        placeholder="SQL will be generated automatically..." readonly></textarea>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4">
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-ruler text-purple-600 mr-2"></i>Width (px)
+                    </label>
+                    <input type="number" id="widgetWidth" class="form-input" value="400" min="250" max="600">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-ruler-vertical text-red-600 mr-2"></i>Height (px)
+                    </label>
+                    <input type="number" id="widgetHeight" class="form-input" value="300" min="200" max="500">
+                </div>
+            </div>
+            
+            <!-- Preview Canvas -->
+            <div class="bg-gray-50 rounded-lg p-4">
+                <h4 class="font-semibold text-gray-700 mb-2">Preview</h4>
+                <canvas id="previewCanvas" class="w-full h-48 bg-white rounded"></canvas>
+            </div>
+        </div>
+        `;
+    }
+
+    getMetricConfigForm(type) {
+        return `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-tag text-purple-600 mr-2"></i>Widget Title
+                </label>
+                <input type="text" id="widgetTitle" class="form-input" placeholder="Enter widget title..." value="${this.getWidgetName(type)}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-calculator text-blue-600 mr-2"></i>Value
+                </label>
+                <input type="number" id="metricValue" class="form-input" placeholder="Enter value..." value="85">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-tag text-green-600 mr-2"></i>Unit/Suffix
+                </label>
+                <input type="text" id="metricUnit" class="form-input" placeholder="%, $, K, etc." value="%">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-palette text-orange-600 mr-2"></i>Color Theme
+                </label>
+                <select id="colorScheme" class="form-select">
+                    <option value="blue">Blue</option>
+                    <option value="green">Green</option>
+                    <option value="red">Red</option>
+                    <option value="purple">Purple</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-ruler text-purple-600 mr-2"></i>Width (px)
+                </label>
+                <input type="number" id="widgetWidth" class="form-input" value="250" min="200" max="400">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-ruler-vertical text-red-600 mr-2"></i>Height (px)
+                </label>
+                <input type="number" id="widgetHeight" class="form-input" value="200" min="150" max="300">
+            </div>
+        </div>
+        `;
+    }
+
+    getDataConfigForm(type) {
+        return `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-tag text-purple-600 mr-2"></i>Widget Title
+                </label>
+                <input type="text" id="widgetTitle" class="form-input" placeholder="Enter widget title..." value="${this.getWidgetName(type)}">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-database text-blue-600 mr-2"></i>Content Type
+                </label>
+                <select id="contentType" class="form-select">
+                    <option value="sample">Sample Data</option>
+                    <option value="custom">Custom Content</option>
+                </select>
+            </div>
+            
+            <div class="form-group md:col-span-2">
+                <label class="form-label">
+                    <i class="fas fa-align-left text-green-600 mr-2"></i>Content
+                </label>
+                <textarea id="widgetContent" class="form-textarea" rows="4" placeholder="Enter your content here...">${this.getSampleContent(type)}</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-ruler text-orange-600 mr-2"></i>Width (px)
+                </label>
+                <input type="number" id="widgetWidth" class="form-input" value="300" min="250" max="500">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">
+                    <i class="fas fa-ruler-vertical text-red-600 mr-2"></i>Height (px)
+                </label>
+                <input type="number" id="widgetHeight" class="form-input" value="250" min="200" max="400">
+            </div>
+        </div>
+        `;
+    }
+
+    getSampleContent(type) {
+        const content = {
+            'table': 'Product | Sales | Growth\nProduct A | $25,000 | +15%\nProduct B | $18,500 | +8%\nProduct C | $32,000 | +22%',
+            'list': '• Top performing regions\n• Customer satisfaction metrics\n• Monthly revenue targets\n• Team performance indicators',
+            'text': 'Welcome to your analytics dashboard. This text widget can display important announcements, KPI definitions, or any custom content you need.',
+            'image': 'Upload your company logo or chart image here'
+        };
+        return content[type] || 'Sample content';
+    }
+
+    createWidget() {
+        if (!this.currentWidgetConfig) return;
+
+        const title = document.getElementById('widgetTitle').value.trim();
+        const width = parseInt(document.getElementById('widgetWidth').value) || 300;
+        const height = parseInt(document.getElementById('widgetHeight').value) || 250;
+
+        if (!title) {
+            this.showToast('Please enter a widget title', 'error');
+            return;
+        }
+
+        const widgetConfig = {
+            id: ++this.widgetCounter,
+            type: this.currentWidgetConfig.type,
+            title: title,
+            width: width,
+            height: height,
+            position: this.currentWidgetConfig.position,
+            ...this.getWidgetSpecificConfig()
+        };
+
+        this.addWidgetToCanvas(widgetConfig);
+        this.closeWidgetModal();
+    }
+
+    getWidgetSpecificConfig() {
+        const type = this.currentWidgetConfig.type;
+        const chartTypes = ['bar-chart', 'line-chart', 'pie-chart', 'area-chart'];
+        const metricTypes = ['kpi', 'gauge', 'counter', 'progress'];
+
+        if (chartTypes.includes(type)) {
+            return {
+                nlQuery: document.getElementById('nlQuery')?.value || '',
+                sqlQuery: document.getElementById('sqlQuery')?.value || '',
+                chartType: document.getElementById('chartType')?.value || 'bar'
+            };
+        } else if (metricTypes.includes(type)) {
+            return {
+                value: parseFloat(document.getElementById('metricValue').value) || 0,
+                unit: document.getElementById('metricUnit').value || '',
+                colorScheme: document.getElementById('colorScheme').value
+            };
+        } else {
+            return {
+                content: document.getElementById('widgetContent').value,
+                contentType: document.getElementById('contentType').value
+            };
+        }
+    }
+
+    addWidgetToCanvas(config) {
+        const canvas = document.getElementById('dashboardCanvas');
+        const emptyState = canvas.querySelector('.canvas-empty-state');
+        
+        // Hide empty state
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
+        
+        // Create widget element
+        const widget = this.createWidgetElement(config);
+        canvas.appendChild(widget);
+        
+        this.widgets.push(config);
+        
+        // Render the actual chart/content
+        setTimeout(() => {
+            this.renderWidgetContent(widget, config);
+        }, 100);
+        
+        // Update progress if first widget
+        if (this.widgets.length === 1 && this.currentStep === 2) {
+            this.updateProgress(3);
+        }
+        
+        this.showToast(`${config.title} added to dashboard!`);
+    }
+
+    createWidgetElement(config) {
+        const widget = document.createElement('div');
+        widget.className = 'widget-card';
+        widget.style.width = `${config.width}px`;
+        widget.style.height = `${config.height}px`;
+        widget.style.left = `${config.position.x}px`;
+        widget.style.top = `${config.position.y}px`;
+        widget.dataset.widgetId = config.id;
+        
+        widget.innerHTML = `
+        <div class="widget-header">
+            <div class="flex items-center justify-between w-full">
+                <div class="flex items-center space-x-2">
+                    <i class="${this.getWidgetIcon(config.type)} ${this.getWidgetIconColor(config.colorScheme || 'blue')}"></i>
+                    <span class="font-semibold text-sm">${config.title}</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button class="text-gray-400 hover:text-blue-500 p-1" onclick="editWidget(${config.id})" title="Edit">
+                        <i class="fas fa-edit text-xs"></i>
+                    </button>
+                    <button class="text-gray-400 hover:text-red-500 p-1" onclick="removeWidget(${config.id})" title="Delete">
+                        <i class="fas fa-times text-xs"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="widget-content">
+            <div id="widget-content-${config.id}" class="chart-container">
+                <div class="flex items-center justify-center h-full text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Make widget draggable
+        this.makeWidgetDraggable(widget);
+        
+        // Make widget selectable
+        widget.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.selectWidget(widget);
+        });
+        
+        return widget;
+    }
+
+    makeWidgetDraggable(widget) {
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+
+        widget.addEventListener('mousedown', (e) => {
+            if (e.target.closest('button')) return; // Don't drag when clicking buttons
+            
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = parseInt(widget.style.left);
+            startTop = parseInt(widget.style.top);
+            
+            widget.style.zIndex = '1000';
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        });
+
+        const handleMouseMove = (e) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            
+            widget.style.left = `${startLeft + deltaX}px`;
+            widget.style.top = `${startTop + deltaY}px`;
+        };
+
+        const handleMouseUp = () => {
+            if (isDragging) {
+                isDragging = false;
+                widget.style.zIndex = '';
+                document.removeEventListener('mousemove', handleMouseMove);
+                document.removeEventListener('mouseup', handleMouseUp);
+            }
+        };
+    }
+
+    selectWidget(widget) {
+        this.deselectAllWidgets();
+        widget.classList.add('selected');
+        this.selectedWidget = widget;
+    }
+
+    deselectAllWidgets() {
+        document.querySelectorAll('.widget-card').forEach(w => w.classList.remove('selected'));
+        this.selectedWidget = null;
+    }
+
+    renderWidgetContent(widget, config) {
+        const contentEl = widget.querySelector(`#widget-content-${config.id}`);
+        const chartTypes = ['bar-chart', 'line-chart', 'pie-chart', 'area-chart'];
+        const metricTypes = ['kpi', 'gauge', 'counter', 'progress'];
+
+        if (chartTypes.includes(config.type)) {
+            this.renderChart(contentEl, config);
+        } else if (metricTypes.includes(config.type)) {
+            this.renderMetric(contentEl, config);
+        } else {
+            this.renderDataWidget(contentEl, config);
+        }
+    }
+
+    renderChart(container, config) {
+        const canvas = document.createElement('canvas');
+        container.innerHTML = '';
+        container.appendChild(canvas);
+
+        // Use sample data for demo
+        const data = this.sampleData.sales;
+        const colors = this.getColors('blue');
+
+        const chartConfig = {
+            type: config.chartType || config.type.replace('-chart', ''),
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: config.title,
+                    data: data.data,
+                    backgroundColor: colors.background,
+                    borderColor: colors.border,
+                    borderWidth: 2,
+                    fill: config.type === 'area-chart'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0,0,0,0.05)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        };
+
+        this.chartInstances[config.id] = new Chart(canvas, chartConfig);
+    }
+
+    renderMetric(container, config) {
+        const colors = this.getColors(config.colorScheme);
+        
+        container.innerHTML = `
+        <div class="flex flex-col items-center justify-center h-full">
+            <div class="text-4xl font-bold mb-2" style="color: ${colors.border[0]}">
+                ${config.value}${config.unit}
+            </div>
+            <div class="text-sm text-gray-600 text-center">${config.title}</div>
+            ${config.type === 'progress' ? `
+            <div class="w-full mt-3">
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="h-2 rounded-full" style="background: ${colors.border[0]}; width: ${config.value}%"></div>
+                </div>
+            </div>
+            ` : ''}
+            ${config.type === 'gauge' ? `
+            <div class="mt-3">
+                <div class="w-16 h-16 rounded-full border-4 border-gray-200 border-t-4 flex items-center justify-center" style="border-top-color: ${colors.border[0]}">
+                    <span class="text-xs font-semibold">${config.value}%</span>
+                </div>
+            </div>
+            ` : ''}
+        </div>
+        `;
+    }
+
+    renderDataWidget(container, config) {
+        if (config.type === 'table') {
+            const rows = config.content.split('\n');
+            const headers = rows[0].split('|').map(h => h.trim());
+            const data = rows.slice(1).map(row => row.split('|').map(cell => cell.trim()));
+            
+            container.innerHTML = `
+                <div class="overflow-auto h-full">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                ${headers.map(h => `<th class="px-3 py-2 text-left font-semibold">${h}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.map(row => `
+                                <tr class="border-t">
+                                    ${row.map(cell => `<td class="px-3 py-2">${cell}</td>`).join('')}
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="h-full overflow-auto">
+                    <div class="text-sm leading-relaxed whitespace-pre-wrap">${config.content}</div>
+                </div>
+            `;
+        }
+    }
+
+    getColors(scheme) {
+        const schemes = {
+            blue: {
+                background: ['rgba(54, 162, 235, 0.2)'],
+                border: ['rgba(54, 162, 235, 1)']
+            },
+            green: {
+                background: ['rgba(75, 192, 192, 0.2)'],
+                border: ['rgba(75, 192, 192, 1)']
+            },
+            purple: {
+                background: ['rgba(153, 102, 255, 0.2)'],
+                border: ['rgba(153, 102, 255, 1)']
+            },
+            red: {
+                background: ['rgba(255, 99, 132, 0.2)'],
+                border: ['rgba(255, 99, 132, 1)']
+            },
+            rainbow: {
+                background: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 205, 86, 0.2)',
+                    'rgba(75, 192, 192, 0.2)',
+                    'rgba(153, 102, 255, 0.2)',
+                    'rgba(255, 159, 64, 0.2)'
+                ],
+                border: [
+                    'rgba(255, 99, 132, 1)',
+                    'rgba(54, 162, 235, 1)',
+                    'rgba(255, 205, 86, 1)',
+                    'rgba(75, 192, 192, 1)',
+                    'rgba(153, 102, 255, 1)',
+                    'rgba(255, 159, 64, 1)'
+                ]
+            }
+        };
+        return schemes[scheme] || schemes.blue;
+    }
+
+    getWidgetIcon(type) {
+        const icons = {
+            'bar-chart': 'fas fa-chart-bar',
+            'line-chart': 'fas fa-chart-line',
+            'pie-chart': 'fas fa-chart-pie',
+            'area-chart': 'fas fa-chart-area',
+            'kpi': 'fas fa-bullseye',
+            'gauge': 'fas fa-tachometer-alt',
+            'counter': 'fas fa-calculator',
+            'progress': 'fas fa-tasks',
+            'table': 'fas fa-table',
+            'list': 'fas fa-list',
+            'text': 'fas fa-font',
+            'image': 'fas fa-image'
+        };
+        return icons[type] || 'fas fa-square';
+    }
+
+    getWidgetIconColor(scheme) {
+        const colors = {
+            blue: 'text-blue-600',
+            green: 'text-green-600',
+            purple: 'text-purple-600',
+            red: 'text-red-600',
+            rainbow: 'text-indigo-600'
+        };
+        return colors[scheme] || 'text-blue-600';
+    }
+
+    getWidgetName(type) {
+        const names = {
+            'bar-chart': 'Bar Chart',
+            'line-chart': 'Line Chart',
+            'pie-chart': 'Pie Chart',
+            'area-chart': 'Area Chart',
+            'kpi': 'KPI Card',
+            'gauge': 'Gauge',
+            'counter': 'Counter',
+            'progress': 'Progress Bar',
+            'table': 'Data Table',
+            'list': 'List View',
+            'text': 'Text Widget',
+            'image': 'Image Widget'
+        };
+        return names[type] || 'Widget';
+    }
+
+    toggleSidebar() {
+        this.sidebarOpen = !this.sidebarOpen;
+        const sidebar = document.getElementById('widgetSidebar');
+        
+        if (this.sidebarOpen) {
+            sidebar.classList.remove('collapsed');
+        } else {
+            sidebar.classList.add('collapsed');
+        }
+    }
+
+    openWidgetGallery() {
+        document.getElementById('widgetSidebar').classList.remove('collapsed');
+        this.sidebarOpen = true;
+    }
+
+    closeWidgetModal() {
+        document.getElementById('widgetModal').classList.add('hidden');
+        this.currentWidgetConfig = null;
+    }
+
+    async saveDashboard() {
+        if (this.widgets.length === 0) {
+            this.showToast('Add at least one widget before saving!', 'warning');
+            return;
+        }
+        
+        if (!this.currentDashboardId) {
+            this.showToast('❌ Dashboard not created properly', 'error');
+            return;
+        }
+        
+        this.showLoader('Saving your dashboard...');
+        
+        try {
+            const widgets = [];
+            document.querySelectorAll('.widget-card').forEach(widget => {
+                const widgetId = widget.dataset.widgetId;
+                const widgetData = {
+                    widget_id: `widget-${widgetId}`,
+                    widget_name: widget.querySelector('.font-semibold').textContent || 'Untitled Widget',
+                    position: {
+                        x: parseInt(widget.style.left) || 0,
+                        y: parseInt(widget.style.top) || 0,
+                        width: parseInt(widget.style.width) || 400,
+                        height: parseInt(widget.style.height) || 300
+                    },
+                    chart_data: this.chartInstances[widgetId] ? {
+                        labels: this.chartInstances[widgetId].data.labels,
+                        datasets: this.chartInstances[widgetId].data.datasets
+                    } : null
+                };
+                widgets.push(widgetData);
+            });
+            
+            const response = await fetch(`/api/dashboard/${this.currentDashboardId}/widgets/bulk-save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify({ widgets })
+            });
+            
+            if (response.ok) {
+                this.updateProgress(4);
+                this.showToast('✅ Dashboard saved successfully!', 'success');
+            } else {
+                this.showToast('❌ Failed to save dashboard', 'error');
+            }
+        } catch (error) {
+            console.error('Error saving dashboard:', error);
+            this.showToast('❌ Error saving dashboard', 'error');
+        } finally {
+            this.hideLoader();
+        }
+    }
+
+    previewDashboard() {
+        if (this.widgets.length === 0) {
+            this.showToast('Add widgets to preview your dashboard!', 'warning');
+            return;
+        }
+        
+        // Generate preview URL and open in new tab
+        const previewData = {
+            config: this.dashboardConfig,
+            widgets: this.widgets
+        };
+        
+        // In a real implementation, you would send this to the server
+        this.showToast('Opening dashboard preview...', 'info');
+        
+        // For demo purposes, just show success
+        setTimeout(() => {
+            window.open('/dashboard/preview', '_blank');
+        }, 1000);
+    }
+
+    autoLayout() {
+        const canvas = document.getElementById('dashboardCanvas');
+        const widgets = canvas.querySelectorAll('.widget-card');
+        const cols = 2;
+        const padding = 20;
+        
+        widgets.forEach((widget, index) => {
+            const row = Math.floor(index / cols);
+            const col = index % cols;
+            
+            widget.style.left = `${col * 400 + padding}px`;
+            widget.style.top = `${row * 320 + padding}px`;
+        });
+        
+        this.showToast('Auto layout applied!');
+    }
+
+    clearCanvas() {
+        if (confirm('Are you sure you want to clear all widgets?')) {
+            const canvas = document.getElementById('dashboardCanvas');
+            const widgets = canvas.querySelectorAll('.widget-card');
+            
+            widgets.forEach(widget => {
+                const widgetId = widget.dataset.widgetId;
+                if (this.chartInstances[widgetId]) {
+                    this.chartInstances[widgetId].destroy();
+                    delete this.chartInstances[widgetId];
+                }
+                widget.remove();
+            });
+            
+            this.widgets = [];
+            this.widgetCounter = 0;
+            
+            // Show empty state
+            const emptyState = canvas.querySelector('.canvas-empty-state');
+            if (emptyState) {
+                emptyState.style.display = 'flex';
+            }
+            
+            this.showToast('Canvas cleared!');
+        }
+    }
+
+    loadTemplate() {
+        this.showToast('Template gallery coming soon!', 'info');
+    }
+
+    toggleFAB() {
+        this.fabOpen = !this.fabOpen;
+        const menu = document.getElementById('fab-menu');
+        const icon = document.querySelector('#fab-main i');
+        
+        if (this.fabOpen) {
+            menu.style.transform = 'scale(1)';
+            icon.style.transform = 'rotate(180deg)';
+        } else {
+            menu.style.transform = 'scale(0)';
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    showToast(message, type = 'success', duration = 5000) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        
+        const icons = {
+            success: 'fas fa-check-circle',
+            error: 'fas fa-exclamation-circle',
+            info: 'fas fa-info-circle',
+            warning: 'fas fa-exclamation-triangle'
+        };
+        
+        const colors = {
+            success: 'bg-green-500',
+            error: 'bg-red-500',
+            info: 'bg-blue-500',
+            warning: 'bg-yellow-500'
+        };
+        
+        toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+        toast.innerHTML = `
+        <i class="${icons[type]}"></i>
+        <span class="font-medium">${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-auto">
+            <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+        </button>
+        `;
+        
+        container.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.transform = 'translateX(100%)';
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    showLoader(text = 'Loading...') {
+        document.getElementById('loader-text').textContent = text;
+        document.getElementById('loader').classList.remove('hidden');
+    }
+
+    hideLoader() {
+        document.getElementById('loader').classList.add('hidden');
+    }
+
+    updateProgressBar(percentage) {
+        document.getElementById('progress-bar').style.width = `${percentage}%`;
+    }
+}
+
+// Global functions for compatibility
+function toggleFAB() {
+    if (window.dashboardBuilder) window.dashboardBuilder.toggleFAB();
+}
+
+function autoLayout() {
+    if (window.dashboardBuilder) window.dashboardBuilder.autoLayout();
+}
+
+function clearCanvas() {
+    if (window.dashboardBuilder) window.dashboardBuilder.clearCanvas();
+}
+
+function loadTemplate() {
+    if (window.dashboardBuilder) window.dashboardBuilder.loadTemplate();
+}
+
+function openWidgetGallery() {
+    if (window.dashboardBuilder) window.dashboardBuilder.openWidgetGallery();
+}
+
+function closeWidgetModal() {
+    if (window.dashboardBuilder) window.dashboardBuilder.closeWidgetModal();
+}
+
+function removeWidget(widgetId) {
+    const widget = document.querySelector(`[data-widget-id="${widgetId}"]`);
+    if (widget && confirm('Remove this widget?')) {
+        // Destroy chart instance if exists
+        if (window.dashboardBuilder.chartInstances[widgetId]) {
+            window.dashboardBuilder.chartInstances[widgetId].destroy();
+            delete window.dashboardBuilder.chartInstances[widgetId];
+        }
+        
+        widget.remove();
+        window.dashboardBuilder.widgets = window.dashboardBuilder.widgets.filter(w => w.id != widgetId);
+        
+        // Show empty state if no widgets left
+        if (window.dashboardBuilder.widgets.length === 0) {
+            const canvas = document.getElementById('dashboardCanvas');
+            const emptyState = canvas.querySelector('.canvas-empty-state');
+            if (emptyState) {
+                emptyState.style.display = 'flex';
+            }
+        }
+        
+        window.dashboardBuilder.showToast('Widget removed');
+    }
+}
+
+function editWidget(widgetId) {
+    window.dashboardBuilder.showToast('Widget editing coming soon!', 'info');
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.dashboardBuilder = new DashboardBuilder();
+});
+</script>
+{% endblock %}

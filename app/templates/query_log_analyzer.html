@@ -1,0 +1,880 @@
+{% extends 'base.html' %}
+{% block title %}Query Log Analyzer - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .log-row {
+    transition: all 0.2s ease;
+  }
+  
+  .log-row:hover {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    transform: scale(1.01);
+  }
+  
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+  }
+  
+  .query-cell {
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  
+  .query-cell:hover {
+    white-space: normal;
+    overflow: visible;
+  }
+  
+  .sql-code {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 8px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    max-width: 300px;
+    overflow-x: auto;
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="blurOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+      </div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Loading logs...</p>
+    </div>
+  </div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class="fas fa-chart-line"></i>
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">SQL Query Log Analyzer</h1>
+          <p class="text-gray-600 mt-1">Monitor and analyze your AI agent query performance</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+          <i class="fas fa-user-circle text-purple-600"></i>
+          <span class="font-medium">{{ session.username }}</span>
+          <span class="text-gray-400">•</span>
+          <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">{{ session.role }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Quick Stats Dashboard -->
+  <div class="mx-6 mt-6">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="glass-card rounded-2xl p-6 slide-in">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Total Queries</p>
+            <p id="total-queries" class="text-2xl font-bold text-purple-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-search text-purple-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.1s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Success Rate</p>
+            <p id="success-rate" class="text-2xl font-bold text-green-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-check-circle text-green-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.2s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Avg Response Time</p>
+            <p id="avg-time" class="text-2xl font-bold text-blue-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-stopwatch text-blue-600"></i>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-card rounded-2xl p-6 slide-in" style="animation-delay: 0.3s">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-600 font-medium">Active Agents</p>
+            <p id="active-agents" class="text-2xl font-bold text-orange-600">-</p>
+          </div>
+          <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-robot text-orange-600"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Controls -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-6 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-filter text-blue-600"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-gray-800">Query Filters</h3>
+            <p class="text-sm text-gray-600">Filter and search through query logs</p>
+          </div>
+        </div>
+        <button onclick="refreshLogs()" class="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-3 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition shadow-lg">
+          <i class="fas fa-sync-alt"></i>
+          <span>Refresh</span>
+        </button>
+      </div>
+      
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label for="agentSelect" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-robot text-purple-600 mr-2"></i>Filter by Agent
+          </label>
+          <select id="agentSelect" onchange="queryManager.filterLogs()" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white">
+            <option value="">All Agents</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="dateRange" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-calendar text-blue-600 mr-2"></i>Date Range
+          </label>
+          <select id="dateRange" onchange="queryManager.filterLogs()" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition bg-white">
+            <option value="">All Time</option>
+            <option value="today">Today</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
+          </select>
+        </div>
+        
+        <div>
+          <label for="searchQuery" class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-search text-green-600 mr-2"></i>Search Queries
+          </label>
+          <input type="text" id="searchQuery" placeholder="Search in queries..." onkeyup="debounceSearch()" class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-green-500 smooth-transition">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Query Logs Table -->
+  <div class="mx-6 mt-6 pb-8">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-list text-green-600"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-gray-800">Query Execution Logs</h3>
+            <p class="text-sm text-gray-600">Detailed history of all SQL queries and responses</p>
+          </div>
+        </div>
+        
+        <!-- Table Actions -->
+        <div class="flex items-center space-x-3">
+          <button onclick="exportLogs()" class="flex items-center space-x-2 bg-green-100 text-green-700 px-4 py-2 rounded-xl hover:bg-green-200 smooth-transition">
+            <i class="fas fa-download"></i>
+            <span>Export</span>
+          </button>
+          <button onclick="clearLogs()" class="flex items-center space-x-2 bg-red-100 text-red-700 px-4 py-2 rounded-xl hover:bg-red-200 smooth-transition">
+            <i class="fas fa-trash"></i>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+      
+      <div class="overflow-hidden rounded-xl border border-gray-200 shadow-sm">
+        <div class="overflow-x-auto">
+          <table class="w-full">
+            <thead class="bg-gradient-to-r from-purple-50 to-blue-50">
+              <tr>
+                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">
+                  <i class="fas fa-clock text-purple-600 mr-2"></i>Timestamp
+                </th>
+                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">
+                  <i class="fas fa-robot text-blue-600 mr-2"></i>Agent
+                </th>
+                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">
+                  <i class="fas fa-comment text-green-600 mr-2"></i>User Query
+                </th>
+                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">
+                  <i class="fas fa-code text-orange-600 mr-2"></i>Generated SQL
+                </th>
+                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">
+                  <i class="fas fa-chart-bar text-red-600 mr-2"></i>Result
+                </th>
+                <th class="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-b">
+                  <i class="fas fa-cog text-gray-600 mr-2"></i>Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody id="logTableBody" class="bg-white divide-y divide-gray-200">
+              <tr>
+                <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                  <div class="flex flex-col items-center">
+                    <i class="fas fa-search text-4xl text-gray-300 mb-3"></i>
+                    <p class="font-medium">Loading query logs...</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      
+      <!-- Pagination -->
+      <div id="pagination" class="flex items-center justify-between mt-6 hidden">
+        <div class="text-sm text-gray-600">
+          Showing <span id="showing-start">1</span> to <span id="showing-end">10</span> of <span id="total-results">0</span> results
+        </div>
+        <div class="flex space-x-2">
+          <button onclick="previousPage()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 smooth-transition">
+            <i class="fas fa-chevron-left mr-1"></i>Previous
+          </button>
+          <button onclick="nextPage()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 smooth-transition">
+            Next<i class="fas fa-chevron-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions FAB -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <div class="relative">
+      <button id="fab-main" onclick="toggleFAB()" class="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+      </button>
+      
+      <div id="fab-menu" class="absolute bottom-20 right-0 space-y-3 transform scale-0 origin-bottom-right smooth-transition">
+        <button onclick="refreshLogs(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-sync-alt text-blue-600"></i>
+          <span class="font-medium">Refresh Logs</span>
+        </button>
+        <button onclick="exportLogs(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-download text-green-600"></i>
+          <span class="font-medium">Export Data</span>
+        </button>
+        <button onclick="openAnalytics(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-chart-pie text-purple-600"></i>
+          <span class="font-medium">View Analytics</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Query Detail Modal -->
+<div id="queryModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="glass-card w-full max-w-4xl rounded-2xl p-8 relative shadow-2xl overflow-y-auto max-h-[90vh] mx-4">
+    <button onclick="closeQueryModal()" class="absolute top-6 right-6 text-gray-400 hover:text-red-500 text-2xl smooth-transition">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <div class="mb-6">
+      <h2 class="text-2xl font-bold text-gray-800 mb-2">Query Details</h2>
+      <p class="text-gray-600">Detailed information about the selected query execution</p>
+    </div>
+
+    <div id="modalContent" class="space-y-6">
+      <!-- Content will be populated by JavaScript -->
+    </div>
+  </div>
+</div>
+
+<script>
+  class QueryLogManager {
+    constructor() {
+      this.currentPage = 1;
+      this.pageSize = 10;
+      this.totalPages = 1;
+      this.allLogs = [];
+      this.filteredLogs = [];
+      this.searchTimeout = null;
+      this.fabOpen = false;
+      
+      this.initializeEventListeners();
+      this.loadInitialData();
+    }
+
+    initializeEventListeners() {
+      this.debounceSearch = this.debounce(() => {
+        this.filterLogs();
+      }, 300);
+    }
+
+    async loadInitialData() {
+      this.updateProgress(30);
+      await Promise.all([
+        this.loadAgents(),
+        this.loadQueryLogs()
+      ]);
+      this.updateProgress(100);
+      setTimeout(() => this.updateProgress(0), 1000);
+    }
+
+    updateProgress(percentage) {
+      document.getElementById('progress-bar').style.width = `${percentage}%`;
+    }
+
+    showToast(message, type = 'success', duration = 5000) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-exclamation-circle',
+        info: 'fas fa-info-circle',
+        warning: 'fas fa-exclamation-triangle'
+      };
+      
+      const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        info: 'bg-blue-500',
+        warning: 'bg-yellow-500'
+      };
+      
+      toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+      toast.innerHTML = `
+        <i class="${icons[type]}"></i>
+        <span class="font-medium">${message}</span>
+        <button onclick="this.parentElement.remove()" class="ml-auto">
+          <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+        </button>
+      `;
+      
+      container.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, duration);
+    }
+
+    showLoader(text = 'Loading logs...') {
+      document.getElementById('loader-text').textContent = text;
+      document.getElementById('blurOverlay').classList.remove('hidden');
+    }
+
+    hideLoader() {
+      document.getElementById('blurOverlay').classList.add('hidden');
+    }
+
+    async loadAgents() {
+      const agentSelect = document.getElementById("agentSelect");
+      
+      try {
+        const response = await fetch('/api/agent/get-agents', {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        const agents = await response.json();
+        
+        if (agents.agents && agents.agents.length > 0) {
+          agents.agents.forEach(agent => {
+            const option = document.createElement('option');
+            option.value = agent.id;
+            option.textContent = agent.name;
+            agentSelect.appendChild(option);
+          });
+        }
+        
+        // Update stats
+        document.getElementById('active-agents').textContent = agents.agents?.length || 0;
+      } catch (error) {
+        console.error("Failed to load agents", error);
+        this.showToast("Failed to load agents", 'error');
+      }
+    }
+
+    async loadQueryLogs() {
+      const tbody = document.getElementById('logTableBody');
+      this.showLoader('Fetching query logs...');
+
+      try {
+        const response = await fetch('/api/query/logs', {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+        
+        const data = await response.json();
+        this.allLogs = data.logs || [];
+        this.filteredLogs = [...this.allLogs];
+
+        this.updateStats();
+        this.renderTable();
+        this.showToast('Logs loaded successfully');
+      } catch (error) {
+        console.error('Error fetching logs:', error);
+        tbody.innerHTML = this.getEmptyState('exclamation-triangle', 'Error loading logs', 'Please try again or contact support');
+        this.showToast('Error fetching logs', 'error');
+      } finally {
+        this.hideLoader();
+      }
+    }
+
+    updateStats() {
+      const totalQueries = this.allLogs.length;
+      const successfulQueries = this.allLogs.filter(log => log.ai_response && !log.ai_response.includes('error')).length;
+      const successRate = totalQueries > 0 ? Math.round((successfulQueries / totalQueries) * 100) : 0;
+      
+      document.getElementById('total-queries').textContent = totalQueries.toLocaleString();
+      document.getElementById('success-rate').textContent = `${successRate}%`;
+      document.getElementById('avg-time').textContent = '~150ms';
+    }
+
+    renderTable() {
+      const tbody = document.getElementById('logTableBody');
+      
+      if (this.filteredLogs.length === 0) {
+        tbody.innerHTML = this.getEmptyState('search', 'No logs found', 'Try adjusting your filters or search terms');
+        return;
+      }
+
+      // Pagination
+      const startIndex = (this.currentPage - 1) * this.pageSize;
+      const endIndex = startIndex + this.pageSize;
+      const pageData = this.filteredLogs.slice(startIndex, endIndex);
+      
+      tbody.innerHTML = '';
+      
+      pageData.forEach((log, index) => {
+        const row = document.createElement('tr');
+        row.className = 'log-row smooth-transition';
+        
+        const timestamp = new Date(log.created_at).toLocaleString();
+        const statusDot = log.ai_response && !log.ai_response.includes('error') ? 
+          '<span class="status-dot bg-green-500"></span>' : 
+          '<span class="status-dot bg-red-500"></span>';
+        
+        row.innerHTML = `
+          <td class="px-6 py-4 border-b border-gray-200">
+            <div class="text-sm font-medium text-gray-800">${timestamp}</div>
+            <div class="text-xs text-gray-500">${this.timeAgo(log.created_at)}</div>
+          </td>
+          <td class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center">
+              <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center mr-3">
+                <i class="fas fa-robot text-purple-600 text-sm"></i>
+              </div>
+              <div>
+                <div class="text-sm font-medium text-gray-800">${log.agent_name}</div>
+                <div class="text-xs text-gray-500">Agent ID: ${log.agent_id || 'N/A'}</div>
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 border-b border-gray-200">
+            <div class="query-cell text-sm text-gray-800" title="${log.user_query}">
+              ${log.user_query}
+            </div>
+          </td>
+          <td class="px-6 py-4 border-b border-gray-200">
+            <div class="sql-code">
+              ${this.formatSQL(log.generated_sql)}
+            </div>
+          </td>
+          <td class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-start space-x-2">
+              ${statusDot}
+              <div class="text-sm text-gray-800 max-w-xs overflow-hidden">
+                ${this.truncateText(log.ai_response, 100)}
+              </div>
+            </div>
+          </td>
+          <td class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center space-x-2">
+              <button onclick="queryManager.viewDetails(${startIndex + index})" class="text-blue-600 hover:text-blue-800 p-2 rounded-lg hover:bg-blue-50 smooth-transition" title="View Details">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button onclick="queryManager.copyQuery(${startIndex + index})" class="text-green-600 hover:text-green-800 p-2 rounded-lg hover:bg-green-50 smooth-transition" title="Copy SQL">
+                <i class="fas fa-copy"></i>
+              </button>
+            </div>
+          </td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+
+      this.updatePagination();
+    }
+
+    formatSQL(sql) {
+      if (!sql) return 'No SQL generated';
+      
+      // Basic SQL formatting
+      return sql
+        .replace(/\bSELECT\b/gi, '<span class="text-blue-600 font-semibold">SELECT</span>')
+        .replace(/\bFROM\b/gi, '<span class="text-green-600 font-semibold">FROM</span>')
+        .replace(/\bWHERE\b/gi, '<span class="text-red-600 font-semibold">WHERE</span>')
+        .replace(/\bGROUP BY\b/gi, '<span class="text-purple-600 font-semibold">GROUP BY</span>')
+        .replace(/\bORDER BY\b/gi, '<span class="text-orange-600 font-semibold">ORDER BY</span>');
+    }
+
+    truncateText(text, length) {
+      if (!text) return 'No response';
+      return text.length > length ? text.substring(0, length) + '...' : text;
+    }
+
+    timeAgo(dateString) {
+      const now = new Date();
+      const date = new Date(dateString);
+      const diffInSeconds = Math.floor((now - date) / 1000);
+      
+      if (diffInSeconds < 60) return 'Just now';
+      if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+      if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+      return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    }
+
+    getEmptyState(icon, title, description) {
+      return `
+        <tr>
+          <td colspan="6" class="px-6 py-12 text-center">
+            <div class="flex flex-col items-center">
+              <i class="fas fa-${icon} text-4xl text-gray-300 mb-4"></i>
+              <h3 class="text-lg font-medium text-gray-800 mb-2">${title}</h3>
+              <p class="text-gray-500">${description}</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+
+    filterLogs() {
+      const searchTerm = document.getElementById('searchQuery').value.toLowerCase();
+      const selectedAgent = document.getElementById('agentSelect').value;
+      const dateRange = document.getElementById('dateRange').value;
+
+      this.filteredLogs = this.allLogs.filter(log => {
+        let matchesSearch = true;
+        let matchesAgent = true;
+        let matchesDate = true;
+
+        // Search filter
+        if (searchTerm) {
+          matchesSearch =
+            log.user_query.toLowerCase().includes(searchTerm) ||
+            log.generated_sql.toLowerCase().includes(searchTerm) ||
+            log.agent_name.toLowerCase().includes(searchTerm);
+        }
+
+        // Agent filter
+        if (selectedAgent) {
+          matchesAgent = log.agent_id == selectedAgent;
+        }
+
+        // Date filter
+        if (dateRange) {
+          const logDate = new Date(log.created_at);
+          const now = new Date();
+          if (dateRange === "today") {
+            matchesDate = logDate.toDateString() === now.toDateString();
+          } else if (dateRange === "week") {
+            const weekAgo = new Date();
+            weekAgo.setDate(now.getDate() - 7);
+            matchesDate = logDate >= weekAgo;
+          } else if (dateRange === "month") {
+            const monthAgo = new Date();
+            monthAgo.setMonth(now.getMonth() - 1);
+            matchesDate = logDate >= monthAgo;
+          }
+        }
+
+        return matchesSearch && matchesAgent && matchesDate;
+      });
+
+      this.currentPage = 1;
+      this.renderTable();
+    }
+
+    debounce(func, wait) {
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(this.searchTimeout);
+          func(...args);
+        };
+        clearTimeout(this.searchTimeout);
+        this.searchTimeout = setTimeout(later, wait);
+      }.bind(this);
+    }
+
+    updatePagination() {
+      const pagination = document.getElementById('pagination');
+      const totalResults = this.filteredLogs.length;
+      
+      if (totalResults > this.pageSize) {
+        this.totalPages = Math.ceil(totalResults / this.pageSize);
+        const startIndex = (this.currentPage - 1) * this.pageSize + 1;
+        const endIndex = Math.min(this.currentPage * this.pageSize, totalResults);
+        
+        document.getElementById('showing-start').textContent = startIndex;
+        document.getElementById('showing-end').textContent = endIndex;
+        document.getElementById('total-results').textContent = totalResults;
+        
+        pagination.classList.remove('hidden');
+      } else {
+        pagination.classList.add('hidden');
+      }
+    }
+
+    viewDetails(index) {
+      const log = this.filteredLogs[index];
+      const modal = document.getElementById('queryModal');
+      const content = document.getElementById('modalContent');
+      
+      content.innerHTML = `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <h3 class="font-semibold text-gray-800 mb-2">Query Information</h3>
+            <div class="space-y-3 text-sm">
+              <div><strong>Timestamp:</strong> ${new Date(log.created_at).toLocaleString()}</div>
+              <div><strong>Agent:</strong> ${log.agent_name}</div>
+              <div><strong>Agent ID:</strong> ${log.agent_id || 'N/A'}</div>
+            </div>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-800 mb-2">Performance</h3>
+            <div class="space-y-3 text-sm">
+              <div><strong>Status:</strong> <span class="${log.ai_response && !log.ai_response.includes('error') ? 'text-green-600' : 'text-red-600'}">${log.ai_response && !log.ai_response.includes('error') ? 'Success' : 'Failed'}</span></div>
+              <div><strong>Response Time:</strong> ~150ms</div>
+              <div><strong>Query Type:</strong> ${log.generated_sql ? (log.generated_sql.includes('SELECT') ? 'SELECT' : 'OTHER') : 'N/A'}</div>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="font-semibold text-gray-800 mb-2">User Query</h3>
+          <div class="bg-gray-50 p-4 rounded-lg text-sm">${log.user_query}</div>
+        </div>
+        
+        <div>
+          <h3 class="font-semibold text-gray-800 mb-2">Generated SQL</h3>
+          <div class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto">
+            <pre>${log.generated_sql || 'No SQL generated'}</pre>
+          </div>
+        </div>
+        
+        <div>
+          <h3 class="font-semibold text-gray-800 mb-2">AI Response</h3>
+          <div class="bg-blue-50 p-4 rounded-lg text-sm max-h-64 overflow-y-auto">${log.ai_response || 'No response'}</div>
+        </div>
+      `;
+      
+      modal.classList.remove('hidden');
+    }
+
+    copyQuery(index) {
+      const log = this.filteredLogs[index];
+      navigator.clipboard.writeText(log.generated_sql || '').then(() => {
+        this.showToast('SQL query copied to clipboard!');
+      }).catch(() => {
+        this.showToast('Failed to copy query', 'error');
+      });
+    }
+
+    closeQueryModal() {
+      document.getElementById('queryModal').classList.add('hidden');
+    }
+
+    toggleFAB() {
+      this.fabOpen = !this.fabOpen;
+      const menu = document.getElementById('fab-menu');
+      const icon = document.querySelector('#fab-main i');
+      
+      if (this.fabOpen) {
+        menu.style.transform = 'scale(1)';
+        icon.style.transform = 'rotate(45deg)';
+      } else {
+        menu.style.transform = 'scale(0)';
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+
+    refreshLogs() {
+      this.loadQueryLogs();
+      this.showToast('Logs refreshed');
+    }
+
+    exportLogs() {
+      const csv = this.convertToCSV(this.filteredLogs);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `query_logs_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      this.showToast('Logs exported successfully!');
+    }
+
+    convertToCSV(logs) {
+      const headers = ['Timestamp', 'Agent Name', 'User Query', 'Generated SQL', 'AI Response'];
+      const rows = logs.map(log => [
+        new Date(log.created_at).toLocaleString(),
+        log.agent_name,
+        log.user_query.replace(/"/g, '""'),
+        log.generated_sql?.replace(/"/g, '""') || '',
+        log.ai_response?.replace(/"/g, '""') || ''
+      ]);
+      
+      return [headers, ...rows].map(row => 
+        row.map(field => `"${field}"`).join(',')
+      ).join('\n');
+    }
+
+    clearLogs() {
+      if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+        this.showToast('Clear logs functionality coming soon', 'info');
+      }
+    }
+
+    previousPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+        this.renderTable();
+      }
+    }
+
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+        this.renderTable();
+      }
+    }
+  }
+
+  // Global functions for compatibility
+  function loadQueryLogs() {
+    if (window.queryManager) window.queryManager.loadQueryLogs();
+  }
+
+  function refreshLogs() {
+    if (window.queryManager) window.queryManager.refreshLogs();
+  }
+
+  function exportLogs() {
+    if (window.queryManager) window.queryManager.exportLogs();
+  }
+
+  function clearLogs() {
+    if (window.queryManager) window.queryManager.clearLogs();
+  }
+
+  function toggleFAB() {
+    if (window.queryManager) window.queryManager.toggleFAB();
+  }
+
+  function closeQueryModal() {
+    if (window.queryManager) window.queryManager.closeQueryModal();
+  }
+
+  function previousPage() {
+    if (window.queryManager) window.queryManager.previousPage();
+  }
+
+  function nextPage() {
+    if (window.queryManager) window.queryManager.nextPage();
+  }
+
+  function debounceSearch() {
+    if (window.queryManager) window.queryManager.debounceSearch();
+  }
+
+  function openAnalytics() {
+    alert('Analytics dashboard coming soon!');
+  }
+
+  // Initialize when DOM is ready
+  document.addEventListener('DOMContentLoaded', () => {
+    window.queryManager = new QueryLogManager();
+  });
+</script>
+
+{% endblock %}

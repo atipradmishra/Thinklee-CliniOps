@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% block title %}Thinklee Co-Pilot{% endblock %}
+
+{% block content %}
+<div class="ml-64 p-6 bg-gray-50 min-h-screen">
+  <!-- Page Header -->
+  <div class="flex items-center justify-between">
+    <h2 class="text-3xl font-semibold text-gray-800">🧭 Thinklee Co-Pilot</h2>
+    <div class="text-sm text-gray-600">👤 Logged in as <strong>{{ session.username }}</strong> ({{ session.role }})</div>
+  </div>
+
+<div class="min-h-screen flex">
+    <!-- Main Content -->
+    <div class="flex-1 p-6">
+        <div class="bg-white shadow rounded-lg p-6 h-full flex flex-col">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">💬 Chat with RAG Agent</h2>
+
+            <!-- Agent Selector -->
+            <div class="mb-2">
+                <label for="agentSelect" class="text-sm text-gray-600 font-medium">Select AI Agent:</label>
+                <select id="agentSelect" class="border border-gray-300 rounded px-3 py-2 text-sm w-64">
+                  <option disabled selected>-- Choose Agent --</option>
+                </select>
+            </div>
+
+            <!-- Connection Status -->
+            <div id="connection-status" class="mb-4 text-sm text-gray-600"></div>
+
+            <!-- Chat Messages Window -->
+            <div id="chat-box" class="flex-1 overflow-y-auto space-y-4 mb-4 border rounded-lg p-4 bg-gray-100">
+                {% for user_msg, bot_msg, timestamp in chat_history %}
+                <div class='flex items-start justify-end space-x-2'>
+                    <div class='bg-gray-200 text-gray-800 p-3 rounded-lg max-w-xl'>
+                        {{ user_msg }}
+                        <div class="text-xs text-gray-500 mt-1 text-right">{{ timestamp }}</div>
+                    </div>
+                </div>
+                <div class='flex items-start space-x-2'>
+                    <div class='bg-blue-100 text-blue-800 p-3 rounded-lg max-w-xl'>
+                        {{ bot_msg }}
+                        <div class="text-xs text-gray-500 mt-1">{{ timestamp }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="flex items-start space-x-2">
+                    <div class="bg-blue-100 text-blue-800 p-3 rounded-lg max-w-xl">
+                        Hi there! I am your Ai Copilot, Choose Agent and start asking.
+                        <div class="text-xs text-gray-500 mt-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Form -->
+            <form id="chat-form" class="mt-4 flex items-center space-x-2">
+              <input type="text" id="user-input" name="user_query" placeholder="Type your question..." required
+                class="flex-1 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400">
+    
+                <!-- 🎤 Mic Button -->
+                <button type="button" onclick="startListening()" title="Speak your query"
+                    class="bg-yellow-500 text-white px-3 py-2 rounded-lg hover:bg-yellow-600">🎤</button>
+
+                <button type="submit" id="send-btn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Send</button>
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+  let selectedAgentId = null;
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('user-input');
+  const chatBox = document.getElementById('chat-box');
+  const agentSelect = document.getElementById('agentSelect');
+
+  async function loadAgents() {
+    const res = await fetch('/api/agent/get-agents',
+    {
+      method: 'GET',
+      headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    }
+    );
+    const agents = await res.json();
+
+    agents.agents.forEach(agent => {
+      const opt = document.createElement('option');
+      opt.value = agent.id;
+      opt.textContent = agent.name;
+      agentSelect.appendChild(opt);
+    });
+
+    agentSelect.addEventListener('change', () => {
+      selectedAgentId = agentSelect.value;
+      document.getElementById("chat-box").innerHTML = '';
+    });
+  }
+
+  function startListening() {
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        const inputBox = document.getElementById("user-input");
+        inputBox.value = transcript;
+    };
+
+
+    recognition.onerror = function(event) {
+        alert("Voice input error: " + event.error);
+    };
+
+    recognition.start();
+  }
+
+  function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;")
+                .replace(/\n/g, "<br>");
+  }
+  
+  function getTimestamp() {
+            const now = new Date();
+            return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const userMessage = input.value.trim();
+    const agentId = agentSelect.value;
+
+    chatBox.innerHTML += `<div class='flex items-start justify-end space-x-2'>
+                <div class='bg-gray-200 text-gray-800 p-3 rounded-lg max-w-xl'>
+                    ${escapeHtml(userMessage)}
+                    <div class="text-xs text-gray-500 mt-1 text-right">${getTimestamp()}</div>
+                </div>
+            </div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+    input.value = "";
+
+    const loadingId = "loading-msg-" + Date.now();
+    chatBox.innerHTML += `<div id="${loadingId}" class='flex items-start space-x-2'>
+                <div class='bg-yellow-100 text-yellow-800 p-3 rounded-lg max-w-xl animate-pulse'>
+                    Thinking...
+                </div>
+            </div>`;
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    if (!agentId) {
+        alert("Please select an AI agent before sending a message.");
+        return;
+        }
+
+    try {
+        const res = await fetch(`/api/query/copilot/${agentId}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify({ message: userMessage})
+        });
+        const data = await res.json();
+        const ragResponse = data.response;       ;
+
+        document.getElementById(loadingId)?.remove();
+
+        chatBox.innerHTML += `<div class='flex items-start space-x-2'>
+        <div class='bg-blue-100 text-blue-800 p-3 rounded-lg max-w-xl relative' data-query-id="${data.query_id}">
+            ${escapeHtml(ragResponse)}
+            <div class="text-xs text-gray-500 mt-1">${getTimestamp()}</div>
+
+            <!-- Feedback Block -->
+            <div class="mt-2 p-2 rounded border bg-white shadow-sm text-sm">
+            <div class="flex items-center space-x-3">
+                <span>Was this response helpful?</span>
+                <button onclick="openFeedbackPanel(this, 'positive')" class="text-green-600 hover:text-green-800">👍</button>
+                <button onclick="openFeedbackPanel(this, 'negative')" class="text-red-600 hover:text-red-800">👎</button>
+            </div>
+            <div class="hidden mt-2" data-feedback-panel>
+                <textarea class="w-full border rounded p-2 text-sm" placeholder="Optional comment..."></textarea>
+                <button class="mt-1 bg-blue-600 text-white text-sm px-3 py-1 rounded hover:bg-blue-700" onclick="submitDetailedFeedback(this)">Submit Feedback</button>
+            </div>
+            </div>
+
+        </div>
+        </div>`;
+
+
+
+        if (data.followups && data.followups.length > 0) {
+        const followupBlock = document.createElement("div");
+        followupBlock.className = "mt-2 ml-2 text-sm text-blue-700";
+
+        const list = data.followups.map(q =>
+            `<li class="cursor-pointer hover:underline" onclick="askFollowUp('${q.replace(/'/g, "\\'")}')">${q}</li>`
+        ).join("");
+
+        followupBlock.innerHTML = `<ul class="list-disc pl-5">💡You could also ask: ${list}</ul>`;
+        chatBox.lastElementChild.querySelector('.bg-blue-100').appendChild(followupBlock);
+    }
+
+        chatBox.scrollTop = chatBox.scrollHeight;
+    } catch (error) {
+        document.getElementById(loadingId)?.remove();
+        chatBox.innerHTML += `<div class='flex items-start space-x-2'>
+            <div class='bg-red-100 text-red-800 p-3 rounded-lg max-w-xl'>
+            ⚠️ Error getting response: ${escapeHtml(error.message || "Unknown error")}
+            <div class="text-xs text-gray-500 mt-1">${getTimestamp()}</div>
+            </div>
+        </div>`;
+        scrollToBottom();
+        }
+  });
+
+  input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            form.dispatchEvent(new Event("submit"));
+        }
+  });
+
+    
+  function askFollowUp(question) {
+        input.value = question;
+        form.dispatchEvent(new Event("submit"));
+  }
+
+  function openFeedbackPanel(button, rating) {
+    const container = button.closest("div");
+    const panel = container.nextElementSibling;
+    panel.classList.remove("hidden");
+
+    // Store the rating on the panel element for later use
+    panel.dataset.rating = rating;
+   }
+
+   function submitDetailedFeedback(submitButton) {
+    const panel = submitButton.closest("[data-feedback-panel]");
+    const comment = panel.querySelector("textarea").value.trim();
+    const rating = panel.dataset.rating;
+
+    const responseDiv = panel.closest(".bg-blue-100");
+    const queryId = responseDiv.dataset.queryId;
+
+    fetch("/api/query/submit-feedback", {
+        method: "POST",
+        headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+        query_id: queryId,
+        rating: rating,
+        comment: comment
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+        panel.innerHTML = `<div class="text-green-600">✅ Thanks for your feedback!</div>`;
+        } else {
+        panel.innerHTML = `<div class="text-red-600">⚠️ ${data.error || "Something went wrong."}</div>`;
+        }
+    })
+    .catch(() => {
+        panel.innerHTML = `<div class="text-red-600">⚠️ Feedback failed to submit.</div>`;
+    });
+    }
+  function scrollToBottom() {
+        chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  document.addEventListener('DOMContentLoaded', loadAgents);
+</script>
+{% endblock %}

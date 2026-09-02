@@ -1,0 +1,650 @@
+{% extends 'base.html' %}
+{% block title %}Data Management{% endblock %}
+{% block content %}
+  <div class="ml-64 p-6 bg-gray-50 min-h-screen">
+    <div id="toast" class="fixed bottom-4 right-4 bg-green-600 text-white px-4 py-2 rounded shadow-lg opacity-0 transition-opacity duration-500 z-50"></div>
+
+    <div id="loader" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 hidden">
+      <div class="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-6">
+      <h2 class="text-3xl font-semibold text-gray-800">📁 Data Management Dashboard</h2>
+      <div class="text-sm text-gray-600">👤 Logged in as <strong>{{ session.username }}</strong> ({{ session.role }})</div>
+    </header>
+
+    <form>
+        <input type="file" id="metadatafileInput" style="display: none;">
+    </form>
+
+    <!-- Connected Data Sources Section -->
+    <div class="bg-white p-6 rounded-xl shadow-md mb-8 relative">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-2 group relative">
+          <h3 class="text-xl font-semibold text-gray-800">🔌 Connected Data Sources</h3>
+          <div class="relative group">
+            <span class="text-gray-400 hover:text-gray-600 cursor-pointer"><i class="fa-solid fa-circle-info"></i></span>
+            <div class="absolute left-0 top-full mt-1 w-64 p-2 rounded-lg shadow bg-white border text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              List of all data Source Saved.
+            </div>
+          </div>
+
+        </div>
+        <button class="text-sm bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700" onclick="openModal()">+ Add Source</button>
+      </div>
+      <table class="w-full text-sm text-left text-gray-600">
+        <thead class="text-xs uppercase bg-gray-50">
+          <tr>
+            <th class="px-4 py-2">Name</th>
+            <th class="px-4 py-2">Type</th>
+            <th class="px-4 py-2">Status</th>
+            <th class="px-4 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="data-sources-body" class="bg-white divide-y"></tbody>
+      </table>
+    </div>
+
+    <!-- Uploaded Files Section -->
+    <div class="bg-white p-6 rounded-xl shadow-md mb-8 relative">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center space-x-2 group relative">
+          <h3 class="text-xl font-semibold text-gray-800">📂 Uploaded Files</h3>
+          <div class="relative group">
+            <span class="text-gray-400 hover:text-gray-600 cursor-pointer"><i class="fa-solid fa-circle-info"></i></span>
+            <div class="absolute left-0 top-full mt-1 w-64 p-2 rounded-lg shadow bg-white border text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+              Lists all files uploaded and linked to database tables.
+            </div>
+          </div>
+        </div>
+        <button class="text-sm bg-indigo-600 text-white px-4 py-1 rounded hover:bg-indigo-700" onclick="openUploadModal()">+ Upload File</button>
+      </div>
+      <table class="w-full text-sm text-left text-gray-600">
+        <thead class="text-xs uppercase bg-gray-50">
+          <tr>
+            <th class="px-4 py-2">File Name</th>
+            <th class="px-4 py-2">Table Name</th>
+            <th class="px-4 py-2">Uploaded at</th>
+            <th class="px-4 py-2 text-right">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="uploaded-files-body" class="bg-white divide-y"></tbody>
+      </table>
+    </div>
+
+
+
+  </div>
+
+  
+  <!-- Modal -->
+  <div id="connModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+    <div class="bg-white w-full max-w-2xl rounded-lg p-6 relative shadow-lg overflow-y-auto max-h-[90vh]">
+      <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-2xl font-bold">&times;</button>
+      <h2 class="text-xl font-semibold mb-4 text-blue-600">Add Data Source</h2>
+
+      <form id="connForm" class="space-y-4" onsubmit="submitConnectionForm(event)">
+        <!-- Data Source Type -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Data Source Type</label>
+          <select id="sourceType" name="source_type" class="w-full border px-3 py-2 rounded">
+            <option value="">-- Select Source --</option>
+            <option value="s3">Amazon S3</option>
+            <option value="mysql">MySQL</option>
+            <option value="postgresql">PostgreSQL</option>
+            <option value="sqlite">SQLite</option>
+            <option value="snowflake">Snowflake</option>
+            <option value="mssql">Microsoft SQL Server</option>
+          </select>
+        </div>
+
+        <!-- Common -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Data Source Name</label>
+          <input type="text" name="source_name" class="w-full border px-3 py-2 rounded" required>
+        </div>
+
+        <!-- Relational Fields -->
+        <div id="relationalFields" class="space-y-2 hidden">
+          <div>
+            <label class="block text-sm">Username</label>
+            <input type="text" name="uid" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Password</label>
+            <input type="password" name="pwd" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Host</label>
+            <input type="text" name="host" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Database</label>
+            <input type="text" name="database" class="w-full border px-3 py-2 rounded">
+          </div>
+        </div>
+
+        <!-- Snowflake Fields -->
+        <div id="snowflakeFields" class="space-y-2 hidden">
+          <div>
+            <label class="block text-sm">Username</label>
+            <input type="text" name="username" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Account</label>
+            <input type="text" name="sf_account" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Password</label>
+            <input type="password" name="password" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Database</label>
+            <input type="text" name="sf_database" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Warehouse</label>
+            <input type="text" name="warehouse" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Schema</label>
+            <input type="text" name="schema" class="w-full border px-3 py-2 rounded">
+          </div>
+        </div>
+
+        <!-- S3 Fields -->
+        <div id="s3Fields" class="space-y-2 hidden">
+          <div>
+            <label class="block text-sm">Access Key ID</label>
+            <input type="text" name="s3_access_key" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Secret Access Key</label>
+            <input type="password" name="s3_secret_key" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Region</label>
+            <input type="text" name="s3_region" class="w-full border px-3 py-2 rounded">
+          </div>
+          <div>
+            <label class="block text-sm">Bucket</label>
+            <input type="text" name="s3_bucket" class="w-full border px-3 py-2 rounded">
+          </div>
+        </div>
+
+        <!-- SQLite Fields -->
+        <div id="sqliteFields" class="hidden">
+          <label class="block text-sm">SQLite File Path</label>
+          <input type="text" name="sqlite_path" class="w-full border px-3 py-2 rounded">
+        </div>
+
+        <div class="text-right pt-4">
+          <button type="button" id="testConnBtn" class="bg-yellow-500 text-white px-4 py-2 rounded-md mr-2">Test Connection</button>
+          <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Save</button>
+          <button type="button" onclick="closeModal()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 ml-2">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Upload Modal -->
+  <div id="upload-modal"
+      class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-xl">
+      <h2 class="text-xl font-bold mb-4">Upload New File</h2>
+      <form id="upload-form" method="POST" enctype="multipart/form-data" class="space-y-4">
+
+        <!-- Upload Type Selection -->
+        <div>
+          <div class="flex items-center space-x-2 group relative mb-2">
+            <label class="font-medium">Upload To</label>
+            <div class="relative group">
+              <span class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <i class="fa-solid fa-circle-info"></i>
+              </span>
+              <div class="absolute left-0 top-full mt-1 w-64 p-2 rounded-lg shadow bg-white border text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                Choose whether to upload data to an existing table or create a new one.
+              </div>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <label class="flex items-center">
+              <input type="radio" name="upload_type" value="existing" checked onchange="toggleTableSelection()" class="mr-2">
+              Existing Table
+            </label>
+            <label class="flex items-center">
+              <input type="radio" name="upload_type" value="new" onchange="toggleTableSelection()" class="mr-2">
+              New Table
+            </label>
+          </div>
+        </div>
+
+        <!-- Existing Table Dropdown -->
+        <div id="existing-table-section">
+          <div class="flex items-center space-x-2 group relative mb-2">
+            <label class="font-medium">Select Existing Table</label>
+            <div class="relative group">
+              <span class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <i class="fa-solid fa-circle-info"></i>
+              </span>
+              <div class="absolute left-0 top-full mt-1 w-64 p-2 rounded-lg shadow bg-white border text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                Select from tables that have already been created.
+              </div>
+            </div>
+          </div>
+          <select id="tableDropdown" name="existing_table" class="w-full px-4 py-2 border rounded-lg"></select>
+        </div>
+
+        <!-- New Table Name -->
+        <div id="new-table-section" class="hidden space-y-4">
+          <div>
+            <div class="flex items-center space-x-2 group relative mb-2">
+              <label class="font-medium">New Table Name</label>
+              <div class="relative group">
+                <span class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <i class="fa-solid fa-circle-info"></i>
+                </span>
+                <div class="absolute left-0 top-full mt-1 w-64 p-2 rounded-lg shadow bg-white border text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  Provide a name for the new table to be created.
+                </div>
+              </div>
+            </div>
+            <input type="text" name="new_table_name" placeholder="Enter new table name" class="w-full px-4 py-2 border rounded-lg">
+          </div>
+
+          <!-- Metadata Upload with Template Download -->
+          <div>
+            <div class="flex items-center space-x-2 group relative mb-2">
+              <label class="font-medium">Upload Table Metadata File</label>
+              <div class="relative group">
+                <span class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                  <i class="fa-solid fa-circle-info"></i>
+                </span>
+                <div class="absolute left-0 top-full mt-1 w-64 p-2 rounded-lg shadow bg-white border text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                  Upload a CSV file defining the structure of your new table and make sure you fill the required fields by downloading the sample template.
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <input type="file" name="meta_file" accept=".json,.csv,.yaml,.yml" class="w-full px-4 py-2 border rounded-lg">
+              <a href="/download-template" class="text-sm text-blue-600 hover:underline" title="Download Metadata Template">
+                Download Template
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- CSV Data Upload -->
+        <div>
+          <div class="flex items-center space-x-2 group relative mb-2">
+            <label class="font-medium">Upload CSV Data File</label>
+            <div class="relative group">
+              <span class="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <i class="fa-solid fa-circle-info"></i>
+              </span>
+              <div class="absolute left-0 top-full mt-1 w-64 p-2 rounded-lg shadow bg-white border text-sm text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+                Upload the actual data in CSV/JSON format to be inserted into the table.
+              </div>
+            </div>
+          </div>
+          <input type="file" name="file" accept=".csv" required class="w-full px-4 py-2 border rounded-lg">
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex justify-end space-x-4">
+          <button type="button"
+                  class="px-4 py-2 border rounded hover:bg-gray-100"
+                  onclick="document.getElementById('upload-modal').classList.add('hidden')">
+            Cancel
+          </button>
+          <button type="submit"
+                  class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+            Upload & Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <script>
+    const modal = document.getElementById('connModal');
+    const sourceType = document.getElementById('sourceType');
+    const s3Fields = document.getElementById('s3Fields');
+    const sqliteFields = document.getElementById('sqliteFields');
+    const relationalFields = document.getElementById('relationalFields');
+    const snowflakeFields = document.getElementById('snowflakeFields');
+
+    sourceType.addEventListener('change', () => {
+      const value = sourceType.value;
+
+      // Hide all sections
+      s3Fields.classList.add('hidden');
+      sqliteFields.classList.add('hidden');
+      relationalFields.classList.add('hidden');
+      snowflakeFields.classList.add('hidden');
+
+      if (value === 's3') {
+        s3Fields.classList.remove('hidden');
+      } else if (value === 'sqlite') {
+        sqliteFields.classList.remove('hidden');
+      } else if (value === 'snowflake') {
+        snowflakeFields.classList.remove('hidden');
+      } else if (['mysql', 'postgresql'].includes(value)) {
+        relationalFields.classList.remove('hidden');
+      }
+    });
+
+    async function loadDataSources() {
+      try {
+        const tbody = document.getElementById('data-sources-body');
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Loading files...</td></tr>';
+
+        const response = await fetch('/api/data/get-data-sources', {
+        method: 'GET',
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        })
+        const sources = await response.json();
+
+        tbody.innerHTML = '';
+            
+        if (sources.data_sources.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No Data Sourcee Connected yet.</td></tr>';
+                return;
+        } else if(sources.status === 'error') {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Something Went Wrong.</td></tr>';
+                return;
+        }
+
+        sources.data_sources.forEach(source => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td class="px-4 py-2">${source.source_name}</td>
+            <td class="px-4 py-2">${source.source_type}</td>
+            <td class="px-4 py-2 ${source.connection_status === 'Connected' ? 'text-green-600' : 'text-red-500'}">${source.connection_status}</td>
+            <td class="px-4 py-2 text-right space-x-2">
+              <button class="text-blue-600 hover:underline text-sm">Test</button>
+              <button class="text-indigo-600 hover:underline text-sm">Edit</button>
+              <button class="text-red-500 hover:underline text-sm">Remove</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+
+      } catch (error) {
+        console.error('Error loading data sources:', error);
+      }
+    }
+
+    async function loadFiles() {
+        try {
+            // Show loading state
+            const tbody = document.getElementById('uploaded-files-body');
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">Loading files...</td></tr>';
+            
+            const response = await fetch('/api/data/get-uploaded-files', {
+              method: 'GET',
+              headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+              })
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const sources = await response.json();
+            
+            // Clear loading state
+            tbody.innerHTML = '';
+            
+            if (sources.uploaded_files.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4">No files uploaded yet.</td></tr>';
+                return;
+            }
+            
+            sources.uploaded_files.forEach(file => {
+                const row = document.createElement('tr');
+                const date = new Date(file.uploaded_at);
+                
+                row.innerHTML = `
+                    <td class="px-4 py-2">${file.original_filename}</td>
+                    <td class="px-4 py-2">${file.table_name}</td>
+                    <td class="px-4 py-2">${date.toLocaleDateString()}</td>
+                    <td class="px-4 py-2 text-right space-x-2">
+                        <button class="text-indigo-600 hover:underline text-sm" onclick="handleEditFile('${file.id}')">Edit</button>
+                        <button class="text-red-500 hover:underline text-sm" onclick="handleRemoveFile('${file.id}')">Remove</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        } catch (error) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="text-center py-4 text-red-500">
+                        Error loading files: ${error.message}
+                    </td>
+                </tr>
+            `;
+            console.error('Error loading files:', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDataSources);
+    document.addEventListener('DOMContentLoaded', loadFiles);
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.remove('opacity-0');
+      toast.classList.remove('bg-green-600', 'bg-red-600');
+      toast.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0');
+      }, 3000);
+    }
+
+    function showLoader() {
+      document.getElementById('loader').classList.remove('hidden');
+    }
+
+    function hideLoader() {
+      document.getElementById('loader').classList.add('hidden');
+    }
+
+    function openModal() {
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+    }
+
+    function openUploadModal() {
+      document.getElementById('upload-modal').classList.remove('hidden');
+      loadExistingTables();
+    }
+
+    function submitConnectionForm(event) {
+      event.preventDefault();
+
+      const form = document.getElementById('connForm');
+      const formData = new FormData(form);
+
+      // Convert FormData to plain object
+      const data = {};
+      formData.forEach((value, key) => {
+        data[key] = value;
+      });
+
+      fetch('/api/data/save-connection', {
+        method: 'POST',
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        body: JSON.stringify(data)
+        })
+      .then(res => res.json())
+      .then(response => {
+        if (response.status === 'success') {
+          alert(`✅ ${response.message}`);
+          form.reset();
+          closeModal();
+          loadDataSources();
+        } else {
+          alert(`❌ ${response.message}`);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('❌ Something went wrong while saving the connection.');
+      });
+    }
+
+    document.getElementById('testConnBtn').onclick = function() {
+        const formData = new FormData(connForm);
+        let data = {};
+        formData.forEach((value, key) => {
+            data[key] = value;
+            console.log(value)
+        });
+
+        fetch('/api/data/test-connection', {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(res => {
+            if (res.status === "success") {
+                alert("✅ " + res.message);
+            } else {
+                alert("❌ " + res.message);
+            }
+        })
+        .catch(err => {
+            alert("Error testing connection: " + err.message);
+        });
+    };
+
+    function toggleTableSelection() {
+      const isNew = document.querySelector('input[name="upload_type"]:checked').value === 'new';
+      document.getElementById('existing-table-section').classList.toggle('hidden', isNew);
+      document.getElementById('new-table-section').classList.toggle('hidden', !isNew);
+    }
+
+    document.getElementById('upload-form').addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const form = e.target;
+      const formData = new FormData(form);
+      const uploadType = document.querySelector('input[name="upload_type"]:checked').value;
+
+      // Validation
+      if (uploadType === 'existing') {
+        const selected = formData.get('existing_table');
+        if (!selected) {
+          alert('Please select an existing table.');
+          return;
+        }
+      } else {
+        const newName = formData.get('new_table_name')?.trim();
+        const metaFile = formData.get('meta_file');
+        if (!newName) {
+          alert('Please enter a new table name.');
+          return;
+        }
+        if (!metaFile || metaFile.size === 0) {
+          alert('Please upload a table metadata file.');
+          return;
+        }
+      }
+
+      const dataFile = formData.get('file');
+      if (!dataFile || dataFile.size === 0) {
+        alert('Please upload a CSV data file.');
+        return;
+      }
+
+      const submitBtn = form.querySelector("button[type='submit']");
+      submitBtn.disabled = true;
+      submitBtn.innerText = 'Uploading...';
+
+      try {
+        const response = await fetch('/api/data/upload-file', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+          alert(`✅ ${result.message}`);
+          showToast(`✅ ${result.message}`);
+          form.reset();
+          document.getElementById('upload-modal').classList.add('hidden');
+          toggleTableSelection();
+          loadFiles();
+        } else {
+          alert(`❌ ${result.message}`);
+          showToast(`❌ ${result.message}`, true);
+        }
+
+      } catch (error) {
+        console.error("Upload failed:", error);
+        alert("❌ Upload failed. Please try again.");
+        showToast("❌ Upload failed.", true);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerText = 'Upload & Save';
+      }
+    });
+
+    async function loadExistingTables() {
+      const select = document.querySelector('select[name="existing_table"]');
+      select.innerHTML = '<option value="">Loading...</option>';
+
+      try {
+        const response = await fetch('/api/data/get-existing-tables', {
+          method: 'GET',
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        });
+
+        const tables = await response.json();
+
+        if (tables.length === 0) {
+          select.innerHTML = '<option value="">No tables available</option>';
+        } else {
+          select.innerHTML = '<option value="">Select Table</option>';
+          tables.tables.forEach(table => {
+            const option = document.createElement('option');
+            option.value = table.table_name;
+            option.textContent = table.table_name;
+            select.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching tables:', error);
+        select.innerHTML = '<option value="">Failed to load tables</option>';
+      }
+    }
+
+  </script>
+
+{% endblock %}

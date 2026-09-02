@@ -1,0 +1,768 @@
+{% extends 'base.html' %}
+{% block title %}Graph Query - Thinklee{% endblock %}
+
+{% block content %}
+
+<style>
+  .glass-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .smooth-transition {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .slide-in {
+    animation: slideInUp 0.5s ease-out;
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+  
+  @keyframes slideInUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  .hover-lift {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.15);
+  }
+  
+  .chart-container {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 2px dashed #e2e8f0;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    transition: all 0.3s ease;
+  }
+  
+  .chart-container.has-chart {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+  }
+  
+  .drill-breadcrumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  
+  .pulse-dot {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+</style>
+
+<!-- Main Container -->
+<div class="ml-64 min-h-screen" style="background: linear-gradient(135deg, #f0f4ff 0%, #e8f2ff 100%);">
+  
+  <!-- Progress Indicator -->
+  <div class="fixed top-0 left-64 right-0 bg-white shadow-sm z-40">
+    <div id="progress-bar" class="h-1 bg-gradient-to-r from-purple-600 to-blue-600 transition-all duration-500" style="width: 0%"></div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <!-- Loading Overlay -->
+  <div id="pageLoader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div class="glass-card rounded-2xl p-8 text-center">
+      <div class="relative">
+        <div class="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto"></div>
+        <div class="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-purple-400 rounded-full animate-spin pulse-dot mx-auto"></div>
+      </div>
+      <p id="loader-text" class="mt-4 text-gray-600 font-medium">Processing your query...</p>
+    </div>
+  </div>
+
+  <!-- Header Section with Back Button -->
+  <header class="glass-card mx-6 mt-6 rounded-2xl p-8 slide-in">
+    <div class="flex items-center justify-between">
+      <div class="flex items-center space-x-4">
+        <!-- Back Button -->
+        <button onclick="window.history.back()" class="flex items-center space-x-2 text-gray-600 hover:text-purple-600 smooth-transition p-2 hover:bg-purple-50 rounded-xl">
+          <i class="fas fa-arrow-left text-lg"></i>
+          <span class="font-medium">Back</span>
+        </button>
+        
+        <div class="w-1 h-8 bg-gray-300 rounded"></div>
+        
+        <div class="w-16 h-16 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+          <i class='bx  bx-network-chart'  ></i> 
+        </div>
+        <div>
+          <h1 class="text-3xl font-bold text-gray-800">Graph Query Copilot</h1>
+          <p class="text-gray-600 mt-1">Transform natural language into interactive visualizations</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 text-sm text-gray-600 bg-gray-50 px-4 py-2 rounded-xl">
+          <i class="fas fa-user-circle text-purple-600"></i>
+          <span class="font-medium">{{ session.username }}</span>
+          <span class="text-gray-400">•</span>
+          <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">{{ session.role }}</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- How-to Guide -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-8 slide-in border-l-4 border-blue-500">
+      <div class="flex items-start space-x-4">
+        <div class="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+          <i class="fas fa-lightbulb text-blue-600"></i>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-xl font-bold text-gray-800 mb-3">How to Use Graph Query Copilot</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl">
+              <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">1</div>
+              <div>
+                <div class="font-semibold text-gray-800">Select AI Agent</div>
+                <div class="text-sm text-gray-600">Choose your configured agent</div>
+              </div>
+            </div>
+            <div class="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl">
+              <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">2</div>
+              <div>
+                <div class="font-semibold text-gray-800">Enter Query</div>
+                <div class="text-sm text-gray-600">Describe what you want to see</div>
+              </div>
+            </div>
+            <div class="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl">
+              <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">3</div>
+              <div>
+                <div class="font-semibold text-gray-800">Generate & Explore</div>
+                <div class="text-sm text-gray-600">Click chart elements to drill down</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button onclick="hideGuide()" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Query Interface -->
+  <div class="mx-6 mt-6">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <div class="flex items-center space-x-3 mb-6">
+        <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+          <i class="fas fa-search text-purple-600"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold text-gray-800">Query Builder</h3>
+          <p class="text-sm text-gray-600">Create interactive visualizations with natural language</p>
+        </div>
+      </div>
+
+      <form id="graphForm" class="space-y-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Agent Selection -->
+          <div class="lg:col-span-1">
+            <label for="agentSelect" class="block text-sm font-semibold text-gray-700 mb-2">
+              <i class="fas fa-robot text-purple-600 mr-2"></i>Select AI Agent
+            </label>
+            <select id="agentSelect" required class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 smooth-transition bg-white">
+              <option disabled selected>Choose your AI agent...</option>
+            </select>
+            <p class="text-xs text-gray-500 mt-1">Select the agent configured for your data</p>
+          </div>
+
+          <!-- Query Input -->
+          <div class="lg:col-span-2">
+            <label for="graph_query" class="block text-sm font-semibold text-gray-700 mb-2">
+              <i class="fas fa-comment-dots text-blue-600 mr-2"></i>Your Query
+            </label>
+            <input type="text" name="graph_query" id="graph_query" 
+                   placeholder="e.g., Show me total sales by region this quarter" 
+                   class="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 smooth-transition" 
+                   required>
+            <p class="text-xs text-gray-500 mt-1">Describe what you want to visualize in plain English</p>
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex justify-center">
+          <button type="submit" class="flex items-center space-x-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-xl hover:from-purple-700 hover:to-blue-700 smooth-transition shadow-lg font-semibold">
+            <i class="fas fa-chart-bar text-xl"></i>
+            <span>Generate Visualization</span>
+            <i class="fas fa-arrow-right"></i>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Visualization Section -->
+  <div id="chartSection" class="hidden mx-6 mt-6 pb-8">
+    <div class="glass-card rounded-2xl p-8 slide-in">
+      <!-- Chart Header -->
+      <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+            <i class="fas fa-chart-line text-green-600"></i>
+          </div>
+          <div>
+            <h3 class="text-xl font-bold text-gray-800">Interactive Visualization</h3>
+            <p class="text-sm text-gray-600">Click on chart elements to drill down for deeper insights</p>
+          </div>
+        </div>
+        
+        <!-- Chart Controls -->
+        <div class="flex items-center space-x-3">
+          <div id="drillPathDisplay" class="drill-breadcrumb hidden"></div>
+          <button id="backDrillBtn" onclick="handleDrillBack()" class="hidden flex items-center space-x-2 bg-gray-100 text-gray-700 px-4 py-2 rounded-xl hover:bg-gray-200 smooth-transition">
+            <i class="fas fa-arrow-left"></i>
+            <span>Back</span>
+          </button>
+          <button onclick="downloadChart()" class="flex items-center space-x-2 bg-blue-100 text-blue-700 px-4 py-2 rounded-xl hover:bg-blue-200 smooth-transition">
+            <i class="fas fa-download"></i>
+            <span>Export</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Chart Container -->
+      <div class="chart-container" id="chartContainer">
+        <div class="text-center text-gray-500">
+          <i class="fas fa-chart-bar text-6xl text-gray-300 mb-4"></i>
+          <p class="text-xl font-medium">Your visualization will appear here</p>
+          <p class="text-sm">Submit a query above to generate interactive charts</p>
+        </div>
+        <div class="relative h-[500px] w-full hidden" id="chartWrapper">
+          <canvas id="graphChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart Info -->
+      <div id="chartInfo" class="hidden mt-6 p-4 bg-gray-50 rounded-xl">
+        <div class="flex items-center space-x-2 mb-2">
+          <i class="fas fa-info-circle text-blue-600"></i>
+          <span class="font-semibold text-gray-700">Chart Information</span>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div>
+            <span class="font-medium text-gray-600">Chart Type:</span>
+            <span id="chartType" class="ml-2 text-gray-800">-</span>
+          </div>
+          <div>
+            <span class="font-medium text-gray-600">Data Points:</span>
+            <span id="dataPoints" class="ml-2 text-gray-800">-</span>
+          </div>
+          <div>
+            <span class="font-medium text-gray-600">Query Time:</span>
+            <span id="queryTime" class="ml-2 text-gray-800">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions FAB -->
+  <div class="fixed bottom-6 right-6 z-40">
+    <div class="relative">
+      <button id="fab-main" onclick="toggleFAB()" class="w-16 h-16 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-full shadow-lg hover:shadow-xl smooth-transition flex items-center justify-center">
+        <i class="fas fa-plus text-xl"></i>
+      </button>
+      
+      <div id="fab-menu" class="absolute bottom-20 right-0 space-y-3 transform scale-0 origin-bottom-right smooth-transition">
+        <button onclick="clearQuery(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-eraser text-gray-600"></i>
+          <span class="font-medium">Clear Query</span>
+        </button>
+        <button onclick="openExampleQueries(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-lightbulb text-yellow-600"></i>
+          <span class="font-medium">Example Queries</span>
+        </button>
+        <button onclick="openQueryHistory(); toggleFAB();" class="flex items-center space-x-3 bg-white text-gray-800 px-4 py-3 rounded-xl shadow-lg hover:shadow-xl smooth-transition whitespace-nowrap">
+          <i class="fas fa-history text-blue-600"></i>
+          <span class="font-medium">Query History</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+class GraphQueryManager {
+  constructor() {
+    this.agentSelect = document.getElementById('agentSelect');
+    this.form = document.getElementById('graphForm');
+    this.chartSection = document.getElementById('chartSection');
+    this.loader = document.getElementById('pageLoader');
+    this.currentChart = null;
+    this.drillPath = [];
+    this.baseQuery = "";
+    this.fabOpen = false;
+    this.queryStartTime = null;
+    
+    this.initializeEventListeners();
+    this.loadAgents();
+  }
+
+  initializeEventListeners() {
+    this.form.addEventListener('submit', (e) => this.handleSubmit(e));
+  }
+
+  updateProgress(percentage) {
+    document.getElementById('progress-bar').style.width = `${percentage}%`;
+  }
+
+  showToast(message, type = 'success', duration = 5000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    
+    const icons = {
+      success: 'fas fa-check-circle',
+      error: 'fas fa-exclamation-circle',
+      info: 'fas fa-info-circle',
+      warning: 'fas fa-exclamation-triangle'
+    };
+    
+    const colors = {
+      success: 'bg-green-500',
+      error: 'bg-red-500',
+      info: 'bg-blue-500',
+      warning: 'bg-yellow-500'
+    };
+    
+    toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
+    toast.innerHTML = `
+      <i class="${icons[type]}"></i>
+      <span class="font-medium">${message}</span>
+      <button onclick="this.parentElement.remove()" class="ml-auto">
+        <i class="fas fa-times opacity-70 hover:opacity-100"></i>
+      </button>
+    `;
+    
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+      toast.style.transform = 'translateX(100%)';
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  showLoader(text = 'Processing your query...') {
+    document.getElementById('loader-text').textContent = text;
+    this.loader.classList.remove('hidden');
+  }
+
+  hideLoader() {
+    this.loader.classList.add('hidden');
+  }
+
+  async loadAgents() {
+    this.updateProgress(30);
+    try {
+      const response = await fetch('/api/agent/get-agents', {
+        method: 'GET',
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      
+      const agents = await response.json();
+      this.agentSelect.innerHTML = '<option disabled selected>Choose your AI agent...</option>';
+      
+      if (agents.agents && agents.agents.length > 0) {
+        agents.agents
+          .filter(agent => agent.agent_type !== "unstructured")
+          .forEach(agent => {
+            const option = document.createElement('option');
+            option.value = agent.id;
+            option.textContent = agent.name;
+            this.agentSelect.appendChild(option);
+          });
+        this.showToast("Agents loaded successfully");
+      } else {
+        this.showToast("No agents found. Please create one first.", 'warning');
+      }
+    } catch (error) {
+      console.error("Agent load failed:", error);
+      this.showToast("Failed to load agents", "error");
+    } finally {
+      this.updateProgress(100);
+      setTimeout(() => this.updateProgress(0), 1000);
+    }
+  }
+
+  async fetchChartData(agentId, query) {
+    try {
+      const response = await fetch(`/api/query/graph/${agentId}`, {
+        method: 'POST',
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ agent_id: agentId, graph_query: query })
+      });
+
+      return await response.json();
+    } catch (error) {
+      console.error("Chart fetch error:", error);
+      this.showToast("Error fetching chart data", "error");
+      return null;
+    }
+  }
+
+  renderChart(data, agentId) {
+    const chartContainer = document.getElementById('chartContainer');
+    const chartWrapper = document.getElementById('chartWrapper');
+    const ctx = document.getElementById("graphChart").getContext("2d");
+    
+    // Update container state
+    chartContainer.classList.add('has-chart');
+    chartContainer.querySelector('.text-center').classList.add('hidden');
+    chartWrapper.classList.remove('hidden');
+    
+    // Destroy existing chart
+    if (this.currentChart) {
+      this.currentChart.destroy();
+    }
+
+    // Create new chart
+    this.currentChart = new Chart(ctx, {
+      type: data.chart_type,
+      data: {
+        labels: data.chart_labels,
+        datasets: [{
+          label: data.label_key || "Count",
+          data: data.chart_values,
+          backgroundColor: data.chart_colors || this.generateColors(data.chart_values.length),
+          borderColor: data.chart_colors || this.generateColors(data.chart_values.length),
+          borderWidth: 2,
+          borderRadius: 8,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: 'white',
+            bodyColor: 'white',
+            borderColor: '#667eea',
+            borderWidth: 1,
+            cornerRadius: 8,
+          }
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: data.value_key || 'Category',
+              font: {
+                size: 14,
+                weight: 'bold'
+              }
+            },
+            grid: {
+              display: false
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: data.label_key || 'Value',
+              font: {
+                size: 14,
+                weight: 'bold'
+              }
+            },
+            grid: {
+              color: 'rgba(0, 0, 0, 0.1)'
+            }
+          }
+        },
+        onClick: async (event, elements) => {
+          if (elements.length > 0) {
+            const index = elements[0].index;
+            const label = data.chart_labels[index];
+            await this.handleDrillDown(agentId, label);
+          }
+        }
+      }
+    });
+
+    // Update chart info
+    this.updateChartInfo(data);
+    this.updateDrillUI();
+  }
+
+  generateColors(count) {
+    const colors = [
+      'rgba(102, 126, 234, 0.8)',
+      'rgba(118, 75, 162, 0.8)',
+      'rgba(52, 211, 153, 0.8)',
+      'rgba(251, 191, 36, 0.8)',
+      'rgba(239, 68, 68, 0.8)',
+      'rgba(139, 92, 246, 0.8)',
+      'rgba(245, 101, 101, 0.8)',
+      'rgba(34, 197, 94, 0.8)',
+    ];
+    
+    return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
+  }
+
+  updateChartInfo(data) {
+    const chartInfo = document.getElementById('chartInfo');
+    const chartType = document.getElementById('chartType');
+    const dataPoints = document.getElementById('dataPoints');
+    const queryTime = document.getElementById('queryTime');
+    
+    chartType.textContent = data.chart_type.charAt(0).toUpperCase() + data.chart_type.slice(1);
+    dataPoints.textContent = data.chart_values.length;
+    
+    if (this.queryStartTime) {
+      const duration = Date.now() - this.queryStartTime;
+      queryTime.textContent = `${duration}ms`;
+    }
+    
+    chartInfo.classList.remove('hidden');
+  }
+
+  async handleDrillDown(agentId, label) {
+    try {
+      this.showLoader('Drilling down...');
+      
+      const response = await fetch(`/api/query/graph/drilldown`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          agent_id: agentId,
+          original_query: this.baseQuery,
+          drill_label: label,
+          drill_path: this.drillPath
+        })
+      });
+
+      const result = await response.json();
+      this.hideLoader();
+
+      if (result.chart_type) {
+        this.drillPath = result.drill_path || [...this.drillPath, label];
+        this.renderChart(result, agentId);
+        this.showToast(`Drilled into: ${label}`);
+      } else if (result.message) {
+        this.showToast(result.message, 'info');
+      } else {
+        this.showToast('No drilldown data available', 'warning');
+      }
+    } catch (error) {
+      console.error(error);
+      this.showToast('Drilldown failed', 'error');
+      this.hideLoader();
+    }
+  }
+
+  async handleDrillBack() {
+    if (this.drillPath.length === 0) return;
+
+    this.drillPath.pop();
+
+    try {
+      this.showLoader('Going back...');
+      
+      const response = await fetch(`/api/query/graph/drilldown`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          agent_id: this.agentSelect.value,
+          original_query: this.baseQuery,
+          drill_label: this.drillPath[this.drillPath.length - 1] || "",
+          drill_path: this.drillPath
+        })
+      });
+
+      const result = await response.json();
+      this.hideLoader();
+
+      if (result.chart_type) {
+        this.renderChart(result, this.agentSelect.value);
+        this.showToast("Returned to previous level");
+      } else {
+        this.showToast(result.message || "No data available", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      this.showToast("Error going back", "error");
+      this.hideLoader();
+    }
+  }
+
+  updateDrillUI() {
+    const drillDisplay = document.getElementById("drillPathDisplay");
+    const backBtn = document.getElementById("backDrillBtn");
+
+    if (this.drillPath.length > 0) {
+      drillDisplay.textContent = this.drillPath.join(" › ");
+      drillDisplay.classList.remove("hidden");
+      backBtn.classList.remove("hidden");
+    } else {
+      drillDisplay.classList.add("hidden");
+      backBtn.classList.add("hidden");
+    }
+  }
+
+  async handleSubmit(e) {
+    e.preventDefault();
+    
+    const agentId = this.agentSelect.value;
+    const query = document.getElementById('graph_query').value.trim();
+
+    if (!agentId || !query) {
+      this.showToast("Please select an agent and enter a query", "error");
+      return;
+    }
+
+    // Reset drill path and store base query
+    this.drillPath = [];
+    this.baseQuery = query;
+    this.queryStartTime = Date.now();
+
+    this.showLoader('Generating visualization...');
+    const chartData = await this.fetchChartData(agentId, query);
+    this.hideLoader();
+
+    if (chartData && chartData.chart_type) {
+      this.renderChart(chartData, agentId);
+      this.chartSection.classList.remove('hidden');
+      this.showToast("Visualization generated successfully!");
+    } else {
+      this.showToast("No chart data returned. Please try a different query.", "error");
+      this.chartSection.classList.add('hidden');
+    }
+  }
+
+  toggleFAB() {
+    this.fabOpen = !this.fabOpen;
+    const menu = document.getElementById('fab-menu');
+    const icon = document.querySelector('#fab-main i');
+    
+    if (this.fabOpen) {
+      menu.style.transform = 'scale(1)';
+      icon.style.transform = 'rotate(45deg)';
+    } else {
+      menu.style.transform = 'scale(0)';
+      icon.style.transform = 'rotate(0deg)';
+    }
+  }
+
+  clearQuery() {
+    document.getElementById('graph_query').value = '';
+    this.agentSelect.selectedIndex = 0;
+    this.chartSection.classList.add('hidden');
+    if (this.currentChart) {
+      this.currentChart.destroy();
+      this.currentChart = null;
+    }
+    const chartContainer = document.getElementById('chartContainer');
+    chartContainer.classList.remove('has-chart');
+    chartContainer.querySelector('.text-center').classList.remove('hidden');
+    document.getElementById('chartWrapper').classList.add('hidden');
+    this.showToast('Query cleared');
+  }
+
+  downloadChart() {
+    if (this.currentChart) {
+      const link = document.createElement('a');
+      link.download = 'chart.png';
+      link.href = this.currentChart.toBase64Image();
+      link.click();
+      this.showToast('Chart downloaded!');
+    } else {
+      this.showToast('No chart to download', 'warning');
+    }
+  }
+}
+
+// Global functions for compatibility
+function handleDrillBack() { 
+  if (window.graphManager) window.graphManager.handleDrillBack(); 
+}
+
+function toggleFAB() { 
+  if (window.graphManager) window.graphManager.toggleFAB(); 
+}
+
+function clearQuery() { 
+  if (window.graphManager) {
+    window.graphManager.clearQuery();
+    window.graphManager.toggleFAB();
+  }
+}
+
+function downloadChart() { 
+  if (window.graphManager) window.graphManager.downloadChart(); 
+}
+
+function hideGuide() {
+  document.querySelector('.border-l-4.border-blue-500').style.display = 'none';
+  localStorage.setItem('hideGraphQueryGuide', 'true');
+}
+
+function openExampleQueries() {
+  // Show modal with example queries
+  alert('Example queries feature coming soon!');
+}
+
+function openQueryHistory() {
+  // Show modal with query history
+  alert('Query history feature coming soon!');
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.graphManager = new GraphQueryManager();
+  
+  // Hide guide if previously dismissed
+  if (localStorage.getItem('hideGraphQueryGuide') === 'true') {
+    document.querySelector('.border-l-4.border-blue-500').style.display = 'none';
+  }
+});
+</script>
+
+{% endblock %}
+

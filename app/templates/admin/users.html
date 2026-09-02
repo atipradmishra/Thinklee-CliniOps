@@ -1,0 +1,170 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Users Management</h1>
+    <div>
+        <a href="{{ url_for('admin_frontend.download_users') }}" class="btn btn-outline-info me-2">
+            <i class="fas fa-download"></i> Download Users
+        </a>
+        <a href="{{ url_for('admin_frontend.create_user') }}" class="btn btn-success">
+            <i class="fas fa-plus"></i> Add User
+        </a>
+    </div>
+</div>
+
+<!-- Search + Date Range Filter -->
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <input type="text" id="searchInput" class="form-control" placeholder="Search users...">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="start_date" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <input type="date" id="end_date" class="form-control">
+            </div>
+            <div class="col-md-3 d-flex">
+                <button class="btn btn-outline-primary me-2 flex-grow-1" onclick="filterUsers()">
+                    <i class="fas fa-search"></i> Filter
+                </button>
+                <button class="btn btn-outline-secondary flex-grow-1" onclick="resetFilters()">
+                    <i class="fas fa-times"></i> Clear
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Users Table -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Roles</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                    {% for user in users.items %}
+                    <tr data-date="{{ user.created_at.strftime('%Y-%m-%d') }}" 
+                        data-username="{{ user.username | lower }}" 
+                        data-email="{{ user.email | lower }}">
+                        <td>{{ user.id }}</td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            {% if user.status %}
+                                <span class="badge bg-success">Active</span>
+                            {% else %}
+                                <span class="badge bg-danger">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% for role in user.roles %}
+                                <span class="badge bg-primary me-1">{{ role.name }}</span>
+                            {% endfor %}
+                        </td>
+                        <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="{{ url_for('admin_frontend.user_detail', user_id=user.id) }}" 
+                                   class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('admin_frontend.edit_user', user_id=user.id) }}" 
+                                   class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                {% if not user.is_super_admin() and user.id != current_user.id %}
+                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                        onclick="deleteUser({{ user.id }}, '{{ user.username }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete user <strong id="deleteUsername"></strong>?</p>
+                <p class="text-danger">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" id="deleteForm" style="display: inline;">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function deleteUser(userId, username) {
+        document.getElementById('deleteUsername').textContent = username;
+        document.getElementById('deleteForm').action = `/admin/users/${userId}/delete`;
+        new bootstrap.Modal(document.getElementById('deleteModal')).show();
+    }
+
+    function filterUsers() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const start = document.getElementById('start_date').value;
+        const end = document.getElementById('end_date').value;
+
+        document.querySelectorAll('#usersBody tr').forEach(row => {
+            const rowDate = row.getAttribute('data-date');
+            const rowUser = row.getAttribute('data-username');
+            const rowEmail = row.getAttribute('data-email');
+
+            let visible = true;
+
+            // Search filter
+            if (search && !(rowUser.includes(search) || rowEmail.includes(search))) {
+                visible = false;
+            }
+
+            // Date filter
+            if (start && rowDate < start) visible = false;
+            if (end && rowDate > end) visible = false;
+
+            row.style.display = visible ? "" : "none";
+        });
+    }
+
+    function resetFilters() {
+        document.getElementById('searchInput').value = "";
+        document.getElementById('start_date').value = "";
+        document.getElementById('end_date').value = "";
+        document.querySelectorAll('#usersBody tr').forEach(row => row.style.display = "");
+    }
+</script>
+{% endblock %}

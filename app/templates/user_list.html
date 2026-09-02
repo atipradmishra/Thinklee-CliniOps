@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}User List{% endblock %}
+
+{% block content %}
+<div class="ml-64 p-6 bg-gray-50 min-h-screen">
+
+  <!-- Page Heading -->
+  <h1 class="text-2xl font-bold text-gray-800 mb-6">User List</h1>
+
+  <!-- Users Table -->
+  <div class="overflow-x-auto shadow-lg rounded-2xl border border-gray-200">
+    <table class="min-w-full bg-white rounded-2xl">
+      <thead>
+        <tr class="bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-left">
+          <th class="py-3 px-6 font-semibold">ID</th>
+          <th class="py-3 px-6 font-semibold">Name</th>
+          <th class="py-3 px-6 font-semibold">Email</th>
+          <th class="py-3 px-6 font-semibold">Role</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+        <!-- Data will be inserted via JS -->
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  fetch("/admin/users", {
+    method: "GET",
+    headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem("token")}`
+          }
+  })
+  .then(res => {
+    if (res.status === 401 || res.status === 403) {
+      alert("Access denied.");
+      window.location.href = "/auth";
+      return;
+    }
+    return res.json();
+  })
+  .then(data => {
+    if (!data) return;
+
+    const tbody = document.getElementById("userTableBody");
+    tbody.innerHTML = "";
+
+    data.forEach(user => {
+      const row = document.createElement("tr");
+      row.className = "border-b hover:bg-gray-100 transition";
+
+      row.innerHTML = `
+        <td class="py-3 px-6 text-gray-700">${user.id}</td>
+        <td class="py-3 px-6 text-gray-700">${user.name}</td>
+        <td class="py-3 px-6 text-gray-700">${user.email}</td>
+        <td class="py-3 px-6">
+          <span class="px-3 py-1 rounded-full text-sm font-medium
+            ${user.role === 'admin' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-800'}">
+            ${user.role}
+          </span>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  })
+  .catch(err => {
+    console.error("Error fetching users:", err);
+  });
+});
+</script>
+{% endblock %}
