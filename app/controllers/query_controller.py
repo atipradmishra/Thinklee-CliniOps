@@ -111,7 +111,12 @@ def fetch_query_logs():
             agent = Agent.query.filter_by(id=agent_id, organization_id=user.organization_id).first()
             if not agent:
                 return jsonify({"status": "error", "message": "Invalid or unauthorized agent ID"}), 403
-            query = query.filter(QueryLog.agent_id == agent_id, QueryLog.agent.is_deleted == False)
+            # is_deleted lives on Agent, not on the relationship attribute;
+            # join to it rather than dereferencing QueryLog.agent.
+            query = (
+                query.join(Agent, Agent.id == QueryLog.agent_id)
+                     .filter(QueryLog.agent_id == agent_id, Agent.is_deleted.is_(False))
+            )
 
         logs = query.order_by(QueryLog.created_at.desc()).all()
 

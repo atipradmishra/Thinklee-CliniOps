@@ -52,7 +52,7 @@ def generate_sql_prompts(context):
                 "synthesizer_instruction": '''Generate a short business report based on the SQL result:
                                             - Highlight urgent matters (e.g., items near expiry, maintenance due)
                                             - Use bullet points for clear readability
-                                            - Avoid restating raw data—interpret what it means
+                                            - Avoid restating raw data-interpret what it means
                                             - Suggest actions if applicable (e.g., “Consider placing a purchase order”)
                                             '''
             }

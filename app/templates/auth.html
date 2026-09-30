@@ -515,6 +515,27 @@
         document.getElementById('progress-bar').style.width = `${percentage}%`;
       }
 
+      // Where to land after a successful sign-in.
+      // A guarded page redirects here as /auth?next=<path>; honour it so a
+      // deep link survives the login, but only for same-site relative paths
+      // so the parameter cannot be used as an open redirect.
+      postLoginTarget(serverRedirect) {
+        const fallback = serverRedirect || '/home';
+
+        // Onboarding always wins: a user who still has to reset a password or
+        // create an organization cannot be dropped straight into the app.
+        if (fallback === '/reset-password' || fallback === '/org-setup') {
+          return fallback;
+        }
+
+        const next = new URLSearchParams(window.location.search).get('next');
+        if (next && next.startsWith('/') && !next.startsWith('//') && !next.includes('\\')) {
+          return next;
+        }
+
+        return fallback;
+      }
+
       showToast(message, type = 'success', duration = 5000) {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -912,14 +933,7 @@
                 localStorage.setItem('token', data.access_token);
                 this.showToast('Welcome back! Redirecting to your dashboard...', 'success');
                 setTimeout(() => {
-                   window.location.href =`${data.redirect_url}`
-                  // if (!data.org_setup_completed && data.must_reset_password) {
-                  //   window.location.href ="/org-setup";
-                  // } else if(!data.must_reset_password){
-                  //   window.location.href ="/reset-password";
-                  // } else { 
-                  //   window.location.href = '/home'; 
-                  // }
+                  window.location.href = this.postLoginTarget(data.redirect_url);
                 }, 2000);
               }
             } else {

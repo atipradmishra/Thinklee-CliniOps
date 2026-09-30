@@ -1,5 +1,5 @@
 {# ------------------------------------------------------------------
-   Thinklee / CliniOps — Application Sidebar
+   Thinklee / CliniOps - Application Sidebar
    Included from base.html on every authenticated page.
    All JS is scoped inside an IIFE so it can never collide with the
    globals defined by individual pages (e.g. dashboard_management.html
@@ -43,7 +43,7 @@
   /* ==============================================================
      Shell
      Flex column: header / user / scrolling nav / footer.
-     No magic pixel heights — the nav simply takes the leftover space,
+     No magic pixel heights - the nav simply takes the leftover space,
      so it stays correct whether or not the user block renders.
      ============================================================== */
   #sidebar {
@@ -677,7 +677,7 @@
     }
     body.sb-locked { overflow: hidden; }
 
-    /* The rail is a desktop affordance only — never apply it on touch */
+    /* The rail is a desktop affordance only - never apply it on touch */
     #sidebar.rail { width: min(84vw, 300px); }
     #sidebar.rail .sb-head { justify-content: flex-start; padding: 0 14px; }
     #sidebar.rail .sb-user-meta,

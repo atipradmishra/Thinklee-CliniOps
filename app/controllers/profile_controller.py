@@ -1,7 +1,8 @@
-from os import abort
 import string
 from app.utils.email_utils import send_invite_email
-from flask import request, jsonify
+# NB: must be Flask's abort. os.abort() raises SIGABRT and takes the whole
+# worker process down instead of returning an HTTP error.
+from flask import abort, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from datetime import datetime
 from app.models.organization import Organization, OrganizationMember
@@ -250,8 +251,8 @@ def get_setup_progress():
     definitions = [
         {
             "title": "Connect Data Source",
-            "description": "Link a database — PostgreSQL, MySQL, SQL Server, Snowflake, "
-                           "AWS RDS or Azure SQL — or upload CSV, Excel and documents.",
+            "description": "Link a database - PostgreSQL, MySQL, SQL Server, Snowflake, "
+                           "AWS RDS or Azure SQL - or upload CSV, Excel and documents.",
             "icon": "fas fa-database",
             "action_url": "/data-management",
             "done": has_data,

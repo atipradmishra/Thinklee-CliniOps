@@ -1640,7 +1640,7 @@
             select.appendChild(option);
           });
           if (!(result.tables || []).length) {
-            select.innerHTML = '<option value="">No tables yet — create one under Upload Data</option>';
+            select.innerHTML = '<option value="">No tables yet - create one under Upload Data</option>';
           }
         } catch (error) {
           console.error('Error loading tables:', error);
@@ -1717,7 +1717,7 @@
         const rows = this.s3Objects.map((obj, index) => {
           const disabled = !obj.importable || obj.too_large;
           const note = obj.too_large ? 'Too large to import'
-            : (!obj.importable ? 'Preview only — not importable' : '');
+            : (!obj.importable ? 'Preview only - not importable' : '');
           return `
             <label class="flex items-center gap-3 px-4 py-3 rounded-xl border-2 ${disabled ? 'border-gray-100 bg-gray-50 opacity-60' : 'border-gray-200 hover:border-purple-300 cursor-pointer'} smooth-transition mb-2">
               <input type="checkbox" data-s3-index="${index}" ${disabled ? 'disabled' : ''}
@@ -1739,7 +1739,7 @@
           <div class="flex items-center justify-between mb-3">
             <p class="text-xs text-gray-500">
               <code>s3://${this.escapeHtml(result.bucket)}/${this.escapeHtml(result.prefix || '')}</code>
-              — ${this.s3Objects.length} file${this.s3Objects.length === 1 ? '' : 's'}
+              - ${this.s3Objects.length} file${this.s3Objects.length === 1 ? '' : 's'}
               ${result.truncated ? ' (showing the first 500)' : ''}
             </p>
             <button onclick="dataManager.toggleAllS3()" class="text-xs font-medium text-purple-600 hover:text-purple-800">

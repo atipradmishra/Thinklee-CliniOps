@@ -3,6 +3,7 @@ from app.models.dashboard import Dashboard, DashboardWidget
 from app.services.query_sql_agent import execute_sql_query
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 
@@ -24,10 +25,13 @@ def create_dashboard():
         agent = Agent.query.filter_by(id=data['agent_id'], user_id=current_user_id).first()
         if not agent:
             return jsonify({'error': 'Agent not found or unauthorized'}), 404
-        
+
         # Create dashboard
+        # organization_id is NOT NULL; take it from the agent so the dashboard
+        # is tied to the same tenant as the data it reports on.
         dashboard = Dashboard(
             user_id=current_user_id,
+            organization_id=agent.organization_id,
             agent_id=data['agent_id'],
             title=data['title'].strip(),
             description=data.get('description', '').strip() if data.get('description') else None
@@ -362,24 +366,58 @@ def delete_dashboard(dashboard_id):
         current_app.logger.error(f"Error deleting dashboard: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+@jwt_required()
 def get_widget_data(widget_id):
-    widget = DashboardWidget.query.get_or_404(widget_id)
+    """Re-run a saved widget's query.
+
+    Previously unauthenticated and unscoped: any caller could read any
+    widget's data, and the stored SQL was executed without checking who owned
+    it.
+    """
+    current_user_id = get_jwt_identity()
+
+    widget = (
+        DashboardWidget.query
+        .join(Dashboard, Dashboard.id == DashboardWidget.dashboard_id)
+        .filter(
+            DashboardWidget.id == widget_id,
+            Dashboard.user_id == current_user_id
+        )
+        .first()
+    )
+
+    if not widget:
+        return jsonify({"error": "Widget not found"}), 404
+
     try:
-        result = db.session.execute(widget.sql_query)
+        # text() is required; passing a bare string raises in SQLAlchemy 2.x.
+        result = db.session.execute(text(widget.sql_query))
         columns = result.keys()
         rows = [dict(zip(columns, row)) for row in result.fetchall()]
-        
+
         return jsonify({
             "widget_id": widget.id,
-            "title": widget.title,
+            "widget_name": widget.widget_name,
             "chart_type": widget.chart_type,
             "data": rows
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    
+        current_app.logger.error(f"Error running widget {widget_id}: {e}")
+        return jsonify({"error": "Failed to run widget query"}), 500
+
+
+@jwt_required()
 def list_widgets(dashboard_id):
-    dashboard = Dashboard.query.get_or_404(dashboard_id)
-    widgets = [w.to_dict() for w in dashboard.widgets]
-    return jsonify({"widgets": widgets})
+    """List a dashboard's widgets, scoped to the requesting user."""
+    current_user_id = get_jwt_identity()
+
+    dashboard = Dashboard.query.filter_by(
+        id=dashboard_id,
+        user_id=current_user_id
+    ).first()
+
+    if not dashboard:
+        return jsonify({"error": "Dashboard not found"}), 404
+
+    return jsonify({"widgets": [w.to_dict() for w in dashboard.widgets]})
