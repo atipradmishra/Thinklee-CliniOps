@@ -1,0 +1,82 @@
+# /etc/systemd/system/cliniops.service
+#
+# Replaces running `python run.py` directly. Three things change:
+#
+#   1. Gunicorn instead of the Werkzeug dev server. The dev server is
+#      single-threaded, has no request timeout, and with debug=True runs a
+#      reloader that loads a SECOND copy of the 1.3 GB embedding model.
+#   2. Binds to 127.0.0.1 only. The dev server was on 0.0.0.0:5000, so with
+#      debug=True the Werkzeug debugger was reachable by anyone who could
+#      hit port 5000 — that is remote code execution. nginx is the only
+#      thing that needs to reach the app.
+#   3. A 300 s timeout. Embedding a 10-page PDF takes ~56 s on CPU; the
+#      gunicorn default of 30 s would kill the worker mid-upload.
+
+[Unit]
+Description=CliniOps Flask Application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+
+# Must be the project root: app/__init__.py resolves its template folder with
+# os.path.abspath("app/templates"), and the template downloads use a relative
+# send_from_directory(). Both break if the process starts elsewhere.
+WorkingDirectory=/home/ubuntu/Thinklee-CliniOps
+
+Environment="PYTHONUNBUFFERED=1"
+Environment="PYTHONIOENCODING=utf-8"
+Environment="LANG=C.UTF-8"
+
+# torch spawns one thread per core by default. With gthread workers that
+# oversubscribes a 2 vCPU box and makes embedding slower, not faster.
+# Set this to your vCPU count.
+Environment="OMP_NUM_THREADS=2"
+Environment="TOKENIZERS_PARALLELISM=false"
+
+# Keep the model cache on disk so it is not re-downloaded on every restart.
+Environment="HF_HOME=/home/ubuntu/.cache/huggingface"
+
+# Secrets come from .env, which the app loads itself via python-dotenv.
+
+ExecStart=/home/ubuntu/Thinklee-CliniOps/venv/bin/gunicorn \
+    --bind 127.0.0.1:5000 \
+    --workers 1 \
+    --threads 4 \
+    --worker-class gthread \
+    --timeout 300 \
+    --graceful-timeout 300 \
+    --keep-alive 5 \
+    --preload \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info \
+    run:app
+
+Restart=always
+RestartSec=5
+
+# The model needs a while to load before the socket is useful.
+TimeoutStartSec=180
+TimeoutStopSec=60
+
+# Hardening. Remove ProtectHome if you move the project out of /home.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target
+
+# ── Why one worker ────────────────────────────────────────────────────
+# Each gunicorn worker imports app.utils.embeding_utils, which loads
+# intfloat/multilingual-e5-large at module import — about 1.3 GB resident,
+# more during an encode. On a 3.7 GB box, two workers plus the OS leaves no
+# headroom for an ingestion burst and the kernel starts OOM-killing.
+#
+# Threads give concurrency here because torch and faiss release the GIL
+# during compute, so four threads genuinely overlap. If you need more
+# throughput, add RAM before you add workers.

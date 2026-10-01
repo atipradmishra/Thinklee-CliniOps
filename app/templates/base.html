@@ -9,6 +9,31 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href='https://cdn.boxicons.com/fonts/basic/boxicons.min.css' rel='stylesheet'>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  {#
+    Keep the JS auth token in step with the session.
+
+    Page routes authenticate off the JWT in the Flask session cookie, while
+    every fetch() in the app reads localStorage. A cookie is scoped to the
+    domain; localStorage is scoped to the origin (scheme + host + port). Move
+    between http:// and https://, or clear site data, and the two drift apart
+    — the UI still renders as signed in while every API call is rejected with
+    "Bearer null" (HTTP 422). Writing the session's token on every page render
+    makes the session the single source of truth.
+  #}
+  <script>
+    (function () {
+      {% if session.get('access_token') %}
+      try {
+        localStorage.setItem('token', {{ session['access_token'] | tojson }});
+      } catch (e) { /* private mode / storage disabled */ }
+      {% else %}
+      // No server-side session: drop any stale token so callers send no
+      // Authorization header (401) rather than a malformed one (422).
+      try { localStorage.removeItem('token'); } catch (e) {}
+      {% endif %}
+    })();
+  </script>
 </head>
 <body class="bg-gray-100">
   {% include 'sidebar.html' %}
