@@ -27,6 +27,8 @@ def synthesize_result(agent, nl_query, data,glossary_text, few_shot_examples=Non
     else:
         raise Exception(f"Unsupported LLM provider: {agent.llm_provider}")
 
+
+    print(data)
     
     # Step 1: Build the feedback section from past examples
     feedback_section = ""

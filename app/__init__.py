@@ -47,4 +47,10 @@ def create_app():
     from app.routes.admin_frontend_routes import admin_frontend_bp
     app.register_blueprint(admin_frontend_bp)
 
+    # Document ingestion runs on a worker thread inside this process, so any
+    # job still marked queued/running at boot died with the previous process.
+    # Close those out rather than leaving the UI spinning on them forever.
+    from app.services.ingestion_worker import reconcile_stale_jobs
+    reconcile_stale_jobs(app)
+
     return app

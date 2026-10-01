@@ -78,6 +78,12 @@ so callers send no header (401) rather than a malformed one (422).
 cd ~/Thinklee-CliniOps && git pull && source venv/bin/activate && pip install -r requirements.txt
 ```
 
+Apply the migration that adds the ingestion job table:
+
+```bash
+python -m flask --app run:app db upgrade
+```
+
 ### 1. nginx — add four directives
 
 Do **not** replace your nginx config. Your TLS and your `:80 → :443` redirect
@@ -141,22 +147,29 @@ Expect **401**, not 413. A 413 means the nginx change has not taken effect.
 Then in the browser: sign out, sign in, upload. DevTools → Application → Local
 Storage should show a `token` key.
 
-## Still outstanding
+## Document ingestion now runs in the background
 
-**Uploads are synchronous and slow.** Measured on this codebase, embedding runs
-at about 1.1 s per 1000-character chunk on CPU:
+Uploading documents no longer blocks the request. The endpoint stages the files
+to `instance/ingest_jobs/<job_id>/`, records a row in `ingestion_jobs`, and
+returns **202** with a job id. A worker thread does the embedding afterwards;
+the browser polls `/api/data/jobs/<id>` and shows a progress card.
 
-| Document | Time |
-|---|---|
-| ~10 pages | ~56 s |
-| ~40 pages | ~3.8 min |
-| ~150 pages | ~14 min |
+This matters because embedding runs at about 1.1 s per 1000-character chunk on
+CPU — roughly a minute for a ten-page PDF, several for a large one.
 
-The 300 s timeouts cover most single files, but a batch will still exceed them,
-and one upload occupies a thread for minutes. Moving ingestion to a background
-job — accept the file, return `202` with a job id, poll for status — is the
-durable fix. The ingestion loop is already per-file with a results list, so it
-is a contained change.
+- **Structured uploads (CSV/Excel) are unchanged** — they are sub-second and
+  still return their results inline.
+- **Per-file commits**, so one bad file in a batch does not discard the rest.
+  Jobs finish as `succeeded`, `partial` or `failed`.
+- **Restarts** mark in-flight jobs `interrupted` at boot rather than leaving
+  the UI spinning forever. Those uploads need to be repeated.
+- **`db upgrade` is required** — this adds the `ingestion_jobs` table.
+
+The work runs on a thread inside the web process rather than in Celery or RQ
+deliberately: a separate worker process would load its own 1.3 GB copy of the
+embedding model, which does not fit alongside the web worker on a 3.7 GB host.
+The executor is single-threaded so two ingestions never compete for memory.
+The job table is the contract, so swapping in a real queue later is contained.
 
 **`app/config.py` hardcodes SQLite.** `SQLALCHEMY_DATABASE_URI =
 "sqlite:///thinkly.db"` ignores the environment entirely. Survivable with one

@@ -50,7 +50,6 @@ ExecStart=/home/ubuntu/Thinklee-CliniOps/venv/bin/gunicorn \
     --timeout 300 \
     --graceful-timeout 300 \
     --keep-alive 5 \
-    --preload \
     --access-logfile - \
     --error-logfile - \
     --log-level info \
@@ -70,6 +69,13 @@ ProtectSystem=full
 
 [Install]
 WantedBy=multi-user.target
+
+# ── Why no --preload ──────────────────────────────────────────────────
+# create_app() opens database connections at startup (reconciling ingestion
+# jobs left over from a restart). Under --preload that happens in the master
+# before the fork, so the worker inherits a connection it did not open —
+# which SQLite in particular does not tolerate. With a single worker preload
+# saves no memory anyway, since the model is loaded exactly once either way.
 
 # ── Why one worker ────────────────────────────────────────────────────
 # Each gunicorn worker imports app.utils.embeding_utils, which loads

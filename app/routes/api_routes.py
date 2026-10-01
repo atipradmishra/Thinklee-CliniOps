@@ -33,6 +33,8 @@ data_bp.route('/delete-connection/<int:connection_id>', methods=['DELETE'])(data
 data_bp.route('/delete-file/<int:file_id>', methods=['DELETE'])(data_controller.delete_file)
 data_bp.route('/s3/<int:connection_id>/objects', methods=['GET'])(data_controller.list_s3_objects)
 data_bp.route('/s3/<int:connection_id>/import', methods=['POST'])(data_controller.import_s3_objects)
+data_bp.route('/jobs', methods=['GET'])(data_controller.list_ingestion_jobs)
+data_bp.route('/jobs/<int:job_id>', methods=['GET'])(data_controller.get_ingestion_job)
 
 agent_bp = Blueprint("agent_bp", __name__)
 agent_bp.route("/create", methods=["POST"])(agent_controller.create_agent)

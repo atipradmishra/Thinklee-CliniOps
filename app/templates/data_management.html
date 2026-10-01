@@ -765,8 +765,11 @@
         this.s3ConnectionId = null;
         this.s3Objects = [];
         this.s3Selected = new Set();
+        // Background document ingestion
+        this.ingestPollTimer = null;
         this.initializeEventListeners();
         this.loadInitialData();
+        this.resumeActiveIngestion();
         this.setupSourceTypeSelection();
         this.tables = {
           sources: {
@@ -1595,6 +1598,135 @@
       }
 
       // ---------------------------------------------------------------
+      // Background document ingestion
+      //
+      // Uploads of PDFs/Word/etc return 202 with a job id. Poll it and show
+      // a progress card so the user can see what is happening — and leave
+      // the page without losing the work.
+      // ---------------------------------------------------------------
+
+      ingestionCard() {
+        let el = document.getElementById('ingest-progress');
+        if (!el) {
+          el = document.createElement('div');
+          el.id = 'ingest-progress';
+          el.className = 'fixed bottom-6 right-6 z-40 w-80 bg-white rounded-2xl shadow-2xl '
+                       + 'border border-gray-100 overflow-hidden';
+          document.body.appendChild(el);
+        }
+        return el;
+      }
+
+      renderIngestionCard(job) {
+        const el = this.ingestionCard();
+        const done = job.is_terminal;
+
+        const tone = {
+          succeeded: ['text-green-700', 'bg-green-500', 'fa-circle-check'],
+          partial:   ['text-amber-700', 'bg-amber-500', 'fa-triangle-exclamation'],
+          failed:    ['text-red-700',   'bg-red-500',   'fa-circle-xmark'],
+          interrupted: ['text-red-700', 'bg-red-500',   'fa-plug-circle-xmark'],
+        }[job.status] || ['text-purple-700', 'bg-gradient-to-r from-blue-600 to-purple-600', 'fa-circle-notch fa-spin'];
+
+        const label = {
+          queued: 'Queued for processing',
+          running: 'Indexing documents',
+          succeeded: 'Indexing complete',
+          partial: 'Finished with some failures',
+          failed: 'Indexing failed',
+          interrupted: 'Interrupted by a restart',
+        }[job.status] || job.status;
+
+        const failures = (job.results || []).filter(r => !r.success);
+
+        el.innerHTML = `
+          <div class="px-5 pt-4 pb-3">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-2 min-w-0">
+                <i class="fas ${tone[2]} ${tone[0]}"></i>
+                <span class="font-semibold text-sm text-gray-800 truncate">${this.escapeHtml(label)}</span>
+              </div>
+              ${done ? `<button onclick="dataManager.dismissIngestionCard()"
+                          class="text-gray-400 hover:text-gray-600 -mt-1" aria-label="Dismiss">
+                          <i class="fas fa-times"></i></button>` : ''}
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              ${job.processed_files} of ${job.total_files} file(s)
+              ${job.failed_files ? ` &middot; ${job.failed_files} failed` : ''}
+            </p>
+            <div class="w-full bg-gray-100 rounded-full h-1.5 mt-3 overflow-hidden">
+              <div class="${tone[1]} h-1.5 rounded-full transition-all duration-500"
+                   style="width: ${job.percent}%"></div>
+            </div>
+            ${failures.length ? `
+              <p class="text-xs text-amber-700 mt-3 leading-snug">
+                <strong>${this.escapeHtml(failures[0].filename)}</strong>:
+                ${this.escapeHtml(failures[0].message)}
+                ${failures.length > 1 ? ` (and ${failures.length - 1} more)` : ''}
+              </p>` : ''}
+            ${job.error ? `<p class="text-xs text-red-600 mt-3">${this.escapeHtml(job.error)}</p>` : ''}
+            ${!done ? `<p class="text-xs text-gray-400 mt-3">
+                         Safe to leave this page &mdash; indexing continues on the server.
+                       </p>` : ''}
+          </div>`;
+      }
+
+      dismissIngestionCard() {
+        const el = document.getElementById('ingest-progress');
+        if (el) el.remove();
+      }
+
+      async trackIngestionJob(jobId) {
+        if (this.ingestPollTimer) clearTimeout(this.ingestPollTimer);
+
+        const poll = async () => {
+          try {
+            const res = await fetch(`/api/data/jobs/${jobId}`, {
+              headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+            });
+            if (!res.ok) { this.dismissIngestionCard(); return; }
+
+            const job = (await res.json()).job;
+            this.renderIngestionCard(job);
+
+            if (job.is_terminal) {
+              this.loadFiles();
+              this.loadStats();
+              if (job.status === 'succeeded') {
+                this.showToast(`Indexed ${job.succeeded_files} document(s)`, 'success');
+              } else if (job.status === 'partial') {
+                this.showToast(
+                  `${job.succeeded_files} indexed, ${job.failed_files} failed`, 'warning');
+              } else {
+                this.showToast(job.error || 'Document indexing failed', 'error');
+              }
+              return;
+            }
+
+            // Poll gently: these jobs run for minutes, not seconds.
+            this.ingestPollTimer = setTimeout(poll, 3000);
+          } catch (err) {
+            console.error('Error polling ingestion job:', err);
+            this.ingestPollTimer = setTimeout(poll, 8000);
+          }
+        };
+
+        poll();
+      }
+
+      async resumeActiveIngestion() {
+        // A job survives a page reload, so pick it back up on load.
+        try {
+          const res = await fetch('/api/data/jobs?active=1&limit=1', {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+          });
+          if (!res.ok) return;
+          const jobs = (await res.json()).jobs || [];
+          if (jobs.length) this.trackIngestionJob(jobs[0].id);
+        } catch (err) { /* nothing in flight */ }
+      }
+
+      // ---------------------------------------------------------------
       // Amazon S3 browse + import
       //
       // S3 holds files, not tables, so it can't back a SQL agent directly.
@@ -1905,6 +2037,17 @@
 
           const result = await response.json();
           this.hideLoader();
+
+          // -------- Queued (documents) --------
+          // Document ingestion embeds every passage, which takes minutes, so
+          // the server stages the files and returns 202 with a job id rather
+          // than holding the request open. Track it instead of blocking.
+          if (response.status === 202 && result.job_id) {
+            this.closeUploadModal();
+            this.showToast(result.message || 'Files queued for processing', 'info', 7000);
+            this.trackIngestionJob(result.job_id);
+            return;
+          }
 
           // -------- Success Case --------
           if (response.ok && result.status === 'success') {

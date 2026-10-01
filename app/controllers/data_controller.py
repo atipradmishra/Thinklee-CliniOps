@@ -10,6 +10,8 @@ from app.models.table_metadata import TableMetadata
 from app.utils.embeding_utils import get_embeddings
 from app.utils.unstructured_ingest import chunk_text, detect_language, extract_text_from_file
 from app.utils import s3_utils
+from app.models.ingestion_job import IngestionJob
+from app.services import ingestion_worker
 from app.utils.db_connections import (
     ALL_SOURCE_TYPES,
     DISPLAY_NAMES,
@@ -21,7 +23,7 @@ from app.utils.db_connections import (
     normalize_config,
     probe_connection,
 )
-from flask import request, jsonify
+from flask import request, jsonify, current_app
 from app.models.data_connection import DataSourceConnection
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.extensions import db
@@ -446,6 +448,15 @@ def handle_file_upload():
     if not raw_files:
         return jsonify({"status": "error", "message": "At least one data file is required"}), 400
 
+    # Documents are queued, not ingested inline — see ingestion_worker.
+    #
+    # This runs before the ZIP expansion below because that block calls
+    # file.save(), which reads each upload stream to EOF. Staging afterwards
+    # would copy already-consumed streams and write empty files. The worker
+    # expands archives itself, so the unstructured path never needs it.
+    if file_category == "unstructured":
+        return _queue_document_ingestion(user, raw_files)
+
     results = []
 
     ALLOWED_STRUCTURED = ('.csv', '.xlsx', '.json')
@@ -503,7 +514,7 @@ def handle_file_upload():
                 if not meta_file:
                     return jsonify({"status": "error", "message": "Metadata file is required"}), 400
 
-                table_name = re.sub(r"\s+", "_", table_name.strip()).lower()
+                table_name = re.sub(r"[\s\-]+", "_", table_name.strip()).lower()
                 meta_file.seek(0)
 
                 meta = handle_metadata_upload(meta_file, user.id, table_name)
@@ -552,100 +563,8 @@ def handle_file_upload():
                 "results": results
             }), 200
 
-        # --------------------------------------------------
-        # UNSTRUCTURED FILE INGESTION (RAG)
-        # --------------------------------------------------
-        elif file_category == "unstructured":
-            print("Ingesting unstructured files...")
-            for source, filename, obj in expanded_files:
-                filepath = None
-                try:
-                    if source == "zip":
-                        filepath = obj
-                        size_bytes = os.path.getsize(filepath)
-                    else:
-                        filename = secure_filename(obj.filename)
-                        with tempfile.NamedTemporaryFile(
-                            delete=False,
-                            suffix=os.path.splitext(filename)[1]
-                        ) as tmp:
-                            filepath = tmp.name
-                            obj.save(filepath)
-                        size_bytes = os.path.getsize(filepath)
-
-                    if size_bytes == 0:
-                        raise ValueError("Empty file")
-                    print(f"File size: {size_bytes}")
-                    text = extract_text_from_file(filepath)
-                    language = detect_language(text)
-                    if not text.strip():
-                        raise ValueError("No text extracted")
-                    print(f"Extracted {len(text)} characters")
-                    chunks = chunk_text(text)
-                    print(f"Extracted {len(chunks)} chunks")
-                    embeddings = get_embeddings(chunks, normalize=True)
-                    print(f"Generated {len(embeddings)} embeddings")
-
-                    file_meta = FileMetadata(
-                        user_id=user.id,
-                        organization_id=user.organization_id,
-                        original_filename=filename,
-                        file_size=size_bytes,
-                        language=language
-                    )
-                    db.session.add(file_meta)
-                    db.session.flush()
-
-                    print(f"Extracted2 {len(chunks)} chunks")
-
-                    # ---------- EVENT INGESTION ----------
-                    # events = extract_events(filepath)
-
-                    # if events:
-                    #     event_objects = [
-                    #         EventFact(
-                    #             file_metadata_id=file_meta.id,
-                    #             event_text=ev["event_text"],
-                    #             normalized_event_text=ev["normalized_text"],
-                    #             event_date=ev["event_date"],
-                    #             event_time=ev["event_time"],
-                    #             event_datetime=ev["event_datetime"],
-                    #             contains_overlast=ev["contains_overlast"]
-                    #         )
-                    #         for ev in events
-                    #     ]
-
-                    #     db.session.bulk_save_objects(event_objects)
-
-                    for idx, (chunk, emb) in enumerate(zip(chunks, embeddings)):
-                        db.session.add(Chunk(
-                            file_metadata_id=file_meta.id,
-                            chunk_index=idx,
-                            text=chunk,
-                            embedding_json=json.dumps(emb)
-                        ))
-                    db.session.commit()
-
-                    results.append({
-                        "filename": filename,
-                        "success": True,
-                        "message": f"Extracted {len(chunks)} chunks"
-                    })
-
-                except Exception as e:
-                    db.session.rollback()
-                    results.append({
-                        "filename": filename,
-                        "success": False,
-                        "message": str(e)
-                    })
-
-                finally:
-                    if source != "zip" and filepath and os.path.exists(filepath):
-                        os.remove(filepath)
-
-            return jsonify({"status": "success", "results": results}), 200
-
+        # "unstructured" never reaches here — it returns early, above, so the
+        # ZIP block does not consume its upload streams.
         else:
             return jsonify({"status": "error", "message": "Invalid file_category"}), 400
 
@@ -653,6 +572,54 @@ def handle_file_upload():
         import traceback
         print(traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+def _queue_document_ingestion(user, raw_files):
+    """Stage document uploads and hand them to the background worker.
+
+    Returns 202 with a job id rather than blocking. Embedding runs at roughly
+    1.1 s per 1000-character chunk on CPU, so a ten-page PDF takes about a
+    minute and a large one several — far beyond any sane request timeout.
+    """
+    job = IngestionJob(
+        user_id=user.id,
+        organization_id=user.organization_id,
+        status="queued",
+        file_category="unstructured",
+        total_files=len(raw_files),
+        results=[],
+    )
+    db.session.add(job)
+    db.session.flush()          # need the id for the staging path
+
+    app = current_app._get_current_object()
+
+    try:
+        staging_dir, staged = ingestion_worker.stage_uploads(app, job.id, raw_files)
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception("Could not stage uploads for ingestion")
+        return jsonify({
+            "status": "error",
+            "message": "Could not save the uploaded files to disk."
+        }), 500
+
+    job.staging_dir = staging_dir
+    job.total_files = staged
+    db.session.commit()
+
+    ingestion_worker.enqueue(app, job.id)
+
+    return jsonify({
+        "status": "queued",
+        "job_id": job.id,
+        "message": (
+            f"{staged} file(s) queued for processing. "
+            "Indexing runs in the background — you can leave this page."
+        ),
+        "job": job.to_dict(),
+    }), 202
+
 
 def ingest_file_to_db(file, user_id, table_name):
     user = User.query.get(user_id)
@@ -832,3 +799,52 @@ def delete_file(file_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"status": "error", "message": "Failed to delete file", "details": str(e)}), 500
+
+# --------------------------------------------------------------------------
+# Ingestion jobs
+#
+# Document uploads return 202 with a job id; the browser polls these to show
+# progress and surface per-file results.
+# --------------------------------------------------------------------------
+
+@jwt_required()
+def get_ingestion_job(job_id):
+    """Status of one ingestion job, scoped to the caller's organization."""
+    user = User.query.get(get_jwt_identity())
+
+    job = IngestionJob.query.filter_by(
+        id=job_id,
+        organization_id=user.organization_id
+    ).first()
+
+    if not job:
+        return jsonify({"status": "error", "message": "Job not found"}), 404
+
+    return jsonify({"status": "success", "job": job.to_dict()}), 200
+
+
+@jwt_required()
+def list_ingestion_jobs():
+    """Recent ingestion jobs for this organization.
+
+    `?active=1` returns only jobs still queued or running, which is what the
+    Data Management page uses to resume polling after a page reload.
+    """
+    user = User.query.get(get_jwt_identity())
+
+    query = IngestionJob.query.filter_by(organization_id=user.organization_id)
+
+    if request.args.get("active", "").lower() in ("1", "true", "yes"):
+        query = query.filter(IngestionJob.status.in_(("queued", "running")))
+
+    try:
+        limit = min(int(request.args.get("limit", 10)), 50)
+    except (TypeError, ValueError):
+        limit = 10
+
+    jobs = query.order_by(desc(IngestionJob.created_at)).limit(limit).all()
+
+    return jsonify({
+        "status": "success",
+        "jobs": [j.to_dict() for j in jobs]
+    }), 200

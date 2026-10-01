@@ -8,3 +8,4 @@ from .query_log import QueryLog
 from .user import User
 from .organization import Organization
 from .event_fact import EventFact
+from .ingestion_job import IngestionJob
