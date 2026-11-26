@@ -1,3 +1,4 @@
+from app.utils.model_selection import DEFAULT_MODEL, resolve_model
 from app.extensions import db
 
 class Agent(db.Model):
@@ -15,7 +16,7 @@ class Agent(db.Model):
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
     llm_provider = db.Column(db.String(50), nullable=False, default="openai")
-    llm_model = db.Column(db.String(20), nullable=False,default="gpt-4")
+    llm_model = db.Column(db.String(20), nullable=False,default=DEFAULT_MODEL)
     temperature = db.Column(db.Float, nullable=False, default=0.7)
     max_tokens = db.Column(db.Integer, nullable=True, default=1000)
     status = db.Column(db.String(20), nullable=False, default="active")
@@ -56,7 +57,7 @@ class Agent(db.Model):
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "llm_model": self.llm_model,
+            "llm_model": resolve_model(self.llm_model),
             "llm_provider": self.llm_provider,
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,

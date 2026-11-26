@@ -320,6 +320,7 @@
     addExistingWidget(widget) {
       this.hideEmptyState();
       const widgetId = widget.widget_id || `widget-${Date.now()}`;
+      if (!/^[A-Za-z0-9_-]{1,50}$/.test(widgetId)) return;
       const el = this.createWidgetElement(widgetId);
 
       el.setAttribute('gs-x', widget.position?.x ?? 0);
@@ -332,7 +333,7 @@
       el.querySelector('[name="title"]').value = widget.widget_name || '';
       el.querySelector('[name="nl_query"]').value = widget.nl_query || '';
       el.querySelector('[name="sql_query"]').value = widget.sql_query || '';
-      el.querySelector('[name="chart_type"]').value = widget.chart_type || 'bar';
+      el.querySelector('[name="chart_type"]').value = widget.chart_type === 'donut' ? 'doughnut' : (widget.chart_type || 'bar');
       el.querySelector('[name="refresh_rate"]').value = widget.refresh_rate || 'manual';
 
       this.grid.addWidget(el);
@@ -476,6 +477,9 @@
                       <option value="bar">📊 Bar Chart</option>
                       <option value="line">📈 Line Chart</option>
                       <option value="pie">🥧 Pie Chart</option>
+                      <option value="doughnut">Doughnut</option>
+                      <option value="scatter">Scatter</option>
+                      <option value="radar">Radar</option>
                       <option value="area">📊 Area Chart</option>
                       <option value="table">📋 Table</option>
                       <option value="summary">📄 Summary</option>
@@ -648,40 +652,16 @@
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
-            body: JSON.stringify({ sql })
+            body: JSON.stringify({ sql, chart_type: widgetEl.querySelector('[name="chart_type"]').value })
           });
 
           const data = await response.json();
           if (response.ok && data.chart_labels && data.chart_values) {
-            const canvas = widgetEl.querySelector('canvas');
-            const ctx = canvas.getContext('2d');
-            const chartType = widgetEl.querySelector('[name="chart_type"]').value;
-
-            if (this.chartInstances[widgetId]) {
-              this.chartInstances[widgetId].destroy();
-            }
-
-            this.chartInstances[widgetId] = new Chart(ctx, {
-              type: chartType,
-              data: {
-                labels: data.chart_labels,
-                datasets: [{
-                  label: data.value_key || 'Result',
-                  data: data.chart_values,
-                  backgroundColor: this.generateColors(data.chart_values.length),
-                  borderColor: this.generateColors(data.chart_values.length, true),
-                  borderWidth: 2
-                }]
-              },
-              options: {
-                responsive: true,
-                maintainAspectRatio: false
-              }
-            });
+            this.renderPreview(widgetEl, widgetEl.querySelector('[name="chart_type"]').value, data);
 
             this.showToast('Preview generated successfully!');
           } else {
-            throw new Error('No data returned');
+            throw new Error(data.message || data.error || 'No data returned');
           }
         } catch (error) {
           this.showToast(error.message, 'error');
@@ -761,19 +741,23 @@
         });
 
         if (response.ok) {
+          const result = await response.json();
+          gridItems.forEach((item, i) => { item.dataset.dbId = result.updated_ids[i]; });
           this.showToast('All widgets saved successfully!');
+          return true;
         } else {
-          throw new Error('Failed to save widgets');
+          throw new Error((await response.json()).error || 'Failed to save widgets');
         }
       } catch (error) {
         this.showToast(error.message, 'error');
+        return false;
       } finally {
         this.hideLoader();
       }
     }
 
     async finishDashboard() {
-      await this.saveAllWidgets();
+      if (!await this.saveAllWidgets()) return;
       
       setTimeout(() => {
         window.location.href = `/dashboard/view/${this.dashboardId}`;
@@ -802,7 +786,7 @@
       toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
       toast.innerHTML = `
         <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation' : 'warning'}-circle"></i>
-        <span class="font-medium">${message}</span>
+        <span class="font-medium">${escapeReportHTML(message)}</span>
         <button onclick="this.parentElement.remove()"><i class="fas fa-times opacity-70 hover:opacity-100"></i></button>
       `;
       
@@ -815,6 +799,21 @@
       const canvas = el.querySelector('canvas');
       if (!canvas) return;
 
+      let textPreview = el.querySelector('.report-text-preview');
+      if (!textPreview) {
+        textPreview = document.createElement('div');
+        textPreview.className = 'report-text-preview';
+        canvas.parentNode.appendChild(textPreview);
+      }
+      textPreview.textContent = '';
+      canvas.hidden = ['table', 'summary'].includes(chartType);
+      if (canvas.hidden) {
+        textPreview.textContent = chartType === 'summary'
+          ? `${chartData.summary_label}: ${chartData.summary_value ?? 'N/A'}`
+          : JSON.stringify(chartData.rows || [], null, 2);
+        textPreview.style.whiteSpace = 'pre-wrap';
+        return;
+      }
       const ctx = canvas.getContext('2d');
 
       if (this.chartInstances[widgetId]) {
@@ -822,8 +821,8 @@
       }
 
       this.chartInstances[widgetId] = new Chart(ctx, {
-        type: chartType,
-        data: chartData,
+        type: reportChartType(chartType),
+        data: reportChartData(chartType, chartData),
         options: {
           responsive: true,
           maintainAspectRatio: false
@@ -859,11 +858,13 @@
     };
 
     if (dbId) {
-      fetch(`/api/dashboard/${window.widgetBuilder.dashboardId}/widget/${dbId}`, {
+      fetch(`/api/dashboard/${window.widgetBuilder.dashboardId}/widget/${encodeURIComponent(widgetId)}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      }).then(() => actuallyRemove())
-        .catch(() => actuallyRemove());
+      }).then(async response => {
+        if (!response.ok) throw new Error((await response.json()).error || 'Widget deletion failed');
+        actuallyRemove();
+      }).catch(error => window.widgetBuilder.showToast(error.message, 'error'));
     } else {
       actuallyRemove();
     }

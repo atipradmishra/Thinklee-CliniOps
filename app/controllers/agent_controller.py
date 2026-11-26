@@ -9,6 +9,7 @@ from app.models.table_metadata import TableMetadata
 from app.models.data_connection import DataSourceConnection
 from flask import request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from app.utils.model_selection import resolve_model
 from app.extensions import db
 import traceback
 import tempfile
@@ -49,7 +50,7 @@ def create_agent():
             user_id=user.id,
             organization_id=user.organization_id,
             name=name,
-            llm_model=model,
+            llm_model=resolve_model(model),
             llm_provider=provider,
             temperature=data.get("temperature", 0.7),
             description=data.get("description", ""),
@@ -142,7 +143,7 @@ def get_agent(agent_id):
         agent_data = {
             "id": agent.id,
             "name": agent.name,
-            "llm_model": agent.llm_model,
+            "llm_model": resolve_model(agent.llm_model),
             "llm_provider": agent.llm_provider,
             "temperature": agent.temperature,
             "description": agent.description,
@@ -195,7 +196,7 @@ def update_agent(agent_id):
         data_connection_id = data.get("data_source") if source_type == "datasource" else None
 
         agent.name = name
-        agent.llm_model = model
+        agent.llm_model = resolve_model(model)
         agent.llm_provider = provider
         agent.temperature = data.get("temperature", agent.temperature)
         agent.description = data.get("description", agent.description)

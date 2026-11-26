@@ -1,7 +1,9 @@
+from app.services.report_queries import execute_report_query
+from app.utils.model_selection import agent_model_options
 import json
 from app.models.table_metadata import TableMetadata
 from app.models.user import User
-from app.services.query_sql_agent import execute_sql_query, format_datasource_table_metadata, format_table_metadata
+from app.services.query_sql_agent import format_datasource_table_metadata, format_table_metadata
 from app.utils.db_connections import (
     DISPLAY_NAMES,
     ConnectionConfigError,
@@ -10,7 +12,6 @@ from app.utils.db_connections import (
     sql_dialect_name,
 )
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
-from sqlalchemy import text
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 import os
@@ -26,8 +27,7 @@ def generate_sql_and_graph_query(agent, nl_query, source_type, table_names):
             raise EnvironmentError("Missing OPENAI_API_KEY")
 
         llm = ChatOpenAI(
-            temperature=0,
-            model='gpt-4',
+            **agent_model_options(agent.llm_model, 0),
             openai_api_key=openai_key
         )
 
@@ -49,12 +49,11 @@ def generate_sql_and_graph_query(agent, nl_query, source_type, table_names):
                 raise ValueError("No tables provided for table-based query")
             sql_query = table_query(llm, nl_query, table_names, agent.user_id)
             print(f"[generate_sql_and_query] Executing SQL query: {sql_query}")
-            query_result = execute_sql_query(sql_query)
+            query_result = execute_report_query(agent, sql_query)
             print(f"[generate_sql_and_query] Query result: {query_result}")
         else:
             sql_info = data_source_query(llm, agent, nl_query)
-            sql_query = sql_info["sql"]
-            query_result = sql_info["data"]
+            return sql_info
 
     except Exception as e:
         print(f"[generate_sql_and_query] Query execution failed: {e}")
@@ -83,6 +82,8 @@ Your job is to translate natural language questions into optimized **{db_type} S
 - Apply **ORDER BY** where sorted data is needed (e.g., chronological order).
 - Perform **JOINs** if required using the schema structure.
 - Use `LOWER(column)` for text-based filters or comparisons.
+- Return the category or X-axis column first, followed by a numeric measure.
+- Generate one read-only SELECT query (CTEs are allowed), with at most 2000 rows.
 
 📦 Table Schema:
 {schema}
@@ -93,7 +94,7 @@ Your job is to translate natural language questions into optimized **{db_type} S
 ✅ Output Format:
 Respond ONLY in the following valid JSON format:
 ```json
-{{ "sql": "<valid SQLite SQL query>" }}
+{{ "sql": "<valid SQL query for the specified database>" }}
 """
 
 def data_source_query(llm, agent, nlq):
@@ -141,14 +142,8 @@ def data_source_query(llm, agent, nlq):
         engine.dispose()
         return {"sql": "", "data": [], "error": f"LLM failed to generate SQL: {str(e)}"}
 
-    if not sql_query.lower().startswith("select"):
-        engine.dispose()
-        return {"sql": sql_query, "data": [], "error": "Generated SQL is not a SELECT statement"}
-
     try:
-        with engine.connect() as connection:
-            result = connection.execute(text(sql_query))
-            data = [dict(row._mapping) for row in result]
+        data = execute_report_query(agent, sql_query)
         return {"sql": sql_query, "data": data}
     except Exception as e:
         return {"sql": sql_query, "data": [], "error": f"Query execution failed: {str(e)}"}
@@ -158,7 +153,7 @@ def data_source_query(llm, agent, nlq):
 
 def table_query(llm, nlq, table_names, user_id):
 
-    tables = TableMetadata.query.filter(TableMetadata.table_name.in_(table_names)).all()
+    tables = TableMetadata.query.filter(TableMetadata.table_name.in_(table_names), TableMetadata.user_id == user_id, TableMetadata.is_deleted.is_(False)).all()
 
     user = User.query.get(user_id)
 

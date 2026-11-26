@@ -3,6 +3,7 @@ import os
 from app.services.analytical_engine import run_analytical_engine
 from sqlalchemy import text
 from app.extensions import db
+from app.utils.model_selection import LIGHTWEIGHT_MODEL
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -52,8 +53,7 @@ def run_hybrid_engine(
 
     # ---------- Step 3: LLM Invocation ----------
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.1,  # low creativity = less risk
+        model=LIGHTWEIGHT_MODEL,
         max_retries=2,
         timeout=20,
     )
@@ -134,8 +134,7 @@ def build_llm_context(rows: list[dict], max_events: int = 50) -> str:
 
 def summarize_with_llm(normalized_query: str, context: str) -> str:
     llm = ChatOpenAI(
-        temperature=0,
-        model="gpt-4o-mini",
+        model=LIGHTWEIGHT_MODEL,
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         max_retries=2,
         timeout=20,

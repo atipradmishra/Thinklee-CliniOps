@@ -100,7 +100,7 @@ Onboarding cannot be skipped by typing a later URL: the cascade
 (reset password → create organization → app) is enforced on every guarded page.
 
 **Embeddings are local** (`sentence-transformers`, `intfloat/multilingual-e5-large`);
-**generation is OpenAI** (`gpt-4`, `gpt-4o-mini`). Azure and Claude branches exist in the
+**generation is OpenAI** (`gpt-5.6-sol` and `gpt-6-luna`). Azure and Claude branches exist in the
 services but are commented out.
 
 ---

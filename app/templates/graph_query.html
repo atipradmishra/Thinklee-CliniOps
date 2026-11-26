@@ -356,7 +356,7 @@ class GraphQueryManager {
     toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
     toast.innerHTML = `
       <i class="${icons[type]}"></i>
-      <span class="font-medium">${message}</span>
+      <span class="font-medium">${escapeReportHTML(message)}</span>
       <button onclick="this.parentElement.remove()" class="ml-auto">
         <i class="fas fa-times opacity-70 hover:opacity-100"></i>
       </button>
@@ -427,7 +427,9 @@ class GraphQueryManager {
         body: JSON.stringify({ agent_id: agentId, graph_query: query })
       });
 
-      return await response.json();
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || result.error || 'Graph request failed');
+      return result;
     } catch (error) {
       console.error("Chart fetch error:", error);
       this.showToast("Error fetching chart data", "error");
@@ -452,11 +454,12 @@ class GraphQueryManager {
 
     // Create new chart
     this.currentChart = new Chart(ctx, {
-      type: data.chart_type,
+      type: reportChartType(data.chart_type),
       data: {
         labels: data.chart_labels,
         datasets: [{
-          label: data.label_key || "Count",
+          label: data.value_key || "Count",
+          fill: data.chart_type === 'area',
           data: data.chart_values,
           backgroundColor: data.chart_colors || this.generateColors(data.chart_values.length),
           borderColor: data.chart_colors || this.generateColors(data.chart_values.length),
@@ -486,7 +489,7 @@ class GraphQueryManager {
           x: {
             title: {
               display: true,
-              text: data.value_key || 'Category',
+              text: data.label_key || 'Category',
               font: {
                 size: 14,
                 weight: 'bold'
@@ -499,7 +502,7 @@ class GraphQueryManager {
           y: {
             title: {
               display: true,
-              text: data.label_key || 'Value',
+              text: data.value_key || 'Value',
               font: {
                 size: 14,
                 weight: 'bold'
@@ -581,7 +584,7 @@ class GraphQueryManager {
       if (result.chart_type) {
         this.drillPath = result.drill_path || [...this.drillPath, label];
         this.renderChart(result, agentId);
-        this.showToast(`Drilled into: ${label}`);
+        this.showToast(`Drilled into: ${escapeReportHTML(label)}`);
       } else if (result.message) {
         this.showToast(result.message, 'info');
       } else {
@@ -666,12 +669,12 @@ class GraphQueryManager {
     const chartData = await this.fetchChartData(agentId, query);
     this.hideLoader();
 
-    if (chartData && chartData.chart_type) {
+    if (chartData && chartData.chart_labels?.length && chartData.chart_type) {
       this.renderChart(chartData, agentId);
       this.chartSection.classList.remove('hidden');
       this.showToast("Visualization generated successfully!");
     } else {
-      this.showToast("No chart data returned. Please try a different query.", "error");
+      if (chartData) this.showToast(chartData.message || "No chart data returned.", "info");
       this.chartSection.classList.add('hidden');
     }
   }

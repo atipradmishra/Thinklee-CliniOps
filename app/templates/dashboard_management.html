@@ -464,7 +464,7 @@ class DashboardManager {
     toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
     toast.innerHTML = `
       <i class="${icons[type]}"></i>
-      <span class="font-medium">${message}</span>
+      <span class="font-medium">${escapeReportHTML(message)}</span>
       <button onclick="this.parentElement.remove()" class="ml-auto">
         <i class="fas fa-times opacity-70 hover:opacity-100"></i>
       </button>
@@ -635,7 +635,7 @@ class DashboardManager {
                 <i class="fas fa-tachometer-alt text-white text-lg"></i>
               </div>
               <div class="flex-1 min-w-0">
-                <h3 class="font-bold text-gray-800 text-lg mb-1 truncate">${dashboard.title}</h3>
+                <h3 class="font-bold text-gray-800 text-lg mb-1 truncate">${escapeReportHTML(dashboard.title)}</h3>
                 ${statusBadge}
               </div>
             </div>
@@ -652,7 +652,7 @@ class DashboardManager {
                   <i class="fas fa-edit text-green-600"></i>
                   <span>Edit</span>
                 </a>
-                <button class="delete-dashboard-btn w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 smooth-transition flex items-center space-x-2 rounded-b-xl" data-dashboard-id="${dashboard.id}" data-dashboard-title="${dashboard.title}">
+                <button class="delete-dashboard-btn w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-red-50 smooth-transition flex items-center space-x-2 rounded-b-xl" data-dashboard-id="${dashboard.id}" data-dashboard-title="${escapeReportHTML(dashboard.title)}">
                   <i class="fas fa-trash-alt"></i>
                   <span>Delete</span>
                 </button>
@@ -660,7 +660,7 @@ class DashboardManager {
             </div>
           </div>
           
-          <p class="text-gray-600 mb-4 text-sm leading-relaxed line-clamp-2">${dashboard.description || 'No description available'}</p>
+          <p class="text-gray-600 mb-4 text-sm leading-relaxed line-clamp-2">${escapeReportHTML(dashboard.description || 'No description available')}</p>
           
           <div class="space-y-4">
             <div class="flex items-center justify-between text-sm text-gray-500">
@@ -702,10 +702,10 @@ class DashboardManager {
             </div>
             <div class="flex-1 min-w-0">
               <div class="flex items-center space-x-3 mb-1">
-                <h3 class="font-bold text-gray-800 text-lg truncate">${dashboard.title || "Untitled"}</h3>
+                <h3 class="font-bold text-gray-800 text-lg truncate">${escapeReportHTML(dashboard.title || "Untitled")}</h3>
                 ${statusBadge}
               </div>
-              <p class="text-gray-600 mb-2 text-sm">${dashboard.description || "No description available"}</p>
+              <p class="text-gray-600 mb-2 text-sm">${escapeReportHTML(dashboard.description || "No description available")}</p>
               <div class="flex items-center space-x-4 text-sm text-gray-500">
                 <span><i class="fas fa-cubes mr-1"></i>${dashboard.widget_count || 0} widgets</span>
                 <span><i class="fas fa-clock mr-1"></i>Updated ${dashboard.updated_at ? this.formatDate(dashboard.updated_at) : "N/A"}</span>
@@ -723,7 +723,7 @@ class DashboardManager {
               <i class="fas fa-edit"></i>
             </a>
             <button class="delete-dashboard-btn p-3 text-red-600 hover:bg-red-50 rounded-xl smooth-transition" 
-              data-dashboard-id="${dashboard.id}" data-dashboard-title="${dashboard.title}">
+              data-dashboard-id="${dashboard.id}" data-dashboard-title="${escapeReportHTML(dashboard.title)}">
               <i class="fas fa-trash-alt"></i>
             </button>
           </div>

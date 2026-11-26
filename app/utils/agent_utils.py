@@ -13,7 +13,7 @@ def is_agent_queryable(agent):
             is_deleted=False
         ).first()
 
-        if not conn:
+        if not conn or conn.organization_id != agent.organization_id or conn.user_id != agent.user_id:
             return {
                 "status": False,
                 "reason": "Invalid or deleted DB connection"
@@ -49,6 +49,7 @@ def is_agent_queryable(agent):
             TableMetadata.query
             .filter(
                 TableMetadata.id.in_(table_ids),
+                TableMetadata.organization_id == agent.organization_id,
                 TableMetadata.is_deleted.is_(False)
             )
             .all()

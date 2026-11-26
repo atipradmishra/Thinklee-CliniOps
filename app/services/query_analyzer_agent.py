@@ -1,4 +1,5 @@
 import os
+from app.utils.model_selection import LIGHTWEIGHT_MODEL
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import json
@@ -8,8 +9,7 @@ def analyze_query(nl_query: str, chat_history=None, storage_language="English", 
         raise ValueError("Empty query")
 
     llm = ChatOpenAI(
-        temperature=0,
-        model="gpt-4o-mini",
+        model=LIGHTWEIGHT_MODEL,
         openai_api_key=os.getenv("OPENAI_API_KEY"),
         max_retries=2,
         timeout=20,

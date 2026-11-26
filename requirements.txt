@@ -24,6 +24,7 @@ python-pptx
 beautifulsoup4
 PyMuPDF
 lingua-language-detector
-boto3  # Amazon S3 connections
-pyodbc  # SQL Server / Azure SQL / RDS for SQL Server (needs msodbcsql18 on the host)
-gunicorn  # production WSGI server (see deploy/cliniops.service)
+boto3
+pyodbc
+gunicorn
+sqlglot

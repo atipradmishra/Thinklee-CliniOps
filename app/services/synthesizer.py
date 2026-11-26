@@ -1,3 +1,4 @@
+from app.utils.model_selection import LIGHTWEIGHT_MODEL
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
@@ -44,8 +45,7 @@ def synthesize_response(
     language: str
 ) -> str:
     llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.4,
+        model=LIGHTWEIGHT_MODEL,
         max_retries=2,
         timeout=20
     )

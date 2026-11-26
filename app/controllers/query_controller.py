@@ -64,6 +64,8 @@ def copilot_query_agent(agent_id):
                 chat_history=data.get("chat_history"),
                 few_shot_examples=few_shot_examples
             )
+            if result.get("error"):
+                return jsonify({"code": 502, "status": "error", "message": result["error"]}), 502
             sql = result["sql"]
             response = synthesize_result(agent, nlq, result["data"], glossary_text, few_shot_examples)
             print('[copilot_query_agent] response:', response)

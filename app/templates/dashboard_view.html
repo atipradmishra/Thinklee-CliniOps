@@ -705,7 +705,7 @@
       toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
       toast.innerHTML = `
         <i class="${icons[type]}"></i>
-        <span class="font-medium">${message}</span>
+        <span class="font-medium">${escapeReportHTML(message)}</span>
         <button onclick="this.parentElement.remove()" class="ml-auto">
           <i class="fas fa-times opacity-70 hover:opacity-100"></i>
         </button>
@@ -747,7 +747,7 @@
         this.updateProgress(50);
         const data = await response.json();
         this.dashboard = data.dashboard;
-        this.widgets = this.dashboard.widgets || [];
+        this.widgets = (this.dashboard.widgets || []).filter(w => w.is_active !== false && /^[A-Za-z0-9_-]{1,50}$/.test(w.widget_id));
 
         this.updateProgress(70);
         this.updateDashboardInfo();
@@ -815,7 +815,7 @@
           <div class="widget-header">
             <div class="flex items-center gap-2">
               ${this.getChartIcon(widget.chart_type)}
-              <span>${widget.widget_name || 'Untitled Widget'}</span>
+              <span>${escapeReportHTML(widget.widget_name || 'Untitled Widget')}</span>
             </div>
             <div class="flex items-center gap-2">
               ${this.getRefreshBadge(widget.refresh_rate)}
@@ -851,10 +851,6 @@
       const widgetContainer = document.getElementById(`widget-${widget.widget_id}`);
       
       try {
-        if (widget.chart_data) {
-          this.renderWidgetContent(widget, widget.chart_data);
-          return;
-        }
 
         const response = await fetch(`/api/dashboard/widget/${widget.id}/data`, {
           headers: {
@@ -867,21 +863,23 @@
         }
 
         const data = await response.json();
+        widget.chart_data = data;
         this.renderWidgetContent(widget, data);
-        
+        return true;
       } catch (error) {
         console.error(`Error loading widget ${widget.widget_id}:`, error);
         widgetContainer.innerHTML = `
           <div class="widget-error">
             <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
             <p class="font-medium">Failed to load data</p>
-            <p class="text-sm mt-1">${error.message}</p>
+            <p class="text-sm mt-1">${escapeReportHTML(error.message)}</p>
             <button onclick="refreshWidget('${widget.widget_id}')" 
                     class="mt-3 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 smooth-transition">
               <i class="fas fa-redo mr-1"></i>Retry
             </button>
           </div>
         `;
+        return false;
       }
     }
 
@@ -918,11 +916,8 @@
 
       // Create new chart
       this.chartInstances[widget.widget_id] = new Chart(ctx, {
-        type: widget.chart_type || 'bar',
-        data: {
-          labels: data.labels || [],
-          datasets: data.datasets || []
-        },
+        type: reportChartType(widget.chart_type || 'bar'),
+        data: reportChartData(widget.chart_type, {labels: data.labels || [], datasets: data.datasets || []}),
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -982,7 +977,7 @@
       let tableHTML = '<table class="widget-table"><thead><tr>';
       
       headers.forEach(header => {
-        tableHTML += `<th>${header}</th>`;
+        tableHTML += `<th>${escapeReportHTML(header)}</th>`;
       });
       
       tableHTML += '</tr></thead><tbody>';
@@ -990,7 +985,7 @@
       data.rows.slice(0, 10).forEach(row => {
         tableHTML += '<tr>';
         headers.forEach(header => {
-          tableHTML += `<td>${row[header] || ''}</td>`;
+          tableHTML += `<td>${escapeReportHTML(row[header] ?? '')}</td>`;
         });
         tableHTML += '</tr>';
       });
@@ -1005,13 +1000,13 @@
     }
 
     renderSummary(container, data) {
-      const value = data.summary_value || data.value || 'N/A';
+      const value = data.summary_value ?? data.value ?? 'N/A';
       const label = data.summary_label || data.label || 'Summary';
       
       container.innerHTML = `
         <div class="widget-summary">
-          <div class="summary-value">${value}</div>
-          <div class="summary-label">${label}</div>
+          <div class="summary-value">${escapeReportHTML(value)}</div>
+          <div class="summary-label">${escapeReportHTML(label)}</div>
         </div>
       `;
     }
@@ -1036,7 +1031,7 @@
         monthly: 'bg-purple-100 text-purple-700'
       };
       
-      return `<span class="px-2 py-1 text-xs rounded-full ${colors[refreshRate] || colors.manual}">${refreshRate || 'manual'}</span>`;
+      return `<span class="px-2 py-1 text-xs rounded-full ${colors[refreshRate] || colors.manual}">${escapeReportHTML(refreshRate || 'manual')}</span>`;
     }
 
     formatDate(dateString) {
@@ -1070,11 +1065,11 @@
               <div class="space-y-3 text-sm">
                 <div class="flex justify-between">
                   <span class="font-medium text-gray-600">Type:</span>
-                  <span class="text-gray-800">${widget.chart_type}</span>
+                  <span class="text-gray-800">${escapeReportHTML(widget.chart_type)}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="font-medium text-gray-600">Refresh Rate:</span>
-                  <span class="text-gray-800">${widget.refresh_rate || 'manual'}</span>
+                  <span class="text-gray-800">${escapeReportHTML(widget.refresh_rate || 'manual')}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="font-medium text-gray-600">Created:</span>
@@ -1095,11 +1090,11 @@
               <div class="space-y-4">
                 <div>
                   <p class="text-sm font-medium text-gray-600 mb-2">Natural Language:</p>
-                  <p class="text-sm bg-gray-50 p-3 rounded-lg">${widget.nl_query || 'No natural language query'}</p>
+                  <p class="text-sm bg-gray-50 p-3 rounded-lg">${escapeReportHTML(widget.nl_query || 'No natural language query')}</p>
                 </div>
                 <div>
                   <p class="text-sm font-medium text-gray-600 mb-2">SQL Query:</p>
-                  <pre class="text-xs bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto"><code>${widget.sql_query || 'No SQL query'}</code></pre>
+                  <pre class="text-xs bg-gray-900 text-gray-100 p-3 rounded-lg overflow-x-auto"><code>${escapeReportHTML(widget.sql_query || 'No SQL query')}</code></pre>
                 </div>
               </div>
             </div>
@@ -1142,8 +1137,8 @@
       if (!widget) return;
 
       this.showToast('Refreshing widget...', 'info');
-      await this.loadWidgetData(widget);
-      this.showToast('Widget refreshed successfully!');
+      if (await this.loadWidgetData(widget)) this.showToast('Widget refreshed successfully!');
+      else this.showToast('Widget refresh failed.', 'error');
     }
 
     async refreshAllWidgets() {
@@ -1323,7 +1318,7 @@
         </div>
         <div class="flex-1">
           <p class="font-semibold">Export Successful!</p>
-          <p class="text-sm opacity-90">${message}</p>
+          <p class="text-sm opacity-90">${escapeReportHTML(message)}</p>
         </div>
         <button onclick="this.parentElement.remove()" class="flex-shrink-0 hover:bg-white/10 p-1 rounded-full transition-colors">
           <i class="fas fa-times text-sm"></i>
@@ -1510,7 +1505,7 @@
       pdf.setFontSize(10);
       pdf.setTextColor(108, 117, 125);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Type: ${widget.chart_type || 'Unknown'} | Refresh: ${widget.refresh_rate || 'Manual'}`, 30, 45);
+      pdf.text(`Type: ${escapeReportHTML(widget.chart_type || 'Unknown')} | Refresh: ${escapeReportHTML(widget.refresh_rate || 'Manual')}`, 30, 45);
       
       // Divider line
       pdf.setDrawColor(139, 92, 246);
@@ -2028,7 +2023,7 @@
       toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
       toast.innerHTML = `
         <i class="${icons[type]}"></i>
-        <span class="font-medium">${message}</span>
+        <span class="font-medium">${escapeReportHTML(message)}</span>
         <button onclick="this.parentElement.remove()" class="ml-auto">
           <i class="fas fa-times opacity-70 hover:opacity-100"></i>
         </button>

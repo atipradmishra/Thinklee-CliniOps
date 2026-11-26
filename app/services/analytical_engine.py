@@ -1,6 +1,7 @@
 import json
 from sqlalchemy import text
 from app.extensions import db
+from app.utils.model_selection import LIGHTWEIGHT_MODEL
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 import os
@@ -157,8 +158,7 @@ def run_analytical_engine(agent_id: int, analysis: dict, glossary: dict) -> dict
 
 def generate_sql_from_llm(analysis: dict, glossary: dict = None) -> str:
     llm = ChatOpenAI(
-        temperature=0,
-        model="gpt-4o-mini",
+        model=LIGHTWEIGHT_MODEL,
         openai_api_key=os.getenv("OPENAI_API_KEY"),
     )
 

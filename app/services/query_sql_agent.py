@@ -1,3 +1,4 @@
+from app.utils.model_selection import agent_model_options
 import json
 from app.models.table_metadata import TableMetadata
 from app.utils.db_connections import (
@@ -27,8 +28,7 @@ def generate_sql_and_query(agent, nl_query, source_type, table_names, glossary_t
             raise EnvironmentError("Missing OPENAI_API_KEY")
 
         llm = ChatOpenAI(
-            temperature=0,
-            model='gpt-4',
+            **agent_model_options(agent.llm_model, 0),
             openai_api_key=openai_key
         )
 
@@ -53,8 +53,7 @@ def generate_sql_and_query(agent, nl_query, source_type, table_names, glossary_t
         else:
             print(f"[generate_sql_and_query] Generating SQL for data source: {agent.data_connection.source_name}")
             sql_info = data_source_query(llm, agent, nl_query,glossary_text, few_shot_examples, chat_history)
-            sql_query = sql_info["sql"]
-            query_result = sql_info["data"]
+            return sql_info
 
     except Exception as e:
         print(f"[generate_sql_and_query] Query execution failed: {e}")

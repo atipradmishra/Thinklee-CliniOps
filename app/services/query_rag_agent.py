@@ -9,6 +9,7 @@ from app.services.synthesizer import synthesize_response
 from app.utils.helpers import get_agent_storage_language
 import numpy as np
 from flask_jwt_extended import verify_jwt_in_request
+from app.utils.model_selection import LIGHTWEIGHT_MODEL
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 from app.models.agent import Agent, AgentFileMap
@@ -473,8 +474,7 @@ def generate_rag_response(
 
     # ---------- Step 11: LLM Call ----------
     llm = ChatOpenAI(
-        temperature=0.2,
-        model="gpt-4o-mini",
+        model=LIGHTWEIGHT_MODEL,
         max_retries=2,
         timeout=20,
     )

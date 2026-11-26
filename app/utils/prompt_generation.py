@@ -1,3 +1,4 @@
+from app.utils.model_selection import DEFAULT_MODEL
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_core.output_parsers import JsonOutputParser
@@ -89,7 +90,7 @@ def generate_sql_prompts(context):
 
     messages = [system_msg] + example_messages + [final_user_msg]
 
-    llm = ChatOpenAI(model="gpt-4", temperature=0.3)
+    llm = ChatOpenAI(model=DEFAULT_MODEL)
 
     chain = llm | parser
     result = chain.invoke(messages)
@@ -156,7 +157,7 @@ def generate_rag_synthesizer_prompts(context):
 
     messages = [system_msg] + example_messages + [final_user_msg]
 
-    llm = ChatOpenAI(model="gpt-4", temperature=0.3)
+    llm = ChatOpenAI(model=DEFAULT_MODEL)
 
     chain = llm | parser
     result = chain.invoke(messages)

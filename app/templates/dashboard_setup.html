@@ -413,7 +413,7 @@ class DashboardSetup {
     toast.className = `${colors[type]} text-white px-6 py-4 rounded-xl shadow-lg flex items-center space-x-3 slide-in max-w-sm`;
     toast.innerHTML = `
       <i class="${icons[type]}"></i>
-      <span class="font-medium">${message}</span>
+      <span class="font-medium">${escapeReportHTML(message)}</span>
       <button onclick="this.parentElement.remove()" class="ml-auto">
         <i class="fas fa-times opacity-70 hover:opacity-100"></i>
       </button>

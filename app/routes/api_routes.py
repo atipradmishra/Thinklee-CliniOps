@@ -70,6 +70,6 @@ dashboard_bp.route('/<int:dashboard_id>/layout', methods=['PUT'])(dashboard_cont
 dashboard_bp.route('/list', methods=['GET'])(dashboard_controller.get_user_dashboards)
 dashboard_bp.route('/update/<int:dashboard_id>', methods=['PUT'])(dashboard_controller.update_dashboard)
 dashboard_bp.route('/delete/<int:dashboard_id>', methods=['DELETE'])(dashboard_controller.delete_dashboard)
-dashboard_bp.route('/api/dashboard/widget/<int:widget_id>/data', methods=['GET'])(dashboard_controller.get_widget_data)
+dashboard_bp.route('/widget/<int:widget_id>/data', methods=['GET'])(dashboard_controller.get_widget_data)
 dashboard_bp.route('/<int:dashboard_id>/widgets', methods=['GET'])(dashboard_controller.list_widgets)
 

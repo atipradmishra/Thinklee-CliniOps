@@ -1,6 +1,7 @@
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from app.utils.model_selection import agent_model_options
 import os
 
 def follow_up_question_agent(agent, user_query, rag_response):
@@ -10,8 +11,7 @@ def follow_up_question_agent(agent, user_query, rag_response):
             raise EnvironmentError("Missing OPENAI_API_KEY")
 
         llm = ChatOpenAI(
-            temperature=0,
-            model=agent.llm_model,
+            **agent_model_options(agent.llm_model, 0),
             openai_api_key=openai_key
         )
     else:

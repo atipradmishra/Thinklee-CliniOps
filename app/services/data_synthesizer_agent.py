@@ -1,6 +1,7 @@
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI, AzureChatOpenAI
+from app.utils.model_selection import agent_model_options
 import os
 
 def synthesize_result(agent, nl_query, data,glossary_text, few_shot_examples=None):
@@ -12,8 +13,7 @@ def synthesize_result(agent, nl_query, data,glossary_text, few_shot_examples=Non
             raise EnvironmentError("Missing OPENAI_API_KEY")
 
         llm = ChatOpenAI(
-            temperature=agent.temperature,
-            model=agent.llm_model,
+            **agent_model_options(agent.llm_model, agent.temperature),
             openai_api_key=openai_key
         )
 

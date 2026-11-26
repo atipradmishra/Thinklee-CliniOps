@@ -1,9 +1,11 @@
+import re
+from app.services.report_queries import execute_report_query, validate_sql
+from app.utils.db_connections import normalize_config, resolve_engine
+from app.utils.chart_data import chart_payload, CHART_TYPES
 from app.models.agent import Agent
 from app.models.dashboard import Dashboard, DashboardWidget
-from app.services.query_sql_agent import execute_sql_query
 from flask import request, jsonify, current_app
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from app.extensions import db
 
@@ -12,17 +14,21 @@ from app.extensions import db
 def create_dashboard():
     try:
         current_user_id = get_jwt_identity()
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error='A JSON object is required'), 400
         
+        if data.get('description') is not None and not isinstance(data['description'], str):
+            return jsonify(error='Description must be text'), 400
         # Validate required fields
-        if not data.get('title'):
+        if not isinstance(data.get('title'), str) or not data['title'].strip() or len(data['title'].strip()) > 255:
             return jsonify({'error': 'Title is required'}), 400
         
         if not data.get('agent_id'):
             return jsonify({'error': 'Agent ID is required'}), 400
         
         # Verify agent exists and belongs to user
-        agent = Agent.query.filter_by(id=data['agent_id'], user_id=current_user_id).first()
+        agent = Agent.query.filter_by(id=data['agent_id'], user_id=current_user_id, is_deleted=False).first()
         if not agent:
             return jsonify({'error': 'Agent not found or unauthorized'}), 404
 
@@ -58,14 +64,21 @@ def create_dashboard():
 def edit_dashboard(dashboard_id):
     try:
         current_user_id = get_jwt_identity()
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error='A JSON object is required'), 400
 
-        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id).first()
+        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id, is_active=True).first()
         if not dashboard:
             return jsonify({'error': 'Dashboard not found or unauthorized'}), 404
         
+        if not isinstance(data.get('title', dashboard.title), str) or not data.get('title', dashboard.title).strip() or len(data.get('title', dashboard.title).strip()) > 255:
+            return jsonify(error='Title is required'), 400
         dashboard.title = data.get('title', dashboard.title).strip()
-        dashboard.description = data.get('description', dashboard.description).strip() if data.get('description') else None
+        if 'description' in data:
+            if data['description'] is not None and not isinstance(data['description'], str):
+                return jsonify(error='Description must be text'), 400
+            dashboard.description = data['description'].strip() if data['description'] else None
         
         db.session.commit()
         
@@ -76,15 +89,18 @@ def edit_dashboard(dashboard_id):
         
     except SQLAlchemyError as e:
         db.session.rollback()
+        return jsonify(error='Unable to update dashboard'), 500
 
 @jwt_required()
 def create_widget(dashboard_id):
     try:
         current_user_id = get_jwt_identity()
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error='A JSON object is required'), 400
         
         # Validate dashboard ownership
-        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id).first()
+        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id, is_active=True).first()
         if not dashboard:
             return jsonify({'error': 'Dashboard not found or unauthorized'}), 404
         
@@ -94,6 +110,11 @@ def create_widget(dashboard_id):
             if not data.get(field):
                 return jsonify({'error': f'{field} is required'}), 400
         
+        try:
+            validate_widget(data, dashboard.agent)
+        except ValueError as exc:
+            return jsonify(error=str(exc)), 400
+
         # Check if widget already exists (for updates)
         existing_widget = DashboardWidget.query.filter_by(
             dashboard_id=dashboard_id,
@@ -149,34 +170,57 @@ def create_widget(dashboard_id):
         current_app.logger.error(f"Error creating/updating widget: {str(e)}")
         return jsonify({'error': 'Internal server error'}), 500
 
+def validate_widget(data, agent):
+    if not isinstance(data, dict):
+        raise ValueError('Each widget must be an object.')
+    if not re.fullmatch(r'[A-Za-z0-9_-]{1,50}', str(data.get('widget_id', ''))):
+        raise ValueError('Invalid widget identifier.')
+    if data.get('chart_type') not in CHART_TYPES:
+        raise ValueError('Unsupported chart type.')
+    if not isinstance(data.get('sql_query'), str) or not data['sql_query'].strip():
+        raise ValueError('Widget SQL is required.')
+    dialect = resolve_engine(normalize_config(agent.data_connection)) if agent.data_connection_id else 'sqlite'
+    validate_sql(data['sql_query'], dialect)
+    if data.get('refresh_rate', 'manual') not in ('manual', 'daily', 'weekly', 'monthly'):
+        raise ValueError('Invalid refresh rate.')
+
+
 @jwt_required()
 def bulk_save_widgets(dashboard_id):
-    data = request.get_json() or {}
-    widgets = data.get('widgets', [])
-
-    updated_ids = []
-    for w in widgets:
-        db_id = w.get('id')
-        if db_id:
-            widget = DashboardWidget.query.filter_by(id=db_id, dashboard_id=dashboard_id).first_or_404()
-        else:
-            existing = DashboardWidget.query.filter_by(dashboard_id=dashboard_id, widget_id=w.get('widget_id')).first()
-            widget = existing or DashboardWidget(dashboard_id=dashboard_id, widget_id=w.get('widget_id'))
-
-        widget.widget_name = w.get('widget_name') or 'Untitled Widget'
-        widget.chart_type  = w.get('chart_type') or 'bar'
-        widget.refresh_rate = w.get('refresh_rate')
-        widget.nl_query    = w.get('nl_query')
-        widget.sql_query   = w.get('sql_query')
-        widget.position = (w.get('position') or {})
-        widget.chart_data = w.get('chart_data')
-
-        db.session.add(widget)
-        db.session.flush()
-        updated_ids.append(widget.id)
-
-    db.session.commit()
-    return jsonify({"status": "ok", "updated_ids": updated_ids})
+    dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=get_jwt_identity(), is_active=True).first()
+    if not dashboard:
+        return jsonify(error='Dashboard not found'), 404
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get('widgets'), list) or not 1 <= len(data['widgets']) <= 50:
+        return jsonify(error='Provide between 1 and 50 widgets'), 400
+    try:
+        seen = set()
+        for w in data['widgets']:
+            validate_widget(w, dashboard.agent)
+            if w['widget_id'] in seen:
+                raise ValueError('Duplicate widget identifier.')
+            seen.add(w['widget_id'])
+        updated_ids = []
+        for w in data['widgets']:
+            widget = DashboardWidget.query.filter_by(dashboard_id=dashboard_id, widget_id=w['widget_id']).first()
+            if not widget:
+                widget = DashboardWidget(dashboard_id=dashboard_id, widget_id=w['widget_id'])
+            for key in ('widget_name', 'nl_query', 'sql_query', 'chart_type', 'position'):
+                setattr(widget, key, w.get(key))
+            widget.refresh_rate = w.get('refresh_rate', 'manual')
+            widget.chart_data = None  # Refresh from the authorized source, never trust client data.
+            db.session.add(widget)
+            db.session.flush()
+            updated_ids.append(widget.id)
+        db.session.commit()
+        return jsonify(status='ok', updated_ids=updated_ids)
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify(error=str(exc)), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Widget save failed')
+        return jsonify(error='Unable to save widgets'), 500
 
 @jwt_required()
 def delete_widget(dashboard_id, widget_id):
@@ -185,7 +229,7 @@ def delete_widget(dashboard_id, widget_id):
         current_user_id = get_jwt_identity()
         
         # Validate dashboard ownership
-        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id).first()
+        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id, is_active=True).first()
         if not dashboard:
             return jsonify({'error': 'Dashboard not found or unauthorized'}), 404
         
@@ -216,10 +260,12 @@ def update_dashboard_layout(dashboard_id):
     """Update widget positions and dashboard layout"""
     try:
         current_user_id = get_jwt_identity()
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error='A JSON object is required'), 400
         
         # Validate dashboard ownership
-        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id).first()
+        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id, is_active=True).first()
         if not dashboard:
             return jsonify({'error': 'Dashboard not found or unauthorized'}), 404
         
@@ -309,16 +355,22 @@ def update_dashboard(dashboard_id):
     """Update dashboard details"""
     try:
         current_user_id = get_jwt_identity()
-        data = request.get_json()
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify(error='A JSON object is required'), 400
         
-        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id).first()
+        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id, is_active=True).first()
         if not dashboard:
             return jsonify({'error': 'Dashboard not found or unauthorized'}), 404
         
         # Update allowed fields
         if 'title' in data:
+            if not isinstance(data['title'], str) or not data['title'].strip() or len(data['title'].strip()) > 255:
+                return jsonify(error='A title of 1 to 255 characters is required'), 400
             dashboard.title = data['title'].strip()
         if 'description' in data:
+            if data['description'] is not None and not isinstance(data['description'], str):
+                return jsonify(error='Description must be text'), 400
             dashboard.description = data['description'].strip() if data['description'] else None
         if 'is_active' in data:
             dashboard.is_active = data['is_active']
@@ -344,7 +396,7 @@ def delete_dashboard(dashboard_id):
     try:
         current_user_id = get_jwt_identity()
         
-        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id).first()
+        dashboard = Dashboard.query.filter_by(id=dashboard_id, user_id=current_user_id, is_active=True).first()
         if not dashboard:
             return jsonify({'error': 'Dashboard not found or unauthorized'}), 404
         
@@ -390,17 +442,17 @@ def get_widget_data(widget_id):
         return jsonify({"error": "Widget not found"}), 404
 
     try:
-        # text() is required; passing a bare string raises in SQLAlchemy 2.x.
-        result = db.session.execute(text(widget.sql_query))
-        columns = result.keys()
-        rows = [dict(zip(columns, row)) for row in result.fetchall()]
-
-        return jsonify({
-            "widget_id": widget.id,
-            "widget_name": widget.widget_name,
-            "chart_type": widget.chart_type,
-            "data": rows
-        })
+        dashboard = Dashboard.query.filter_by(id=widget.dashboard_id, user_id=current_user_id, is_active=True).first()
+        if not dashboard or not widget.is_active:
+            return jsonify(error='Widget not found'), 404
+        agent = Agent.query.filter_by(id=dashboard.agent_id, user_id=current_user_id, is_deleted=False).first()
+        if not agent:
+            return jsonify(error='Agent not found'), 404
+        rows = execute_report_query(agent, widget.sql_query)
+        payload = chart_payload(rows, widget.chart_type)
+        return jsonify(dict(payload, widget_id=widget.id, widget_name=widget.widget_name))
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
 
     except Exception as e:
         current_app.logger.error(f"Error running widget {widget_id}: {e}")

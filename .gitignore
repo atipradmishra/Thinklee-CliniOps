@@ -13,3 +13,4 @@ instance/
 .git/info/exclude ".vs/"/
 .git/info/exclude "*.suo"/
 .claude
+/tests
