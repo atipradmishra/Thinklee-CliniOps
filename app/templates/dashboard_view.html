@@ -649,6 +649,7 @@
   </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/widget_refresh.js') }}"></script>
 <script>
   class DashboardViewer {
     constructor() {
@@ -658,7 +659,12 @@
       this.grid = null;
       this.dashboardId = {{ dashboard.id }};
       this.fabOpen = false;
-      this.autoRefreshInterval = null;
+      this.refreshScheduler = new WidgetRefresh.Scheduler({
+        widgets: () => this.widgets,
+        load: widget => this.fetchWidgetData(widget),
+        onStatus: (widget, state) => this.updateWidgetRefreshStatus(widget, state)
+      });
+      window.addEventListener('pageshow', event => { if (event.persisted) this.refreshScheduler.start(); });
       
       this.initializeComponents();
     }
@@ -675,6 +681,8 @@
 
       // Load dashboard data
       await this.loadDashboard();
+      if (this.widgets.length && this.widgets.every(widget => this.refreshScheduler.state(widget).lastSuccess !== null)) updateRefreshTime();
+      this.refreshScheduler.start();
       
       // Set up keyboard shortcuts
       this.setupKeyboardShortcuts();
@@ -829,6 +837,7 @@
               </button>
             </div>
           </div>
+          <p id="refresh-status-${widget.widget_id}" class="text-xs text-gray-500 px-4 py-2" aria-live="polite">Loading fresh data...</p>
           <div class="widget-content">
             <div id="widget-${widget.widget_id}" class="widget-body">
               <div class="widget-loading">
@@ -848,27 +857,50 @@
     }
 
     async loadWidgetData(widget) {
+      return this.refreshScheduler.refresh(widget);
+    }
+
+    updateWidgetRefreshStatus(widget, state) {
+      const element = document.getElementById(`refresh-status-${widget.widget_id}`);
+      if (!element) return;
+      const last = state.lastSuccess === null ? 'Not yet refreshed' : `Updated ${new Date(state.lastSuccess).toLocaleString()}`;
+      if (state.pending) element.textContent = 'Refreshing data...';
+      else if (this.refreshScheduler.paused) element.textContent = `${last}. Sign in again to refresh.`;
+      else if (state.failed) element.textContent = `${last}. Refresh failed.${widget.refresh_rate !== 'manual' ? ' Auto-refresh will retry in 5 minutes.' : ' Use Refresh to try again.'}`;
+      else {
+        const next = WidgetRefresh.nextRefresh(state.lastSuccess, widget.refresh_rate);
+        element.textContent = `${last}${Number.isFinite(next) ? ` · Next ${new Date(next).toLocaleString()}` : ' · Manual refresh'}`;
+      }
+    }
+
+    async fetchWidgetData(widget) {
       const widgetContainer = document.getElementById(`widget-${widget.widget_id}`);
-      
+      const abort = new AbortController();
+      const timeout = setTimeout(() => abort.abort(), 60000);
       try {
 
         const response = await fetch(`/api/dashboard/widget/${widget.id}/data`, {
+          cache: 'no-store', signal: abort.signal,
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
         });
 
         if (!response.ok) {
-          throw new Error(`Failed to load widget data: ${response.statusText}`);
+          if (response.status === 401) this.refreshScheduler.pause();
+          const failure = await response.json().catch(() => ({}));
+          throw new Error(failure.error || failure.message || `Failed to load widget data: ${response.statusText}`);
         }
 
         const data = await response.json();
-        widget.chart_data = data;
         this.renderWidgetContent(widget, data);
+        widget.chart_data = data;
+        widget._hasRendered = true;
         return true;
       } catch (error) {
         console.error(`Error loading widget ${widget.widget_id}:`, error);
-        widgetContainer.innerHTML = `
+        // Keep the last successful chart visible on a later refresh failure.
+        if (!widget._hasRendered) widgetContainer.innerHTML = `
           <div class="widget-error">
             <i class="fas fa-exclamation-circle text-4xl mb-3"></i>
             <p class="font-medium">Failed to load data</p>
@@ -880,13 +912,16 @@
           </div>
         `;
         return false;
+      } finally {
+        clearTimeout(timeout);
       }
     }
 
     renderWidgetContent(widget, data) {
       const widgetContainer = document.getElementById(`widget-${widget.widget_id}`);
       
-      switch (widget.chart_type) {
+      if (data.chart_type === 'heatmap') { renderReportText(widgetContainer, data); return; }
+      switch (data.chart_type || widget.chart_type) {
         case 'bar':
         case 'line':
         case 'pie':
@@ -914,52 +949,10 @@
         this.chartInstances[widget.widget_id].destroy();
       }
 
-      // Create new chart
+      const type = data.chart_type || widget.chart_type || 'bar';
       this.chartInstances[widget.widget_id] = new Chart(ctx, {
-        type: reportChartType(widget.chart_type || 'bar'),
-        data: reportChartData(widget.chart_type, {labels: data.labels || [], datasets: data.datasets || []}),
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-              labels: {
-                padding: 20,
-                usePointStyle: true,
-                font: {
-                  size: 12
-                }
-              }
-            },
-            title: {
-              display: false
-            }
-          },
-          scales: widget.chart_type !== 'pie' && widget.chart_type !== 'doughnut' ? {
-            y: {
-              beginAtZero: true,
-              grid: {
-                color: 'rgba(0, 0, 0, 0.05)'
-              },
-              ticks: {
-                font: {
-                  size: 11
-                }
-              }
-            },
-            x: {
-              grid: {
-                display: false
-              },
-              ticks: {
-                font: {
-                  size: 11
-                }
-              }
-            }
-          } : {}
-        }
+        type: reportChartType(type), data: reportChartData(type, data),
+        options: reportChartOptions(type, data)
       });
     }
 
@@ -1031,7 +1024,7 @@
         monthly: 'bg-purple-100 text-purple-700'
       };
       
-      return `<span class="px-2 py-1 text-xs rounded-full ${colors[refreshRate] || colors.manual}">${escapeReportHTML(refreshRate || 'manual')}</span>`;
+      return `<span class="px-2 py-1 text-xs rounded-full ${colors[refreshRate] || colors.manual}">${escapeReportHTML(WidgetRefresh.labels[refreshRate] || 'Manual')}</span>`;
     }
 
     formatDate(dateString) {
@@ -1143,13 +1136,12 @@
 
     async refreshAllWidgets() {
       this.showToast('Refreshing all widgets...', 'info');
-      
+      let failed = 0;
       for (const widget of this.widgets) {
-        await this.loadWidgetData(widget);
+        if (!await this.loadWidgetData(widget)) failed++;
       }
-
-      updateRefreshTime();
-      this.showToast('All widgets refreshed successfully!');
+      if (!failed) updateRefreshTime();
+      this.showToast(failed ? `${failed} widgets failed to refresh.` : 'All widgets refreshed successfully!', failed ? 'error' : 'success');
     }
 
     toggleFullscreen() {
@@ -2159,7 +2151,6 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     window.dashboardViewer = new DashboardViewer();
-    updateRefreshTime();
   });
 </script>
 

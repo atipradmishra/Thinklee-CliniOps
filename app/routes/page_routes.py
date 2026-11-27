@@ -55,24 +55,19 @@ def data_management():
 def home():
     user = session_user()
 
-    stats = {
-        'dashboards': '',
-        'widgets': '',
-        'connections': '',
-        'activeUsers': '',
-        'dataProcessed': '',
-        'queriesToday': ''
-    }
+    from app.services.home_overview import home_overview
+    from flask import current_app
+    from sqlalchemy.exc import SQLAlchemyError
+    from app.extensions import db
 
-    # First visit to /home after signing up: run the product tour.
-    show_tour = user.tour_completed_at is None
-
-    return render_template(
-        'home.html',
-        user=user,
-        stats=stats,
-        show_tour=show_tour
-    )
+    try:
+        overview = home_overview(user)
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception('Unable to load home overview')
+        return render_template('home.html', user=user, overview=None, show_tour=False), 503
+    return render_template('home.html', user=user, overview=overview,
+                           show_tour=user.tour_completed_at is None)
 
 @page_bp.route('/agent-management')
 @login_required

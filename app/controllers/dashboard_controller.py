@@ -181,7 +181,7 @@ def validate_widget(data, agent):
         raise ValueError('Widget SQL is required.')
     dialect = resolve_engine(normalize_config(agent.data_connection)) if agent.data_connection_id else 'sqlite'
     validate_sql(data['sql_query'], dialect)
-    if data.get('refresh_rate', 'manual') not in ('manual', 'daily', 'weekly', 'monthly'):
+    if data.get('refresh_rate', 'manual') not in ('manual', 'minute', '5minutes', '15minutes', 'hourly', 'daily', 'weekly', 'monthly'):
         raise ValueError('Invalid refresh rate.')
 
 

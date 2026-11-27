@@ -1,3 +1,4 @@
+from app.utils.graph_errors import graph_failure
 from app.services.report_queries import execute_report_query
 from app.utils.model_selection import agent_model_options
 import json
@@ -28,7 +29,8 @@ def generate_sql_and_graph_query(agent, nl_query, source_type, table_names):
 
         llm = ChatOpenAI(
             **agent_model_options(agent.llm_model, 0),
-            openai_api_key=openai_key
+            openai_api_key=openai_key,
+            timeout=45, max_retries=1
         )
 
     # elif agent.llm_provider == "claude":
@@ -50,18 +52,13 @@ def generate_sql_and_graph_query(agent, nl_query, source_type, table_names):
             sql_query = table_query(llm, nl_query, table_names, agent.user_id)
             print(f"[generate_sql_and_query] Executing SQL query: {sql_query}")
             query_result = execute_report_query(agent, sql_query)
-            print(f"[generate_sql_and_query] Query result: {query_result}")
         else:
             sql_info = data_source_query(llm, agent, nl_query)
             return sql_info
 
     except Exception as e:
         print(f"[generate_sql_and_query] Query execution failed: {e}")
-        return {
-            "sql": "",
-            "data": [],
-            "error": str(e)
-        }
+        return graph_failure(e)
 
     return {
         "sql": sql_query,
@@ -83,7 +80,19 @@ Your job is to translate natural language questions into optimized **{db_type} S
 - Perform **JOINs** if required using the schema structure.
 - Use `LOWER(column)` for text-based filters or comparisons.
 - Return the category or X-axis column first, followed by a numeric measure.
+- For one overall total, return a single numeric column with a meaningful alias.
+- For SQLite date calculations use date(), strftime() and julianday().
+- Respect requested date filters even when they produce no matching rows.
 - Generate one read-only SELECT query (CTEs are allowed), with at most 2000 rows.
+- For text/category questions return category + COUNT(*) with GROUP BY; never cast arbitrary text into numbers.
+- For multiple measures return the X-axis category first, then all requested numeric measures with meaningful aliases.
+- For two-category comparisons, stacked charts and heatmaps return category_x, category_series, aggregated_measure. GROUP BY both categories so each pair is unique.
+- For scatter/correlation return two raw numeric columns, optionally one category. Bubble charts require three raw numeric columns (X, Y, size), optionally one category.
+- For histograms/numeric distributions return exactly one raw numeric column; do not aggregate or bin it in SQL.
+- Keep category charts to at most 100 categories and 12 series (heatmaps: 30 categories). Respect explicit user filters and units.
+- Avoid mixing unrelated measurement units in one chart. Never infer causation from correlations.
+- For joins, use actual keys and pre-aggregate one-to-many tables to avoid inflated counts.
+- Prefer standard arithmetic, CASE, COUNT/SUM/AVG/MIN/MAX, ROUND, COALESCE and supported date functions. Never call stored procedures or custom functions.
 
 📦 Table Schema:
 {schema}
@@ -106,10 +115,10 @@ def data_source_query(llm, agent, nlq):
         engine = create_source_engine(conn)
         print(f"[INFO] Connected to {DISPLAY_NAMES.get(conn.source_type, conn.source_type)}")
     except ConnectionConfigError as e:
-        return {"sql": "", "data": [], "error": str(e)}
+        return graph_failure(e)
     except Exception as e:
         print(f"[ERROR] Engine creation failed: {e}")
-        return {"sql": "", "data": [], "error": f"Engine creation failed: {str(e)}"}
+        return graph_failure(e)
 
     # Reflect schema
     try:
@@ -118,7 +127,7 @@ def data_source_query(llm, agent, nlq):
     except Exception as e:
         engine.dispose()
         print(f"[ERROR] Failed to reflect schema: {e}")
-        return {"sql": "", "data": [], "error": f"Failed to reflect schema: {str(e)}"}
+        return graph_failure(e)
 
     if not table_metadata:
         engine.dispose()
@@ -140,13 +149,13 @@ def data_source_query(llm, agent, nlq):
         print(f"[INFO] Generated SQL: {sql_query}")
     except Exception as e:
         engine.dispose()
-        return {"sql": "", "data": [], "error": f"LLM failed to generate SQL: {str(e)}"}
+        return graph_failure(e)
 
     try:
         data = execute_report_query(agent, sql_query)
         return {"sql": sql_query, "data": data}
     except Exception as e:
-        return {"sql": sql_query, "data": [], "error": f"Query execution failed: {str(e)}"}
+        return graph_failure(e, sql_query)
     finally:
         engine.dispose()
 

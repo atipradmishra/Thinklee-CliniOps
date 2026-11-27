@@ -1,3 +1,4 @@
+from app.utils.graph_errors import GraphQueryError, graph_failure
 from flask import request, jsonify, current_app
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.models.agent import Agent
@@ -27,17 +28,16 @@ def generated_chart(agent, query):
         raise ValueError('Connect a structured data source to this agent.')
     result = generate_sql_and_graph_query(agent, query, info['type'], info.get('table_names'))
     if result.get('error'):
-        raise RuntimeError(result['error'])
+        raise GraphQueryError(result['error'], result.get('error_code', 'query_failed'), result.get('http_status', 502))
     payload = chart_payload(result.get('data') or [], kind)
     return dict(payload, code=200, status='success', sql=result.get('sql'), query=query,
-                message='No data to plot.' if not payload['rows'] else 'Chart generated.')
+                message='No records match this question. Check the date range or filters; try an all-time view.' if not payload['rows'] else 'Chart generated.')
 
 
 def query_error(exc):
-    if isinstance(exc, ValueError):
-        return jsonify(status='error', message=str(exc)), 400
-    current_app.logger.exception('Reporting query failed')
-    return jsonify(status='error', message='Unable to run this query. Check its columns and data source.'), 502
+    failure = graph_failure(exc)
+    current_app.logger.warning('Graph query failed: %s', failure['error_code'])
+    return jsonify(status='error', error_code=failure['error_code'], message=failure['error']), failure['http_status']
 
 
 @jwt_required()

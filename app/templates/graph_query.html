@@ -416,6 +416,19 @@ class GraphQueryManager {
     }
   }
 
+  showQueryMessage(message) {
+    let notice = document.getElementById('graphQueryNotice');
+    if (!notice) {
+      notice = document.createElement('p');
+      notice.id = 'graphQueryNotice';
+      notice.className = 'mx-6 my-4 p-4 rounded-xl bg-blue-50 text-blue-900 border border-blue-200';
+      notice.setAttribute('role', 'status');
+      this.chartSection.before(notice);
+    }
+    notice.textContent = message;
+    notice.hidden = !message;
+  }
+
   async fetchChartData(agentId, query) {
     try {
       const response = await fetch(`/api/query/graph/${agentId}`, {
@@ -432,98 +445,42 @@ class GraphQueryManager {
       return result;
     } catch (error) {
       console.error("Chart fetch error:", error);
-      this.showToast("Error fetching chart data", "error");
+      this.showQueryMessage(error.message || "Unable to reach the server. Please try again.");
+      this.showToast(error.message || "Unable to reach the server. Please try again.", "error");
       return null;
     }
   }
 
   renderChart(data, agentId) {
-    const chartContainer = document.getElementById('chartContainer');
-    const chartWrapper = document.getElementById('chartWrapper');
-    const ctx = document.getElementById("graphChart").getContext("2d");
-    
-    // Update container state
-    chartContainer.classList.add('has-chart');
-    chartContainer.querySelector('.text-center').classList.add('hidden');
-    chartWrapper.classList.remove('hidden');
-    
-    // Destroy existing chart
-    if (this.currentChart) {
-      this.currentChart.destroy();
-    }
-
-    // Create new chart
-    this.currentChart = new Chart(ctx, {
-      type: reportChartType(data.chart_type),
-      data: {
-        labels: data.chart_labels,
-        datasets: [{
-          label: data.value_key || "Count",
-          fill: data.chart_type === 'area',
-          data: data.chart_values,
-          backgroundColor: data.chart_colors || this.generateColors(data.chart_values.length),
-          borderColor: data.chart_colors || this.generateColors(data.chart_values.length),
-          borderWidth: 2,
-          borderRadius: 8,
-          borderSkipped: false,
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            position: 'top',
-          },
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            titleColor: 'white',
-            bodyColor: 'white',
-            borderColor: '#667eea',
-            borderWidth: 1,
-            cornerRadius: 8,
-          }
-        },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: data.label_key || 'Category',
-              font: {
-                size: 14,
-                weight: 'bold'
-              }
-            },
-            grid: {
-              display: false
-            }
-          },
-          y: {
-            title: {
-              display: true,
-              text: data.value_key || 'Value',
-              font: {
-                size: 14,
-                weight: 'bold'
-              }
-            },
-            grid: {
-              color: 'rgba(0, 0, 0, 0.1)'
-            }
-          }
-        },
-        onClick: async (event, elements) => {
-          if (elements.length > 0) {
-            const index = elements[0].index;
-            const label = data.chart_labels[index];
-            await this.handleDrillDown(agentId, label);
-          }
+    this.lastResult = data;
+    const container = document.getElementById('chartContainer');
+    const wrapper = document.getElementById('chartWrapper');
+    const canvas = document.getElementById('graphChart');
+    container.classList.add('has-chart');
+    container.querySelector('.text-center').classList.add('hidden');
+    wrapper.classList.remove('hidden');
+    if (this.currentChart) { this.currentChart.destroy(); this.currentChart = null; }
+    let special = document.getElementById('graphSpecialResult');
+    if (!special) {special=document.createElement('div');special.id='graphSpecialResult';wrapper.append(special);}
+    const textResult = ['heatmap','table','summary'].includes(data.chart_type);
+    canvas.hidden = textResult; special.hidden = !textResult;
+    wrapper.style.overflow = textResult ? 'auto' : '';
+    if (textResult) renderReportText(special, data);
+    else {
+      const options = reportChartOptions(data.chart_type, data);
+      options.onClick = async (event, elements) => {
+        if (elements.length && !data.single_metric && !['histogram','scatter','bubble'].includes(data.chart_type)) {
+          const label = data.labels[elements[0].index];
+          await this.handleDrillDown(agentId, label);
         }
-      }
-    });
-
-    // Update chart info
+      };
+      this.currentChart = new Chart(canvas.getContext('2d'), {
+        type: reportChartType(data.chart_type), data: reportChartData(data.chart_type, data), options
+      });
+    }
+    let insights = document.getElementById('graphInsights');
+    if (!insights) {insights=document.createElement('section');insights.id='graphInsights';insights.className='mt-6 p-4 bg-indigo-50 rounded-xl';container.after(insights);}
+    renderReportInsights(insights, data);
     this.updateChartInfo(data);
     this.updateDrillUI();
   }
@@ -550,7 +507,7 @@ class GraphQueryManager {
     const queryTime = document.getElementById('queryTime');
     
     chartType.textContent = data.chart_type.charAt(0).toUpperCase() + data.chart_type.slice(1);
-    dataPoints.textContent = data.chart_values.length;
+    dataPoints.textContent = data.result_row_count ?? data.chart_values.length;
     
     if (this.queryStartTime) {
       const duration = Date.now() - this.queryStartTime;
@@ -581,10 +538,13 @@ class GraphQueryManager {
       const result = await response.json();
       this.hideLoader();
 
+      if (!response.ok) throw new Error(result.message || 'Drilldown failed');
+      if (!result.chart_labels?.length) { this.showQueryMessage(result.message); return; }
+      this.showQueryMessage('');
       if (result.chart_type) {
         this.drillPath = result.drill_path || [...this.drillPath, label];
         this.renderChart(result, agentId);
-        this.showToast(`Drilled into: ${escapeReportHTML(label)}`);
+        this.showToast(`Drilled into: ${label}`);
       } else if (result.message) {
         this.showToast(result.message, 'info');
       } else {
@@ -592,45 +552,35 @@ class GraphQueryManager {
       }
     } catch (error) {
       console.error(error);
-      this.showToast('Drilldown failed', 'error');
+      this.showQueryMessage(error.message || 'Drilldown failed');
+      this.showToast(error.message || 'Drilldown failed', 'error');
       this.hideLoader();
     }
   }
 
   async handleDrillBack() {
     if (this.drillPath.length === 0) return;
-
-    this.drillPath.pop();
-
+    const targetPath = this.drillPath.slice(0, -1);
+    this.showLoader('Going back...');
     try {
-      this.showLoader('Going back...');
-      
-      const response = await fetch(`/api/query/graph/drilldown`, {
+      const root = targetPath.length === 0;
+      const response = await fetch(root ? `/api/query/graph/${this.agentSelect.value}` : '/api/query/graph/drilldown', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({
-          agent_id: this.agentSelect.value,
-          original_query: this.baseQuery,
-          drill_label: this.drillPath[this.drillPath.length - 1] || "",
-          drill_path: this.drillPath
+        headers: {'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}`},
+        body: JSON.stringify(root ? {query: this.baseQuery} : {
+          agent_id: this.agentSelect.value, original_query: this.baseQuery,
+          drill_label: targetPath[targetPath.length - 1], drill_path: targetPath.slice(0, -1)
         })
       });
-
       const result = await response.json();
-      this.hideLoader();
-
-      if (result.chart_type) {
-        this.renderChart(result, this.agentSelect.value);
-        this.showToast("Returned to previous level");
-      } else {
-        this.showToast(result.message || "No data available", "error");
-      }
+      if (!response.ok) throw new Error(result.message || 'Unable to return to the previous level');
+      if (!result.chart_labels?.length) { this.showQueryMessage(result.message); return; }
+      this.drillPath = targetPath;
+      this.showQueryMessage('');
+      this.renderChart(result, this.agentSelect.value);
     } catch (error) {
-      console.error(error);
-      this.showToast("Error going back", "error");
+      this.showQueryMessage(error.message);
+    } finally {
       this.hideLoader();
     }
   }
@@ -665,16 +615,22 @@ class GraphQueryManager {
     this.baseQuery = query;
     this.queryStartTime = Date.now();
 
+    this.lastResult = null;
+    this.showQueryMessage('');
     this.showLoader('Generating visualization...');
     const chartData = await this.fetchChartData(agentId, query);
     this.hideLoader();
 
-    if (chartData && chartData.chart_labels?.length && chartData.chart_type) {
-      this.renderChart(chartData, agentId);
-      this.chartSection.classList.remove('hidden');
-      this.showToast("Visualization generated successfully!");
+    if (chartData && chartData.rows?.length && (chartData.labels?.length || ['table','summary'].includes(chartData.chart_type))) {
+      try {
+        this.chartSection.classList.remove('hidden');
+        this.renderChart(chartData, agentId);
+        this.showToast("Visualization generated successfully!");
+      } catch (error) {
+        this.showQueryMessage(error.message || 'Unable to render this result. Try a table.');
+      }
     } else {
-      if (chartData) this.showToast(chartData.message || "No chart data returned.", "info");
+      if (chartData) this.showQueryMessage(chartData.rows?.length ? "No complete numeric observations to plot. Check missing values or request a table." : (chartData.message || "No records match. Check the date range or filters."));
       this.chartSection.classList.add('hidden');
     }
   }
@@ -694,6 +650,8 @@ class GraphQueryManager {
   }
 
   clearQuery() {
+    this.lastResult = null;
+    this.showQueryMessage('');
     document.getElementById('graph_query').value = '';
     this.agentSelect.selectedIndex = 0;
     this.chartSection.classList.add('hidden');
@@ -715,6 +673,12 @@ class GraphQueryManager {
       link.href = this.currentChart.toBase64Image();
       link.click();
       this.showToast('Chart downloaded!');
+    } else if (this.lastResult) {
+      const blob = new Blob([JSON.stringify(this.lastResult, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');link.href=url;link.download='graph-result.json';link.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
+      this.showToast('Result and insights exported as JSON.');
     } else {
       this.showToast('No chart to download', 'warning');
     }
